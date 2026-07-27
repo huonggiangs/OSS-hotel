@@ -1,0 +1,7 @@
+# Assumptions — HQ Console
+
+1. **Admin API của `kiosk-management` dành riêng cho HQ Console chưa tồn tại** — `kiosk.md` có nhóm API quản trị (`/api/admin/...`) nhưng chưa định nghĩa endpoint tổng hợp dạng `GET /api/v1/admin/customers`, `GET /api/v1/admin/devices/summary` hay webhook `device.activated`/`device.revoked` cần cho đồng bộ. Giả định các endpoint này sẽ được bổ sung phía `kiosk-management` trước khi code phần tích hợp của HQ Console.
+2. **Admin API của `smart-hotel-os`** (`docs/API_SPECIFICATION.md` mục 9) hiện có endpoint kéo (pull) nhưng chưa có webhook đẩy — giả định sẽ bổ sung `tenant.created`, `subscription.changed`, `subscription.cancelled` (đã ghi ở `smart-hotel-os/ASSUMPTIONS.md` mục 9).
+3. **HQ Console không có mobile app ở MVP** — giả định ban điều hành/sales dùng web trên laptop/tablet là đủ ở giai đoạn đầu; có thể bổ sung sau nếu nhu cầu xem nhanh trên điện thoại phát sinh (khác với Owner Mobile App, vốn dành cho khách hàng chứ không phải nội bộ).
+4. **Cơ chế liên kết `hardware_assets.device_id` với `devices.id` bên Kiosk** giả định dựa trên đối soát số serial nhập tay lúc lắp đặt — chưa có API tra cứu thiết bị theo serial number phía Kiosk để tự động hoá hoàn toàn; cần xác nhận khi thiết kế chi tiết.
+5. **Quy tắc hoa hồng cụ thể (tỷ lệ %, mốc thưởng)** chưa được xác định — `MODULE_COMMISSION.md` chỉ mô tả cơ chế (rule-based, có duyệt), số liệu cụ thể cần Sales/Ban điều hành cung cấp trước khi triển khai `commission_rules` mặc định.

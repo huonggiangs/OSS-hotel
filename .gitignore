@@ -1,0 +1,22 @@
+# Dependencies / build output (mọi sản phẩm con)
+node_modules/
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# Secrets / môi trường cục bộ — KHÔNG BAO GIỜ commit
+.env
+.env.local
+*.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*

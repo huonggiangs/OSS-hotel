@@ -1,0 +1,71 @@
+# HQ Console (webadmin) — chạy toàn bộ hệ thống bằng một lệnh:
+#
+#   docker compose up --build
+#
+# Lần đầu chạy: service "migrate" tự động tạo schema + seed dữ liệu demo
+# trước khi "api" khởi động. Sau khi tất cả lên, mở http://localhost:3000
+# và đăng nhập bằng admin@hq-console.local / ChangeMe123!
+#
+# Copy .env.example thành .env và đổi JWT_SECRET trước khi dùng thật.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hq_console
+      POSTGRES_PASSWORD: hq_console
+      POSTGRES_DB: hq_console
+    ports:
+      - "5432:5432"
+    volumes:
+      - webadmin_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hq_console"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: database/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://hq_console:hq_console@postgres:5432/hq_console?schema=public"
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://hq_console:hq_console@postgres:5432/hq_console?schema=public"
+      JWT_SECRET: "${JWT_SECRET:-please-change-this-secret-in-.env}"
+      PORT: "4000"
+      WEB_ORIGIN: "http://localhost:3000"
+    ports:
+      - "4000:4000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: "http://localhost:4000"
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  webadmin_postgres_data:
