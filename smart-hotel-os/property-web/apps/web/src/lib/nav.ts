@@ -15,12 +15,12 @@ export const mainNav: NavItem[] = [
   { key: "dashboard", label: "Tổng quan", icon: "grid", href: "/dashboard" },
   { key: "booking", label: "Đặt phòng / Hợp đồng", icon: "calendar", href: "/booking" },
   { key: "rooms", label: "Trạng thái phòng", icon: "bed", href: "/rooms" },
-  { key: "expenses", label: "Chi phí", icon: "wallet", href: "/stub/expenses" },
-  { key: "marketing", label: "Marketing", icon: "megaphone", href: "/stub/marketing" },
-  { key: "customers", label: "Khách hàng", icon: "users", href: "/stub/customers" },
-  { key: "services", label: "Dịch vụ", icon: "link", href: "/stub/services" },
-  { key: "utilities", label: "Tiện ích", icon: "map", href: "/stub/utilities" },
-  { key: "modules", label: "Module nâng cao", icon: "puzzle", href: "/stub/modules" },
+  { key: "expenses", label: "Chi phí", icon: "wallet", href: "/expenses" },
+  { key: "marketing", label: "Marketing", icon: "megaphone", href: "/marketing" },
+  { key: "customers", label: "Khách hàng", icon: "users", href: "/customers" },
+  { key: "services", label: "Dịch vụ", icon: "link", href: "/services" },
+  { key: "utilities", label: "Tiện ích", icon: "map", href: "/utilities" },
+  { key: "modules", label: "Module nâng cao", icon: "puzzle", href: "/modules" },
 ];
 
 export interface SettingsTreeItem {
@@ -34,71 +34,50 @@ export interface SettingsTreeGroup {
 }
 
 export const settingsTree: SettingsTreeGroup[] = [
-  { title: "Chi nhánh", items: [{ label: "Danh sách cơ sở", href: "/stub/branches" }] },
+  { title: "Chi nhánh", items: [{ label: "Danh sách cơ sở", href: "/branches" }] },
   {
     title: "Cài đặt",
     items: [
-      { label: "Cơ bản", href: "/stub/basic" },
-      { label: "Tiện ích", href: "/stub/amenities" },
-      { label: "Hình ảnh", href: "/stub/images" },
-      { label: "Email", href: "/stub/email" },
-      { label: "Bảo vệ", href: "/stub/security" },
+      { label: "Cơ bản", href: "/basic" },
+      { label: "Tiện ích", href: "/amenities" },
+      { label: "Hình ảnh", href: "/images" },
+      { label: "Email", href: "/email" },
+      { label: "Bảo vệ", href: "/security" },
       { label: "Phòng và giá", href: "/price", badge: true },
       { label: "Thanh toán", href: "/payment", badge: true },
-      { label: "Kế toán đêm", href: "/stub/nightaudit", badge: true },
-      { label: "Tiền tệ", href: "/stub/currency" },
-      { label: "Thuế", href: "/stub/tax" },
-      { label: "Thời gian", href: "/stub/time" },
-      { label: "Máy in & mẫu in", href: "/stub/printer", badge: true },
+      { label: "Kế toán đêm", href: "/night-audit", badge: true },
+      { label: "Tiền tệ", href: "/currency" },
+      { label: "Thuế", href: "/tax" },
+      { label: "Thời gian", href: "/time" },
+      { label: "Máy in & mẫu in", href: "/printer", badge: true },
     ],
   },
   {
     title: "Kết nối",
     items: [
-      { label: "Kênh bán (OTA)", href: "/stub/channel", badge: true },
-      { label: "Đồng bộ hoá", href: "/stub/sync" },
+      { label: "Kênh bán (OTA)", href: "/channel", badge: true },
+      { label: "Đồng bộ hoá", href: "/sync" },
     ],
   },
   {
     title: "Bảo mật",
     items: [
-      { label: "Cơ sở dữ liệu", href: "/stub/db" },
-      { label: "Người dùng & phân quyền", href: "/stub/users", badge: true },
+      { label: "Cơ sở dữ liệu", href: "/db" },
+      { label: "Người dùng & phân quyền", href: "/users", badge: true },
     ],
   },
   {
     title: "Hợp đồng & tài sản",
     items: [
-      { label: "Mạng xã hội", href: "/stub/social" },
-      { label: "Quản lý tài sản", href: "/stub/assets", badge: true },
+      { label: "Mạng xã hội", href: "/social" },
+      { label: "Quản lý tài sản", href: "/assets", badge: true },
     ],
   },
 ];
 
 // Nhãn hiển thị cho trang "stub" (placeholder) theo từng key — dùng đúng câu chữ
 // kiểu isStub trong bản gốc: 'Chức năng "..." sẽ được thiết kế chi tiết ở đợt tiếp theo.'
-export const stubLabels: Record<string, string> = {
-  expenses: "Chi phí",
-  marketing: "Marketing",
-  customers: "Khách hàng",
-  services: "Dịch vụ",
-  utilities: "Tiện ích",
-  modules: "Module nâng cao",
-  branches: "Danh sách cơ sở",
-  basic: "Cơ bản",
-  amenities: "Tiện ích cơ sở",
-  images: "Hình ảnh",
-  email: "Email",
-  security: "Bảo vệ",
-  nightaudit: "Kế toán đêm",
-  currency: "Tiền tệ",
-  tax: "Thuế",
-  time: "Thời gian",
-  printer: "Máy in & mẫu in",
-  channel: "Kênh bán (OTA)",
-  sync: "Đồng bộ hoá",
-  db: "Cơ sở dữ liệu",
-  users: "Người dùng & phân quyền",
-  social: "Mạng xã hội",
-  assets: "Quản lý tài sản",
-};
+// Tất cả màn hình main nav + panel Cài đặt đã implement pixel-perfect (xem PROGRESS.md)
+// nên hiện không còn key nào trỏ vào /stub/[key] — giữ export rỗng để route đó không
+// lỗi biên dịch nếu còn nơi nào import (an toàn, không phá vỡ convention cũ).
+export const stubLabels: Record<string, string> = {};
