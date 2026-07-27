@@ -1,0 +1,7 @@
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/fig-tokens.css';
+@import './components/cards/fig-assets.css';
+@import './components/feedback/fig-assets.css';
+@import './components/navigation/fig-assets.css';

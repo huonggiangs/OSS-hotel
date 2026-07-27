@@ -1,0 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,600&family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap');
+
+:root{
+  --font-primary:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-secondary:'Work Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+
+  /* type scale — from Design System specimen (Heading1..6, Body, Description, mini Description, button, small button, Links) */
+  --text-h1-size:38px; --text-h1-line:1.2;
+  --text-h2-size:22px; --text-h2-line:32px;
+  --text-h3-size:20px; --text-h3-line:30px;
+  --text-h4-size:18px; --text-h4-line:28px;
+  --text-h5-size:16px; --text-h5-line:26px;
+  --text-h6-size:14px; --text-h6-line:24px;
+  --text-body-size:14px; --text-body-line:24px; --text-body-weight:400;
+  --text-small-size:14px; --text-small-line:24px; --text-small-weight:400;
+  --text-xs-size:12px; --text-xs-line:22px;
+  --text-button-size:14px; --text-button-line:24px; --text-button-weight:600;
+  --text-button-small-size:10px;
+  --text-link-size:12px; --text-link-line:22px; --text-link-weight:600;
+
+  --weight-regular:400; --weight-medium:500; --weight-semibold:600; --weight-bold:700;
+}

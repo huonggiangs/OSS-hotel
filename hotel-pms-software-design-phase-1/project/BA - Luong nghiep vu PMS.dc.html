@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/anio-design-system-679d591c-8e18-4bbc-bb79-442fc75a4fee/tokens/colors.css">
+<link rel="stylesheet" href="_ds/anio-design-system-679d591c-8e18-4bbc-bb79-442fc75a4fee/tokens/typography.css">
+<link rel="stylesheet" href="_ds/anio-design-system-679d591c-8e18-4bbc-bb79-442fc75a4fee/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/anio-design-system-679d591c-8e18-4bbc-bb79-442fc75a4fee/tokens/fig-tokens.css">
+<link rel="stylesheet" href="_ds/anio-design-system-679d591c-8e18-4bbc-bb79-442fc75a4fee/styles.css">
+<script src="_ds/anio-design-system-679d591c-8e18-4bbc-bb79-442fc75a4fee/_ds_bundle.js"></script>
+<script src="./doc-page.js"></script>
+<style>doc-page:not(:defined){visibility:hidden}
+body{font-family:'Be Vietnam Pro',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin:8px 0 4px}
+th,td{border:1px solid #D8DCE3;padding:6px 8px;text-align:left;vertical-align:top}
+th{background:#F4F5F6;font-weight:600}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:19px;color:#fff;background:#284AB1;padding:8px 14px;border-radius:8px;margin-top:36px}
+h3{font-size:14.5px;margin:18px 0 6px;color:#284AB1}
+h4{font-size:13px;margin:14px 0 4px}
+.tag{display:inline-block;background:#EEF1FB;color:#284AB1;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;margin-right:6px}
+.role{display:inline-block;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;margin-right:6px;letter-spacing:.03em}
+.role-po{background:#284AB1}.role-pm{background:#00A651}.role-ui{background:#FC7F3A}.role-ux{background:#946200}.role-dev{background:#CC2F42}
+.rule{background:#FFF7E0;border:1px solid #FAB505;border-radius:8px;padding:10px 14px;font-size:12.5px;margin:6px 0}
+.meta{color:#777E90;font-size:12px}
+.swatch{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:middle;margin-right:6px;border:1px solid #E6E8EC}
+</style>
+</helmet>
+<doc-page>
+<h1>Tài liệu BA — Phần mềm PMS cho cơ sở lưu trú (ANIO)</h1>
+<p class="meta">Phiên bản 2.0 · 26/07/2026 · Nguồn: Figma "PMS-ANIO" (133 khung hình) + phản hồi trực tiếp trên prototype · Tài liệu tách riêng theo vai trò: <b>PO</b> · <b>PM</b> · <b>UI</b> · <b>UX</b> · <b>DEV</b> — mỗi vai trò có thể đọc riêng phần của mình ở mục 1–5.</p>
+
+<h2>0. Tổng quan dự án (đọc chung)</h2>
+<p>Phần mềm quản lý cơ sở lưu trú (PMS) web, hỗ trợ vận hành từ đặt phòng đến trả phòng, đồng bộ kênh OTA, kế toán đêm, phân quyền nhân sự, quản lý chi phí, và các tiện ích mở rộng (dịch vụ liên kết đối tác xung quanh, dịch vụ riêng của cơ sở, gắn cơ sở lên Google Maps/Google Hotel). Bản thiết kế sống tại <b>Hotel PMS.dc.html</b>; tài liệu này mô tả nghiệp vụ đứng sau từng màn hình.</p>
+<table><thead><tr><th>Nhóm màn hình</th><th>Màn hình</th></tr></thead><tbody>
+<tr><td>Tổng quan</td><td>Dashboard (2 tab: Tổng quan cơ sở / Lịch đặt phòng dạng Gantt)</td></tr>
+<tr><td>Vận hành phòng</td><td>Trạng thái phòng (lọc theo khu vực/tầng/loại/trạng thái), popup Nhận phòng nhanh, popup Quản lý lưu trú, popup Báo dọn phòng</td></tr>
+<tr><td>Đặt phòng</td><td>Đặt phòng / Hợp đồng</td></tr>
+<tr><td>Tài chính</td><td>Chi phí (kèm phê duyệt), Thanh toán, Kế toán đêm</td></tr>
+<tr><td>Cấu hình cơ sở</td><td>Danh sách cơ sở, Cơ bản, Tiện ích khách sạn, Hình ảnh, Email, Bảo vệ, Phòng và giá, Tiền tệ, Thuế, Thời gian</td></tr>
+<tr><td>Kênh &amp; kết nối</td><td>Kênh bán (OTA), Đồng bộ hoá, Tiện ích (Google Maps, Google Hotel)</td></tr>
+<tr><td>Bảo mật</td><td>Cơ sở dữ liệu, Người dùng &amp; phân quyền</td></tr>
+<tr><td>Hợp đồng &amp; tài sản</td><td>Mạng xã hội, Quản lý tài sản</td></tr>
+<tr><td>Kinh doanh thêm</td><td>Marketing, Khách hàng, Dịch vụ (đối tác xung quanh + gói dịch vụ riêng của cơ sở), Module nâng cao</td></tr>
+</tbody></table>
+
+<h2>1. <span class="role role-po">PO</span> Mục tiêu sản phẩm &amp; phạm vi</h2>
+<h3>1.1 Mục tiêu kinh doanh</h3>
+<ul>
+<li>Số hoá toàn bộ vận hành lưu trú (đặt → nhận → ở → trả → dọn phòng) trên một hệ thống duy nhất, loại bỏ sổ sách thủ công và excel rời rạc.</li>
+<li>Tối đa hoá công suất phòng &amp; doanh thu: giá linh động theo khung giờ, tự động giảm giá phòng trống lâu, đồng bộ OTA tức thời để tránh bán hụt/bán trùng.</li>
+<li>Mở thêm nguồn thu ngoài phòng: bán chéo dịch vụ của đối tác xung quanh (hoa hồng) và gói dịch vụ riêng của cơ sở (xe máy, đưa đón, tour).</li>
+<li>Tăng khả năng được khách tìm thấy: gắn cơ sở lên Google Maps &amp; Google Hotel, đồng bộ giá/tồn phòng/khuyến mãi tự động.</li>
+<li>Giảm rủi ro vận hành: phân quyền chặt theo vai trò, kế toán đêm bất biến sau khi chốt sổ, phê duyệt chi phí phát sinh.</li>
+</ul>
+<h3>1.2 Đối tượng người dùng &amp; giá trị</h3>
+<table><thead><tr><th>Actor</th><th>Giá trị nhận được</th></tr></thead><tbody>
+<tr><td>Chủ cơ sở / Quản lý</td><td>Nhìn tổng quan doanh thu-chi phí-công suất theo nhóm nghiệp vụ trên 1 màn hình, duyệt chi phí/giá, không cần đối chiếu excel.</td></tr>
+<tr><td>Lễ tân</td><td>Thao tác nhận/trả phòng, tạm ứng, đổi phòng nhanh trong 1 popup; nhận phòng kiosk tự động thu thập giấy tờ đúng luật cư trú.</td></tr>
+<tr><td>Kế toán</td><td>Kế toán đêm 1 nút bấm, chi phí cố định/phát sinh có breakdown chi tiết kèm xu hướng tăng/giảm so với tháng trước.</td></tr>
+<tr><td>Khách lưu trú</td><td>Tìm thấy cơ sở dễ hơn qua Google Maps/Hotel; có thêm lựa chọn dịch vụ tại chỗ và đối tác xung quanh.</td></tr>
+</tbody></table>
+<h3>1.3 Ưu tiên theo đợt</h3>
+<table><thead><tr><th>Đợt</th><th>Nội dung</th><th>Trạng thái</th></tr></thead><tbody>
+<tr><td>Đợt 1</td><td>5 luồng lõi: Đặt→Nhận→Trả phòng, Đồng bộ OTA, Thanh toán/Kế toán đêm, Phân quyền, Dọn phòng/Bảo trì</td><td>✅ Đã đặc tả &amp; dựng prototype</td></tr>
+<tr><td>Đợt 2</td><td>Quản lý lưu trú nâng cao (đổi phòng, tạm ứng có lịch sử, điều khiển nguồn điện phòng theo khách ra/vào, chốt tiền tự động khi trả phòng), Chi phí kèm phê duyệt, Dashboard theo nhóm nghiệp vụ, Lịch đặt phòng dạng Gantt</td><td>✅ Đã đặc tả &amp; dựng prototype</td></tr>
+<tr><td>Đợt 3</td><td>Dịch vụ (đối tác xung quanh + gói dịch vụ riêng), Tiện ích Google Maps/Google Hotel</td><td>✅ Đã đặc tả &amp; dựng prototype</td></tr>
+<tr><td>Đợt 4 (kế tiếp)</td><td>Kế toán tổng hợp, Nhân sự, Tickets/Reviews, kết nối thiết bị Camera/Khoá cửa thực tế (hiện là mô phỏng UI), thanh toán thật cho tạm ứng/kế toán đêm</td><td>⏳ Chưa bắt đầu</td></tr>
+</tbody></table>
+<h3>1.4 Chỉ số thành công (đề xuất, cần PO xác nhận số liệu)</h3>
+<ul><li>Thời gian trung bình xử lý 1 lượt nhận/trả phòng &lt; 3 phút.</li><li>Tỷ lệ đồng bộ OTA thành công &gt; 99%, độ trễ &lt; 5 phút.</li><li>0 sai lệch đối soát kế toán đêm không rõ nguyên nhân/tháng.</li><li>≥ 1 đối tác/gói dịch vụ được bán chéo mỗi tuần sau khi ra mắt màn hình Dịch vụ.</li></ul>
+<h3>1.5 Giả định &amp; câu hỏi mở cần xác nhận</h3>
+<div class="rule">
+- Ngưỡng giờ/mức giảm giá tự động cho phòng trống lâu (mẫu: 4 giờ → 10%, 8 giờ → 20%) là minh hoạ, cần cơ sở chốt số thật.<br/>
+- Thời gian trễ cấp/tắt nguồn điện phòng theo khách vào/ra hiện để mặc định (cấp: 2 phút, tắt: 5 phút) — cần xác nhận với đơn vị thi công điện/khoá thẻ.<br/>
+- Hoa hồng đối tác dịch vụ xung quanh: mô hình tính hoa hồng (theo % mỗi đơn, hay theo tháng) chưa chốt — hiện chỉ hiển thị % hoa hồng tĩnh.<br/>
+- Kế toán tổng hợp, Nhân sự, Camera/Khoá cửa vật lý: chưa có trong phạm vi đợt này, cần PO xác nhận đưa vào roadmap đợt 4.
+</div>
+
+<h2>2. <span class="role role-pm">PM</span> Quản lý dự án &amp; theo dõi tiến độ</h2>
+<h3>2.1 Actor / vai trò hệ thống</h3>
+<table><thead><tr><th>Vai trò</th><th>Mô tả</th></tr></thead><tbody>
+<tr><td>Quản lý</td><td>Toàn quyền; phê duyệt giá, chi phí phát sinh, chênh lệch kế toán đêm.</td></tr>
+<tr><td>Lễ tân</td><td>Tạo/sửa hợp đồng, nhận–trả phòng, thu tiền, quản lý lưu trú (đổi phòng/tạm ứng/trả phòng nhanh).</td></tr>
+<tr><td>Kế toán</td><td>Đối soát hoá đơn, chạy kế toán đêm, xuất báo cáo.</td></tr>
+<tr><td>Buồng phòng</td><td>Cập nhật trạng thái dọn phòng.</td></tr>
+<tr><td>Bảo trì</td><td>Gắn/gỡ cờ bảo trì thiết bị trong phòng.</td></tr>
+<tr><td>Hệ thống OTA</td><td>Actor gián tiếp — Booking.com/Agoda/Airbnb gửi/nhận dữ liệu qua API đồng bộ.</td></tr>
+<tr><td>Google Maps / Google Hotel</td><td>Actor gián tiếp — nhận vị trí/hình ảnh/mô tả (Maps) và tồn phòng/khuyến mãi (Hotel Ads) từ PMS.</td></tr>
+</tbody></table>
+<h3>2.2 Kiểm kê màn hình hiện có trong prototype (~30 màn hình/trạng thái)</h3>
+<table><thead><tr><th>#</th><th>Màn hình</th><th>Ghi chú tiến độ</th></tr></thead><tbody>
+<tr><td>1</td><td>Dashboard — Tổng quan cơ sở</td><td>Bố cục lại theo 3 nhóm nghiệp vụ (Doanh thu &amp; đặt phòng / Phòng &amp; dịch vụ / Khách hàng &amp; hoạt động) + dải KPI đầu trang, không cần cuộn để thấy số liệu chính.</td></tr>
+<tr><td>2</td><td>Dashboard — Lịch đặt phòng</td><td>Dạng Gantt theo tuần, nhóm theo loại phòng (Standard/Deluxe/Suite/Family), điều hướng tuần, lọc loại phòng/khu-tầng, thu gọn nhóm.</td></tr>
+<tr><td>3</td><td>Trạng thái phòng</td><td>Thẻ phòng hiển thị thêm dòng công suất điện (cấp/tắt nguồn, kW hiện tại/kWh trong đợt ở); thêm card "Lịch đặt phòng trong tháng" (5 thẻ số liệu + biểu đồ cột theo ngày, tự ẩn ngày có 0 lượt đặt).</td></tr>
+<tr><td>4</td><td>Popup Quản lý lưu trú</td><td>Có: điều khiển nguồn điện tự động (bật/tắt + độ trễ chỉnh được), đổi phòng, tạm ứng (kèm tổng đã tạm ứng + lịch sử), trả phòng 2 bước (xác nhận → chốt số tiền tự động).</td></tr>
+<tr><td>5</td><td>Popup Nhận phòng nhanh (kiosk)</td><td>Thu thập giấy tờ tuỳ thân theo luật cư trú, kích hoạt khi bấm phòng trống/sạch.</td></tr>
+<tr><td>6</td><td>Chi phí</td><td>Tách 2 tab Chi phí/Kế toán đêm; có luồng phê duyệt chi phí phát sinh.</td></tr>
+<tr><td>7</td><td>Người dùng &amp; phân quyền</td><td>Danh sách vai trò + popup thêm/sửa quyền theo nhóm module.</td></tr>
+<tr><td>8</td><td>Kênh bán (OTA)</td><td>Trạng thái kết nối + đồng bộ theo Luồng 2.</td></tr>
+<tr><td>9</td><td>Dịch vụ</td><td>2 bảng: "Gói dịch vụ của cơ sở" (xe máy, xe điện, đưa đón sân bay/tàu cao tốc, tour lặn biển/leo núi — có đơn giá/thời gian/địa điểm) + "Đối tác xung quanh" (spa, ẩm thực, tour, thuê xe, gym) kèm popup thêm đối tác (ảnh, liên hệ).</td></tr>
+<tr><td>10</td><td>Tiện ích</td><td>Google Maps (popup cấu hình vị trí/mô tả/ảnh) + Google Hotel (popup cấu hình đồng bộ tồn phòng/khuyến mãi + mã Hotel Center).</td></tr>
+<tr><td>11</td><td>Sidebar chính</td><td>Mở rộng 64px → 208px, hiển thị nhãn đầy đủ từng mục thay vì chỉ icon.</td></tr>
+<tr><td>12</td><td>Module nâng cao</td><td>Mục menu mới; lưới 4 cột danh sách module mở rộng (icon, tên, giá/Miễn phí, toggle bật-tắt) theo tham chiếu marketplace module ANIO; đã bổ sung module "Thống kê khách hàng AI Camera"; giá module tham chiếu bảng giá Skyhotel (tính theo phòng/tháng cho các module liên kết phần cứng) — thêm "Liên kết màn hình phụ" và "Xuất hoá đơn điện"; bổ sung nhóm module xu hướng khách sạn/nhà trọ thông minh 2026: Trợ lý ảo AI, Tiết kiệm năng lượng AI, Nhận diện khuôn mặt check-in, Định giá phòng linh hoạt (Dynamic Pricing), Trợ lý nghỉ dưỡng không tiếp xúc qua QR.</td></tr>
+<tr><td>13–31</td><td>Đặt phòng/Hợp đồng, Phòng và giá, Thanh toán, Danh sách cơ sở, Cơ bản/Tiện ích khách sạn/Hình ảnh/Email/Bảo vệ/Tiền tệ/Thuế/Thời gian, Cơ sở dữ liệu, Mạng xã hội, Quản lý tài sản, Marketing, Khách hàng</td><td>Đã dựng ở đợt 1–2, chưa có thay đổi mới trong đợt phản hồi này.</td></tr>
+</tbody></table>
+<h3>2.3 Phụ thuộc giữa các luồng</h3>
+<ul>
+<li>Luồng Đặt→Nhận→Trả phòng (mục 4.1) là nguồn dữ liệu cho: Đồng bộ OTA, Thanh toán/Kế toán đêm, Dashboard, Lịch đặt phòng Gantt.</li>
+<li>Luồng Quản lý lưu trú (đổi phòng/tạm ứng/nguồn điện/chốt tiền) phụ thuộc trạng thái "Đang ở" từ Trạng thái phòng.</li>
+<li>Luồng Dịch vụ/Tiện ích Google độc lập về dữ liệu nhưng dùng chung định dạng popup cấu hình với các màn hình khác (nhất quán UI).</li>
+</ul>
+<h3>2.4 Rủi ro &amp; việc cần theo dõi</h3>
+<ul>
+<li>Điều khiển nguồn điện phòng, đồng bộ Google Maps/Hotel hiện là mô phỏng giao diện — cần xác nhận đối tác phần cứng/API thật trước khi phát triển backend.</li>
+<li>Số liệu tài chính trên Dashboard/Chi phí là dữ liệu mẫu minh hoạ định dạng VNĐ — cần API kế toán thật thay thế trước UAT.</li>
+<li>Chưa có màn hình cấu hình hoa hồng đối tác dịch vụ theo % linh động — cần bổ sung nếu PO chốt mô hình hoa hồng động.</li>
+</ul>
+
+<h2>3. <span class="role role-ui">UI</span> Hệ thống thiết kế &amp; bố cục</h2>
+<h3>3.1 Token màu &amp; kiểu chữ</h3>
+<table><thead><tr><th>Token</th><th>Giá trị</th><th>Dùng cho</th></tr></thead><tbody>
+<tr><td>Primary</td><td><span class="swatch" style="background:#284AB1"></span>#284AB1</td><td>Nút chính, trạng thái đang chọn, biểu tượng active, số liệu chính</td></tr>
+<tr><td>Success</td><td><span class="swatch" style="background:#00C853"></span>#00C853 / #00A651</td><td>Trạng thái tốt (trống-sạch, đã kết nối, xu hướng giảm chi phí)</td></tr>
+<tr><td>Warning</td><td><span class="swatch" style="background:#FAB505"></span>#FAB505</td><td>Bảo trì, chờ xác nhận</td></tr>
+<tr><td>Danger</td><td><span class="swatch" style="background:#CC2F42"></span>#CC2F42</td><td>Huỷ, trả phòng ngay, xu hướng tăng chi phí</td></tr>
+<tr><td>Neutral</td><td><span class="swatch" style="background:#777E90"></span>#777E90 / #B1B5C3</td><td>Text phụ, placeholder</td></tr>
+<tr><td>Nền</td><td><span class="swatch" style="background:#FAFAFA"></span>#FAFAFA (app) / #fff (card)</td><td>Toàn bộ layout</td></tr>
+<tr><td>Bo góc</td><td>10–14px</td><td>Card, popup, nút</td></tr>
+<tr><td>Shadow</td><td>0 4px 20px rgba(0,0,0,.06)</td><td>Mọi card nổi trên nền xám</td></tr>
+<tr><td>Font</td><td>Be Vietnam Pro / SVN-Gilroy</td><td>Toàn hệ thống, tiếng Việt có dấu</td></tr>
+</tbody></table>
+<h3>3.2 Cấu trúc layout chung</h3>
+<ul>
+<li>Sidebar chính rộng <b>208px</b> (mới mở rộng từ 64px), icon 20px + nhãn chữ 13px/600, mục đang chọn có nền #EEF1FB + chữ/icon màu primary. Logo "A" 36px + wordmark "ANIO PMS"; nút mũi tên thu gọn/mở rộng ở góc phải header sidebar — bấm để co về 64px (chỉ icon, ẩn nhãn/tên) hoặc mở lại 208px.</li>
+<li>Submenu Cài đặt (264px) trượt ra bên phải sidebar chính khi bấm bánh răng, nhóm theo Chi nhánh/Cài đặt/Kết nối/Bảo mật/Hợp đồng &amp; tài sản, có nhãn "Mới" cho mục vừa bổ sung.</li>
+<li>Content area: padding 28×32px, header 80px cố định trên cùng.</li>
+<li>Grid Dashboard: dải KPI 4 cột (thẻ nhỏ, không shadow nặng) → 3 cột nhóm theo nghiệp vụ, mỗi cột có tiêu đề nhóm in hoa 11px màu primary.</li>
+</ul>
+<h3>3.3 Pattern component dùng lại</h3>
+<table><thead><tr><th>Component</th><th>Mô tả</th><th>Nơi dùng</th></tr></thead><tbody>
+<tr><td>Donut + chú giải</td><td>Vòng tròn conic-gradient + hộp lọc bên cạnh, bấm để lọc dữ liệu</td><td>Trạng thái phòng (4 donut), Dashboard (Biểu đồ sử dụng phòng, Tổng quan lịch sử đặt)</td></tr>
+<tr><td>Thẻ KPI nhỏ</td><td>Label 11px + số lớn 22px, không viền, shadow nhẹ</td><td>Dải đầu Dashboard, dải thống kê Trạng thái phòng</td></tr>
+<tr><td>Badge xu hướng</td><td>▲/▼ + % + màu (đỏ=xấu/xanh=tốt tuỳ ngữ nghĩa) cạnh tiêu đề card</td><td>Mọi biểu đồ Dashboard so với tháng trước</td></tr>
+<tr><td>Toggle switch</td><td>Pill 36×20px, chấm trắng trượt trái/phải</td><td>Nguồn điện phòng, đồng bộ Google Hotel</td></tr>
+<tr><td>Popup 2 cột form</td><td>Header + body cuộn + footer 2 nút (Hủy/Xác nhận màu primary)</td><td>Thêm đối tác, Cấu hình Google Maps/Hotel, Nhận phòng nhanh, Quản lý lưu trú</td></tr>
+<tr><td>Bảng Gantt đặt phòng</td><td>Cột ngày cố định 7, hàng nhóm theo loại phòng, thanh đặt phòng grid-column span theo số đêm</td><td>Dashboard → Lịch đặt phòng</td></tr>
+<tr><td>Badge trạng thái pill</td><td>Nền nhạt + chữ đậm cùng tông, bo tròn 999px</td><td>Bảng hợp đồng, đối tác, gói dịch vụ, kênh OTA</td></tr>
+</tbody></table>
+<h3>3.4 Ghi chú UI theo thay đổi gần nhất</h3>
+<ul>
+<li><b>Sidebar</b>: đổi icon "Dịch vụ" từ mắt-xích sang chuông concierge cho đúng ngữ nghĩa; toàn bộ icon hiện đi kèm nhãn chữ thay vì chỉ icon+tooltip.</li>
+<li><b>Thẻ phòng (Trạng thái phòng)</b>: thêm dòng "⚡ Đang cấp nguồn/Đã tắt nguồn · X kW hiện tại · Y kWh/đợt ở" — màu xanh khi có nguồn, xám khi tắt.</li>
+<li><b>Chi phí cố định &amp; phát sinh</b>: thêm icon ví tiền, sparkline nhỏ, badge xu hướng, danh sách hạng mục con (khấu hao, bảo trì, sửa chữa, hoa hồng, điện nước...).</li>
+<li><b>Dịch vụ</b>: 2 bảng tách biệt rõ — dịch vụ do chính cơ sở cung cấp (có popup thêm) và đối tác bên ngoài (có popup thêm kèm ảnh + liên hệ).</li>
+</ul>
+
+<h2>4. <span class="role role-ux">UX</span> Luồng nghiệp vụ &amp; tương tác</h2>
+<h3>4.1 Luồng 1 — Đặt phòng → Nhận phòng → Trả phòng</h3>
+<p><span class="tag">Màn hình</span> Đặt phòng/Hợp đồng, Trạng thái phòng, Thanh toán</p>
+<ol>
+<li>Lễ tân tạo hợp đồng (thủ công hoặc từ OTA) → phòng được giữ chỗ, khoá khỏi bán trùng mọi kênh.</li>
+<li>Đến ngày nhận phòng: xác thực giấy tờ (trực tiếp hoặc qua popup Nhận phòng nhanh/kiosk tự phục vụ) → phòng chuyển "Đang ở".</li>
+<li>Trong lúc ở, lễ tân dùng popup <b>Quản lý lưu trú</b> để: đổi phòng khi lỗi thiết bị, ghi nhận tạm ứng (xem lịch sử + tổng cộng), theo dõi nguồn điện phòng.</li>
+<li>Trả phòng — luồng 2 bước: bấm "Trả phòng ngay" → hệ thống tự tính "Chốt số tiền khách nghỉ" (tiền phòng − đã tạm ứng = còn phải thu) → lễ tân xác nhận thu tiền → phòng chuyển "Chờ dọn phòng".</li>
+<li>Buồng phòng dọn xong xác nhận → phòng về "Trống, sạch".</li>
+</ol>
+<h4>Luồng phụ — Điều khiển nguồn điện phòng (mới)</h4>
+<p>Khách vào phòng (quẹt thẻ) → hệ thống tự cấp nguồn sau độ trễ cấu hình (mặc định 2 phút); khách rời phòng → tự tắt nguồn sau độ trễ cấu hình (mặc định 5 phút). Độ trễ chỉnh được theo từng phòng qua popup Quản lý lưu trú (nút +/−, giới hạn 0–30 phút). Có thể tắt hoàn toàn chế độ tự động bằng toggle.</p>
+<h4>Luồng phụ — Đặt phòng nhanh từ lịch (kéo chọn ô trống)</h4>
+<p>Kéo chuột qua các ô trống liền kề trên một dòng phòng (lịch Gantt) → các ô được chọn đổi sang màu highlight #EAF6FB đồng nhất; nhả chuột → mở popup "Đặt phòng nhanh từ lịch" với Nhận phòng/Trả phòng đã điền theo khoảng ngày kéo chọn (dùng input ngày thật, có thể sửa lại) và phòng đã kéo được điền sẵn vào ô chọn phòng. Bấm "+ Thêm phòng" hoặc vào ô chọn phòng → mở danh sách phòng trống còn lại để chọn thêm cho cùng đoàn; mỗi phòng thêm hiển thị dạng chip có thể bấm ✕ để bỏ.</p>
+<h3>4.2 Luồng 2 — Đồng bộ giá &amp; phòng trống với OTA</h3>
+<p>Không đổi so với v1.0: PMS tính giá hiện áp (giá niêm yết × hệ số khung giờ × giảm giá tự động nếu có) và đẩy tới mọi kênh đã kết nối mỗi khi tồn phòng/giá thay đổi; nhận webhook đặt phòng mới từ OTA tạo hợp đồng tự động. Xem quy tắc BR-04–BR-06 ở mục 5.</p>
+<h3>4.3 Luồng 3 — Thanh toán &amp; Kế toán đêm</h3>
+<p>Không đổi so với v1.0, cộng thêm: hoá đơn trả phòng giờ được sinh sẵn số tiền đã chốt tự động từ popup Quản lý lưu trú (mục 4.1 bước 4), giảm sai sót nhập tay. Chi phí phát sinh (sửa chữa, mua sắm...) đi qua luồng phê duyệt riêng trước khi cộng vào báo cáo kế toán đêm (mục 4.6).</p>
+<h3>4.4 Luồng 4 — Phân quyền người dùng &amp; vai trò</h3>
+<p>Không đổi so với v1.0 — xem BR-09, BR-10.</p>
+<h3>4.5 Luồng 5 — Dọn phòng &amp; bảo trì</h3>
+<p>Không đổi so với v1.0 — xem BR-11, BR-12.</p>
+<h3>4.6 Luồng 6 (mới) — Phê duyệt chi phí phát sinh</h3>
+<p><span class="tag">Màn hình</span> Chi phí</p>
+<ol><li>Nhân viên/Kế toán khai báo chi phí phát sinh (loại: sửa chữa, hoa hồng, mua sắm, điện/nước, khác) kèm số tiền.</li><li>Chi phí ở trạng thái "Chờ duyệt" cho tới khi Quản lý phê duyệt.</li><li>Sau khi duyệt, chi phí được cộng vào tổng "Phát sinh" hiển thị trên Dashboard/Chi phí kèm so sánh xu hướng tháng trước.</li></ol>
+<h3>4.7 Luồng 7 (mới) — Bán chéo dịch vụ (Dịch vụ)</h3>
+<p><span class="tag">Màn hình</span> Dịch vụ</p>
+<ol>
+<li><b>Gói dịch vụ của cơ sở</b>: Quản lý thêm gói (tên, đơn giá, thời gian, địa điểm yêu cầu) → hiển thị "Đang cung cấp"/"Tạm ngưng"; lễ tân tư vấn/bán trực tiếp cho khách đang lưu trú.</li>
+<li><b>Đối tác xung quanh</b>: Quản lý thêm đối tác (ảnh, tên, loại hình, khoảng cách, hoa hồng, địa chỉ, số điện thoại, email, người liên hệ) → "Đang liên kết"/"Chưa liên kết"; lễ tân giới thiệu cho khách, ghi nhận hoa hồng khi khách sử dụng.</li>
+<li>Bảng "Gói dịch vụ của cơ sở": bấm "⋯" ở cuối dòng → menu "Sửa dịch vụ"/"Xoá" → Sửa mở popup chỉnh Tên, Loại dịch vụ, Đơn vị tính, Giá, Địa điểm yêu cầu, Trạng thái; Xoá gỡ dịch vụ khỏi danh sách ngay.</li>
+</ol>
+<h3>4.8 Luồng 8 (mới) — Gắn cơ sở lên Google Maps / Google Hotel</h3>
+<p><span class="tag">Màn hình</span> Tiện ích</p>
+<ol>
+<li><b>Google Maps</b>: cấu hình vị trí, mô tả, hình ảnh cơ sở qua popup → khách tìm thấy vị trí thực tế trên bản đồ.</li>
+<li><b>Google Hotel</b>: bật đồng bộ "tồn phòng" (thời gian thực từ Trạng thái phòng) và "khuyến mãi" (từ chính sách giá hiện áp) qua 2 toggle riêng, nhập mã Hotel Center → khách tìm trực tiếp trên Google Hotel Search thấy đúng giá/tình trạng phòng.</li>
+</ol>
+<h3>4.9 Luồng — Tạo chiến dịch Marketing &amp; theo dõi Resales</h3>
+<p><span class="tag">Màn hình</span> Marketing, Khách hàng</p>
+<ol>
+<li>Từ màn hình Marketing, bấm "+ Tạo chiến dịch" → popup nhập Tên chiến dịch, Kênh (Email/SMS), Ngày bắt đầu, Ngày kết thúc.</li>
+<li>Bấm "Tạo chiến dịch" → chiến dịch mới thêm vào đầu bảng, hiển thị cột Bắt đầu/Kết thúc, trạng thái "Đang chạy", Đã gửi/Tỷ lệ mở = 0 (chờ hệ thống gửi thực tế).</li>
+<li>Màn hình Khách hàng bổ sung 2 cột thống kê phục vụ Resales: "Đặt lại" (số lần khách quay lại đặt phòng) và "Chăm sóc sau lưu trú" (số lượt CSKH sau ngày trả phòng gần nhất) — dùng để ưu tiên danh sách gọi lại/gửi chiến dịch.</li>
+<li>Bảng Khách hàng bổ sung cột "Số điện thoại" và "Ghi chú"; bấm vào một dòng khách hàng → mở popup chi tiết gồm: 4 chỉ số nhanh (số lần đặt/đặt lại/CSKH sau lưu trú/tổng chi tiêu), badge phân loại khách hàng (Mới/Khách quen/VIP), lịch sử giao dịch, danh sách dịch vụ đã dùng, thói quen &amp; sở thích, ghi chú — nền tảng để phát triển thành module CRM đầy đủ.</li>
+<li>Popup "Tạo chiến dịch mới" bổ sung khung soạn thảo nội dung: Đối tượng nhận (Tất cả/VIP/Khách quen/Khách mới), Tiêu đề, Nội dung soạn thảo (textarea email/SMS), Ưu đãi đính kèm (mã giảm giá tuỳ chọn).</li>
+<li>Popup chi tiết khách hàng: bên cạnh badge phân loại, có dropdown chọn lại phân khúc (Mới/Khách quen/VIP) → đổi ngay lập tức, đồng bộ badge ở cả bảng danh sách.</li>
+</ol>
+<h3>4.10 Luồng — Bật/tắt Module nâng cao</h3>
+<p><span class="tag">Màn hình</span> Module nâng cao</p>
+<ol>
+<li>Từ sidebar chính, bấm mục "Module nâng cao" → hiển thị lưới các module mở rộng (Quản lý điện, Thông báo, RFID Card, Camera, CMS, Marketing, HRM, Web booking, OTA SYNC…), mỗi module gồm icon, tên, nhãn giá ("Miễn phí" hoặc "200.000đ") và toggle bật/tắt.</li>
+<li>Bấm toggle trên 1 module → đổi trạng thái bật/tắt ngay (không cần nút Lưu riêng), theo nguyên tắc toggle nhị phân chung của hệ thống.</li>
+</ol>
+<h3>4.11 Nguyên tắc tương tác chung</h3>
+<ul>
+<li>Mọi hành động phá huỷ/không hoàn tác (trả phòng ngay, xoá vai trò) đều có bước xác nhận trung gian, không thực hiện ngay ở lần bấm đầu.</li>
+<li>Toggle bật/tắt phản hồi tức thời (không cần nút Lưu riêng) cho các thiết lập nhị phân đơn giản (nguồn điện, đồng bộ Google Hotel).</li>
+<li>Form nhiều bước (nhận phòng kiosk, thêm đối tác) luôn cuộn được trong popup, có nút Huỷ/Xác nhận cố định ở footer.</li>
+</ul>
+
+<h2>5. <span class="role role-dev">DEV</span> Dữ liệu, quy tắc nghiệp vụ &amp; tích hợp</h2>
+<h3>5.1 Thực thể dữ liệu chính (đề xuất)</h3>
+<table><thead><tr><th>Entity</th><th>Trường chính</th></tr></thead><tbody>
+<tr><td>Room</td><td>id, số phòng, tầng, khu vực, loại phòng, giá niêm yết, trạng thái (occupied/vacant/dirty/maintenance), power_auto (bool), power_on_delay_min, power_off_delay_min, current_kw, total_kwh_this_stay</td></tr>
+<tr><td>Booking/Contract</td><td>id, khách, phòng, ngày nhận/trả, kênh (trực tiếp/OTA), trạng thái (chờ xác nhận/đã xác nhận/đã nhận phòng/đã trả phòng/đã huỷ)</td></tr>
+<tr><td>StayAdvance</td><td>id, booking_id, số tiền, thời điểm ghi nhận — nhiều bản ghi/1 lượt lưu trú, dùng để trừ vào hoá đơn cuối</td></tr>
+<tr><td>Invoice</td><td>id, booking_id, tiền phòng, tiền dịch vụ, tổng đã tạm ứng, còn phải thu, trạng thái (chờ/đã thanh toán), hình thức thanh toán</td></tr>
+<tr><td>NightAudit</td><td>id, ngày làm việc, tổng doanh thu, số hoá đơn, chênh lệch đối soát, trạng thái khoá sổ</td></tr>
+<tr><td>Expense</td><td>id, loại (cố định: khấu hao/bảo trì/thuê-nhân sự; phát sinh: sửa chữa/hoa hồng/mua sắm/điện-nước/khác), số tiền, trạng thái phê duyệt, người duyệt</td></tr>
+<tr><td>User/Role</td><td>id, tên, vai trò (1-1), ma trận quyền CRUD theo module</td></tr>
+<tr><td>Channel (OTA)</td><td>id, tên kênh, trạng thái kết nối, thời điểm đồng bộ cuối, API key/OAuth</td></tr>
+<tr><td>Asset (mở rộng)</td><td>id, tên, mã tài sản, phòng lắp đặt, giá trị, số lượng, đơn vị tính, thời gian khấu hao (tháng), giá trị khấu hao, hình ảnh, trạng thái (Đang dùng/Cần kiểm tra/Hỏng)</td></tr>
+<tr><td>PartnerService</td><td>id, tên, loại hình, khoảng cách, hoa hồng %, địa chỉ, sđt, email, người liên hệ, ảnh, trạng thái liên kết</td></tr>
+<tr><td>OwnService</td><td>id, tên, đơn giá, đơn vị thời gian, địa điểm yêu cầu, trạng thái cung cấp</td></tr>
+<tr><td>UtilityLink</td><td>id, loại (Google Maps/Google Hotel), trạng thái gắn kết, cấu hình riêng (vị trí/ảnh/mô tả hoặc sync_availability/sync_promotion/hotel_center_id)</td></tr>
+<tr><td>AdvancedModule (mới)</td><td>id, tên, icon, nhóm giá (Miễn phí/200.000đ), trạng thái bật/tắt — gồm cả module "Thống kê khách hàng AI Camera"</td></tr>
+<tr><td>Campaign (mở rộng)</td><td>id, tên, kênh (Email/SMS), ngày bắt đầu, ngày kết thúc, số đã gửi, tỷ lệ mở, trạng thái (Đang chạy/Đã kết thúc), <b>đối tượng nhận (audience)</b>, <b>tiêu đề (subject)</b>, <b>nội dung soạn thảo (body)</b>, <b>mã ưu đãi (promoCode)</b></td></tr>
+<tr><td>Customer (mở rộng)</td><td>id, tên, <b>số điện thoại</b>, email, số lần đặt, số lần đặt lại (rebookings), số lần chăm sóc sau lưu trú (careAfterStay), tổng chi tiêu, phân khúc (Mới/Khách quen/VIP), <b>ghi chú</b>, <b>thói quen/sở thích</b>, <b>danh sách dịch vụ đã dùng</b>, <b>lịch sử giao dịch</b> (ngày, nội dung, số tiền)</td></tr>
+</tbody></table>
+<h3>5.2 Quy tắc nghiệp vụ (Business Rules)</h3>
+<div class="rule">
+BR-01: Một phòng chỉ thuộc đúng 1 hợp đồng "Đã xác nhận"/"Đã nhận phòng" tại một thời điểm.<br/>
+BR-02: Hợp đồng chỉ được xoá khi ở trạng thái Chờ xác nhận; các trạng thái sau chỉ được huỷ (giữ lịch sử).<br/>
+BR-03: Trạng thái phòng là nguồn duy nhất (single source of truth) được mọi màn hình khác tham chiếu.<br/>
+BR-04: Giá đẩy sang OTA = giá niêm yết × hệ số khung giờ × (1 − % giảm tự động nếu đang kích hoạt).<br/>
+BR-05: Tồn phòng đẩy sang OTA/Google Hotel = phòng "Trống, sạch" hoặc "Chờ dọn phòng"; phòng "Bảo trì" luôn bị loại.<br/>
+BR-06: Không kênh ngoài nào được ghi đè trực tiếp bảng Trạng thái phòng — mọi thay đổi phải qua tạo/huỷ hợp đồng.<br/>
+BR-07: Mỗi ngày làm việc chỉ chạy kế toán đêm 1 lần; chạy lại cần quyền Quản lý.<br/>
+BR-08: Hoá đơn đã "Đã thanh toán" và đã qua kế toán đêm là bất biến — sửa phải qua hoá đơn điều chỉnh.<br/>
+BR-09: Vai trò "Quản lý" luôn full quyền mọi module, không thể giới hạn.<br/>
+BR-10: Một tài khoản chỉ gán đúng 1 vai trò tại một thời điểm.<br/>
+BR-11: Phòng "Bảo trì" không được gán vào hợp đồng mới tới khi gỡ cờ.<br/>
+BR-12: Chỉ Buồng phòng được chuyển "Chờ dọn phòng"→"Trống, sạch"; chỉ Bảo trì được gỡ cờ bảo trì.<br/>
+<b>BR-13 (mới):</b> Số tiền "còn phải thu" khi trả phòng = tiền phòng theo số đêm thực ở − tổng StayAdvance của booking đó; không được âm (tối thiểu 0đ).<br/>
+<b>BR-14 (mới):</b> power_auto chỉ áp dụng khi phòng ở trạng thái "Đang ở"; phòng trống/bảo trì luôn ở trạng thái tắt nguồn.<br/>
+<b>BR-15 (mới):</b> Chi phí "Phát sinh" bắt buộc qua trạng thái "Chờ duyệt" → chỉ Quản lý chuyển "Đã duyệt"; chỉ chi phí đã duyệt được cộng vào báo cáo kế toán đêm/Dashboard.<br/>
+<b>BR-16 (mới):</b> PartnerService/OwnService ở trạng thái "Chưa liên kết"/"Tạm ngưng" không được hiển thị cho khách ở kênh bán chéo (tương lai: app khách).<br/>
+<b>BR-17 (mới):</b> Chiến dịch mới tạo luôn ở trạng thái "Đang chạy", số đã gửi/tỷ lệ mở khởi tạo = 0 cho tới khi hệ thống gửi thực tế.<br/>
+<b>BR-18 (mới):</b> "Số lần chăm sóc sau lưu trú" chỉ tính các lượt chăm sóc phát sinh sau ngày trả phòng gần nhất (phục vụ Resales), không tính chăm sóc trong lúc lưu trú.<br/>
+<b>BR-19 (mới):</b> Nhận phòng nhanh (Kiosk) bắt buộc chọn 1 hình thức nghỉ (Giờ/Đêm/Ngày/Tuần/Tháng) trước khi xác nhận; đơn giá hiển thị theo hình thức đã chọn, mặc định "Ngày" nếu không đổi.<br/>
+<b>BR-20 (mới):</b> Module nâng cao có 2 loại tính phí: theo phòng/tháng (Liên kết điện, khoá từ, ScanQr, màn hình phụ, Housekeeping) hoặc theo năm/liên hệ (Xuất hoá đơn điện, CMS — Liên kết OTA); phí module liên kết phần cứng nhân theo tổng số phòng đang hoạt động của cơ sở.<br/>
+<b>BR-21 (mới):</b> Popup chi tiết khách hàng (nền tảng CRM) chỉ đọc ở giai đoạn này — sửa ghi chú/thói quen sẽ mở ở bản sau; dữ liệu tổng hợp từ lịch sử đặt phòng và dịch vụ đã dùng, không nhập tay riêng lẻ.<br/>
+<b>BR-22 (mới):</b> Sửa/xoá dịch vụ trong "Gói dịch vụ của cơ sở" chỉ áp dụng cho các lượt đặt dịch vụ MỚI sau khi lưu — không hồi tố các giao dịch/đặt dịch vụ đã phát sinh trước đó.
+</div>
+<h3>5.3 Trạng thái &amp; chuyển trạng thái chính</h3>
+<ul>
+<li><b>Room</b>: vacant(clean) → occupied → dirty → vacant(clean); nhánh phụ: bất kỳ trạng thái → maintenance → vacant(clean).</li>
+<li><b>Booking</b>: pending → confirmed → checked_in → checked_out | cancelled (mọi trạng thái trước checked_in đều có thể → cancelled).</li>
+<li><b>Invoice</b>: pending → paid (bất biến sau night audit).</li>
+<li><b>Expense (phát sinh)</b>: draft → pending_approval → approved | rejected.</li>
+<li><b>Room.power</b>: off → (khách vào + hết power_on_delay) → on → (khách ra + hết power_off_delay) → off.</li>
+</ul>
+<h3>5.4 Tích hợp bên ngoài</h3>
+<table><thead><tr><th>Đối tác</th><th>Chiều dữ liệu</th><th>Ghi chú</th></tr></thead><tbody>
+<tr><td>Booking.com / Agoda / Airbnb</td><td>2 chiều: PMS đẩy giá+tồn phòng; OTA gửi webhook booking mới</td><td>Retry tự động khi lỗi, cảnh báo "Đồng bộ chậm" nếu &gt;15 phút.</td></tr>
+<tr><td>Google Maps</td><td>1 chiều: PMS đẩy vị trí, mô tả, ảnh</td><td>Không nhận dữ liệu ngược; cập nhật thủ công qua popup Cấu hình.</td></tr>
+<tr><td>Google Hotel (Hotel Ads/Hotel Center)</td><td>1 chiều: PMS đẩy tồn phòng thời gian thực + khuyến mãi</td><td>Bật/tắt độc lập 2 luồng (tồn phòng, khuyến mãi) bằng toggle; cần Hotel ID hợp lệ.</td></tr>
+<tr><td>Thiết bị khoá/nguồn điện phòng</td><td>2 chiều: hệ thống khoá gửi sự kiện vào/ra → PMS bật/tắt nguồn</td><td><b>Hiện là mô phỏng UI</b> — cần chọn nhà cung cấp khoá thẻ/IoT thực tế trước khi phát triển backend thật.</td></tr>
+</tbody></table>
+
+<h2>6. Chú thích chức năng theo màn hình</h2>
+<h3>6.1 Dashboard — Tổng quan cơ sở</h3>
+<table><thead><tr><th>#</th><th>Chức năng</th><th>Chú thích</th></tr></thead><tbody>
+<tr><td>①</td><td>Dải KPI đầu trang</td><td>Tổng đặt phòng, công suất phòng, nhân sự, tổng khách hàng — xem nhanh không cần cuộn.</td></tr>
+<tr><td>②</td><td>Nhóm "Doanh thu &amp; đặt phòng"</td><td>Thu nhập/chi phí (kèm breakdown thuê phòng vs dịch vụ), Chi phí cố định &amp; phát sinh, Lợi nhuận thuần.</td></tr>
+<tr><td>③</td><td>Nhóm "Phòng &amp; dịch vụ"</td><td>Biểu đồ sử dụng phòng, Tổng quan lịch sử đặt, Gói được lựa chọn nhiều nhất — đều có badge xu hướng so tháng trước.</td></tr>
+<tr><td>④</td><td>Nhóm "Khách hàng &amp; hoạt động"</td><td>Hoạt động mới nhất (nhật ký), Khách hàng mới.</td></tr>
+</tbody></table>
+<h3>6.2 Dashboard — Lịch đặt phòng</h3>
+<table><thead><tr><th>#</th><th>Chức năng</th><th>Chú thích</th></tr></thead><tbody>
+<tr><td>①</td><td>Nhóm theo loại phòng</td><td>Ánh xạ đúng dữ liệu Phòng và giá (Standard/Deluxe/Suite/Family), có giá + số lượt đặt/ngày.</td></tr>
+<tr><td>②</td><td>Thanh đặt phòng</td><td>Span theo số đêm, màu theo trạng thái/kênh; bấm cột ngày để chọn mốc xem nhanh.</td></tr>
+</tbody></table>
+<h3>6.3 Trạng thái phòng</h3>
+<table><thead><tr><th>#</th><th>Chức năng</th><th>Chú thích</th></tr></thead><tbody>
+<tr><td>①</td><td>Chờ dọn phòng</td><td>Sinh tự động khi trả phòng; chỉ Buồng phòng chuyển về Trống, sạch (BR-12).</td></tr>
+<tr><td>②</td><td>Bảo trì</td><td>Khoá phòng khỏi bán &amp; khỏi OTA/Google Hotel cho tới khi gỡ cờ (BR-11).</td></tr>
+<tr><td>③</td><td>Dòng công suất điện</td><td>Hiển thị cấp/tắt nguồn + kW hiện tại/kWh trong đợt ở (BR-14).</td></tr>
+<tr><td>④</td><td>Lịch đặt phòng trong tháng</td><td>5 thẻ số liệu + biểu đồ cột theo ngày (ẩn ngày 0 lượt đặt).</td></tr>
+</tbody></table>
+<h3>6.4 Popup Quản lý lưu trú</h3>
+<table><thead><tr><th>#</th><th>Chức năng</th><th>Chú thích</th></tr></thead><tbody>
+<tr><td>①</td><td>Điều khiển nguồn điện</td><td>Toggle bật/tắt tự động + độ trễ cấp/tắt chỉnh được (BR-14).</td></tr>
+<tr><td>②</td><td>Tạm ứng</td><td>Tổng đã tạm ứng + lịch sử từng lần, dùng trừ vào hoá đơn cuối (BR-13).</td></tr>
+<tr><td>③</td><td>Trả phòng 2 bước</td><td>Bước 1 xác nhận ý định trả phòng → Bước 2 hiển thị bảng chốt tiền tự động (BR-13).</td></tr>
+</tbody></table>
+<h3>6.5 Giá phòng</h3>
+<table><thead><tr><th>#</th><th>Chức năng</th><th>Chú thích</th></tr></thead><tbody>
+<tr><td>①</td><td>Giá hiện áp</td><td>Giá niêm yết × hệ số khung giờ × (1 − % giảm tự động) (BR-04).</td></tr>
+<tr><td>②</td><td>Quy tắc khung giờ</td><td>Giá linh động theo thời điểm trong ngày.</td></tr>
+<tr><td>③</td><td>Tự động giảm giá phòng trống lâu</td><td>Giảm theo bậc khi phòng trống vượt ngưỡng giờ.</td></tr>
+</tbody></table>
+<h3>6.6 Chi phí</h3>
+<table><thead><tr><th>#</th><th>Chức năng</th><th>Chú thích</th></tr></thead><tbody>
+<tr><td>①</td><td>Phê duyệt chi phí phát sinh</td><td>Chờ duyệt → Đã duyệt bởi Quản lý mới cộng vào báo cáo (BR-15).</td></tr>
+<tr><td>②</td><td>Kế toán đêm</td><td>Chốt sổ ngày làm việc, khoá sửa hoá đơn (BR-07, BR-08).</td></tr>
+</tbody></table>
+<h3>6.7 Người dùng &amp; phân quyền</h3>
+<table><thead><tr><th>#</th><th>Chức năng</th><th>Chú thích</th></tr></thead><tbody>
+<tr><td>①</td><td>Danh sách vai trò</td><td>1 tài khoản = 1 vai trò (BR-10).</td></tr>
+<tr><td>②</td><td>Phạm vi quyền</td><td>CRUD theo module; Quản lý luôn full quyền (BR-09).</td></tr>
+</tbody></table>
+<h3>6.8 Dịch vụ</h3>
+<table><thead><tr><th>#</th><th>Chức năng</th><th>Chú thích</th></tr></thead><tbody>
+<tr><td>①</td><td>Gói dịch vụ của cơ sở</td><td>Đơn giá/thời gian/địa điểm yêu cầu — bán trực tiếp cho khách lưu trú.</td></tr>
+<tr><td>②</td><td>Đối tác xung quanh</td><td>Hoa hồng %, thông tin liên hệ đầy đủ (BR-16).</td></tr>
+</tbody></table>
+<h3>6.9 Tiện ích</h3>
+<table><thead><tr><th>#</th><th>Chức năng</th><th>Chú thích</th></tr></thead><tbody>
+<tr><td>①</td><td>Cấu hình Google Maps</td><td>Vị trí, mô tả, ảnh cơ sở.</td></tr>
+<tr><td>②</td><td>Cấu hình Google Hotel</td><td>2 toggle độc lập: đồng bộ tồn phòng / khuyến mãi (BR-05).</td></tr>
+</tbody></table>
+
+<h2>7. Nhật ký cập nhật</h2>
+<p class="meta">Cập nhật sau mỗi lần chỉnh sửa giao diện/logic trong Hotel PMS.dc.html — mới nhất ở trên cùng.</p>
+<table><thead><tr><th>Ngày</th><th>Khu vực thay đổi</th><th>Mô tả</th></tr></thead><tbody>
+<tr><td>27/07/2026</td><td>Đặt phòng/Hợp đồng → Đặt phòng nhanh từ lịch</td><td>Nhận phòng/Trả phòng đổi thành input ngày thật (có thể chỉnh sửa) thay vì nhãn tĩnh; "+ Thêm phòng" và ô chọn phòng mở danh sách phòng trống để chọn (hỗ trợ chọn nhiều phòng cho đoàn, hiển thị dạng chip có thể gỡ).</td></tr>
+<tr><td>27/07/2026</td><td>Quản lý lưu trú, Tạo chiến dịch, Khách hàng, Module nâng cao</td><td>Tăng chiều rộng popup "Quản lý lưu trú" (min(600px,94vw)) và "Tạo chiến dịch" (min(620px,94vw)) cho thoáng hơn; thêm dropdown chọn lại phân loại khách hàng (Mới/Khách quen/VIP) cạnh badge trong popup chi tiết khách hàng; đổi module "Nôi em bé" thành "Dịch vụ order trong phòng".</td></tr>
+<tr><td>26/07/2026</td><td>Popup Nhận phòng nhanh (Kiosk self check-in)</td><td>Thêm chọn "Hình thức nghỉ" (Theo giờ/Qua đêm/Ngày/Tuần/Tháng) hiển thị đơn giá tương ứng; thêm toggle "Bật nguồn điện phòng" ngay khi nhận phòng; điều chỉnh chiều rộng popup responsive (min(560px, 94vw)).</td></tr>
+<tr><td>27/07/2026</td><td>Dịch vụ, Module nâng cao</td><td>Dịch vụ: thêm menu "⋯" (Sửa/Xoá) cho từng dòng trong "Gói dịch vụ của cơ sở", popup Sửa dịch vụ chỉnh Tên/Loại/Đơn vị tính/Giá/Địa điểm/Trạng thái. Module nâng cao: thêm 5 module xu hướng khách sạn thông minh 2026 (Trợ lý ảo AI, Tiết kiệm năng lượng AI, Nhận diện khuôn mặt check-in, Dynamic Pricing AI, Trợ lý QR không tiếp xúc).</td></tr>
+<tr><td>27/07/2026</td><td>Khách hàng, Marketing</td><td>Popup chi tiết khách hàng: thêm badge phân loại khách hàng (Mới/Khách quen/VIP) cạnh 4 chỉ số nhanh. Popup Tạo chiến dịch: bổ sung khung soạn thảo nội dung chiến dịch (Đối tượng nhận, Tiêu đề, Nội dung soạn thảo, Mã ưu đãi đính kèm).</td></tr>
+<tr><td>27/07/2026</td><td>Khách hàng</td><td>Thêm cột "Số điện thoại" và "Ghi chú"; bấm vào dòng khách hàng mở popup chi tiết: chỉ số nhanh, lịch sử giao dịch, dịch vụ đã dùng, thói quen &amp; sở thích, ghi chú — bước đầu phát triển thành module CRM.</td></tr>
+<tr><td>26/07/2026</td><td>Module nâng cao</td><td>Dịch toàn bộ tên module sang tiếng Việt (Cots→Nôi em bé, CMS→Quản trị nội dung, Account→Tài khoản, Task→Công việc, HRM→Nhân sự, Web booking→Đặt phòng qua Web, OTA SYNC→Đồng bộ OTA, Extend→Gia hạn lưu trú, Breakeven point→Điểm hòa vốn, Combo→Gói combo, Passport ID→Hộ chiếu, CCCD).</td></tr>
+<tr><td>26/07/2026</td><td>Module nâng cao</td><td>Điều chỉnh giá theo bảng giá tham chiếu Skyhotel.vn: "Liên kết điện", "Housekeeping (Dọn phòng)", "Liên kết khoá từ" = 3.000đ/phòng/tháng; "Liên kết ScanQr" = 2.000đ/phòng/tháng; "CMS — Liên kết OTA" = Liên hệ. Thêm 2 module mới: "Liên kết màn hình phụ" (3.000đ/phòng/tháng) và "Xuất hoá đơn điện" (500.000–900.000đ/năm).</td></tr>
+<tr><td>26/07/2026</td><td>Module nâng cao</td><td>Thêm module "Thống kê khách hàng AI Camera" (nhận diện khách qua camera để đếm lượt/khách quen, hỗ trợ Resales) vào lưới module nâng cao, mặc định tắt (chưa mua).</td></tr>
+<tr><td>26/07/2026</td><td>Trạng thái phòng → thẻ phòng</td><td>Thay dòng chữ "Đang cấp nguồn/Đã tắt nguồn" + icon tia sét bằng nút toggle bật/tắt nguồn ngay trên thẻ phòng (bấm để cấp/tắt nguồn tại chỗ, không cần mở popup); giữ chỉ số kW/kWh cạnh toggle.</td></tr>
+<tr><td>26/07/2026</td><td>Popup Quản lý lưu trú</td><td>Chiều rộng popup đổi từ cố định 460px sang responsive (min(460px, 92vw)) kèm max-height 90vh + cuộn dọc, tránh vỡ layout ở màn hình nhỏ.</td></tr>
+<tr><td>26/07/2026</td><td>Sidebar chính</td><td>Thêm nút mũi tên thu gọn/mở rộng sidebar (208px ⇄ 64px, ẩn/hiện nhãn chữ) ở góc phải header sidebar, cạnh logo.</td></tr>
+<tr><td>26/07/2026</td><td>Cài đặt → Quản lý tài sản</td><td>Đối chiếu mẫu tham chiếu: bảng đổi thành checkbox chọn dòng + STT/Tên tài sản/Mã TS/Phòng lắp đặt/Giá trị/S.lượng/ĐVT/Khấu hao (tháng)/Giá trị KH/Hình ảnh/Trạng thái/More, thêm nút Export và nút Update dưới bảng; popup "Thêm tài sản mới" bổ sung Mã tài sản, Đơn vị tính, Giá trị, Số lượng, Thời gian khấu hao (stepper + đơn vị Tháng), giữ thêm Phòng lắp đặt/Trạng thái/Hình ảnh cho phù hợp nghiệp vụ khách sạn.</td></tr>
+<tr><td>26/07/2026</td><td>Dịch vụ → Gói dịch vụ của cơ sở</td><td>Thêm cột "Loại dịch vụ" và "Đơn vị tính"; bổ sung 5 dịch vụ cho mô hình lưu trú dài hạn (nhà trọ/homestay): Mạng Internet, Vệ sinh phòng, Gửi xe, Nước (m3), Điện (Số) — tính theo tháng/chỉ số.</td></tr>
+<tr><td>26/07/2026</td><td>Sidebar → Module nâng cao (mới)</td><td>Thêm mục menu "Module nâng cao": màn hình lưới 4 cột 19 module mở rộng (Quản lý điện, Thông báo, Cots, Dọn phòng, RFID Card, Camera, Passport/ID, Khóa cổng, CMS, Marketing, Account, Khóa cửa, Task, HRM, Web booking, OTA SYNC, Extend, Breakeven point, Combo), mỗi module có toggle bật/tắt + nhãn giá/Miễn phí.</td></tr>
+<tr><td>26/07/2026</td><td>Marketing, Khách hàng</td><td>Marketing: nút "+ Tạo chiến dịch" mở popup tạo mới (tên, kênh, ngày bắt đầu/kết thúc), bảng chiến dịch thêm cột Bắt đầu/Kết thúc. Khách hàng: bảng thêm 2 cột "Đặt lại" và "Chăm sóc sau lưu trú" để hỗ trợ Resales.</td></tr>
+<tr><td>26/07/2026</td><td>Dịch vụ → Gói dịch vụ của cơ sở</td><td>Đối chiếu với mẫu tham chiếu: đổi bảng thành dạng danh sách có checkbox chọn dòng, STT, ô tìm kiếm, cột Thời gian (ngày giờ cụ thể) và Phương tiện, trạng thái "Đã xuất bản/Chưa xuất bản" (chữ màu, không pill), menu hành động (⋯) cuối dòng, và phân trang cuối bảng.</td></tr>
+<tr><td>26/07/2026</td><td>Cài đặt → Máy in &amp; mẫu in</td><td>Bổ sung các mẫu in theo chuẩn ngành lưu trú: Hợp đồng lưu trú, Hoá đơn GTGT (Nghị định 123), Phiếu khai báo tạm trú người nước ngoài (NA17), Phiếu ghi dịch vụ phát sinh, Thẻ chìa khoá/thẻ phòng.</td></tr>
+<tr><td>26/07/2026</td><td>Đặt phòng/Hợp đồng</td><td>Thêm nút "Mẫu hợp đồng" mở popup chỉnh sửa mẫu (danh sách tham số Phòng/Khách hàng để chèn, toolbar soạn thảo, chọn ngôn ngữ, sao chép mẫu) và liên kết "Chỉnh sửa mẫu trước khi in" từ popup Xem hợp đồng.</td></tr>
+<tr><td>26/07/2026</td><td>Dashboard → Lịch đặt phòng (Gantt)</td><td>Xoá dữ liệu mẫu của 1 phòng (PHÒNG 104 · Standard) để thể hiện phòng trống chưa có ai đặt; thêm thao tác kéo chuột chọn nhiều ngày liền kề trên 1 hàng phòng → tự mở popup "Đặt phòng nhanh" với phòng và khoảng ngày đã kéo chọn được điền sẵn.</td></tr>
+<tr><td>26/07/2026</td><td>Popup Thông tin người dùng</td><td>Bố cục lại popup rộng hơn (440px → 760px), 2 cột thay vì xếp dọc để giảm chiều cao; bổ sung trạng thái tài khoản, chức vụ, cơ sở làm việc, ngày vào làm, vai trò hệ thống, lịch sử đăng nhập gần đây.</td></tr>
+<tr><td>26/07/2026</td><td>Đặt phòng / Hợp đồng</td><td>Thêm popup "Thêm mới hợp đồng" (nhập thông tin khách, phòng, ngày, kênh, cọc); tách hành động dòng thành "Xem" (popup xem chi tiết + nút In hợp đồng) và "Sửa" (popup điều chỉnh phòng/ngày kèm lý do điều chỉnh).</td></tr>
+<tr><td>26/07/2026</td><td>Cài đặt, Trạng thái phòng</td><td>Thêm submenu "Máy in & mẫu in" (cấu hình máy in/khổ giấy + bảng mẫu in theo từng loại chứng từ: hoá đơn, phiếu đăng ký lưu trú, xác nhận đặt phòng, biên nhận tạm ứng, bàn giao ca); đổi biểu tượng trạng thái nguồn điện trên thẻ phòng từ emoji ⚡ sang icon on/off chuẩn.</td></tr>
+<tr><td>26/07/2026</td><td>Dashboard → Lịch đặt phòng, Trạng thái phòng, Cài đặt</td><td>Thêm popup "Đặt phòng nhanh" trong Lịch đặt phòng (chọn nhiều phòng/nhiều ngày cho 1 khách hoặc đoàn, nhập thông tin đặt trước); chú thích rõ ý nghĩa biểu đồ "Lịch đặt phòng trong tháng" (số lượt đặt/ngày); thêm số khách đang ở lên thẻ phòng; bỏ nút "+ Thêm mới" cuối menu Cài đặt.</td></tr>
+<tr><td>26/07/2026</td><td>Dashboard → Lịch đặt phòng</td><td>Chuyển card "Lịch đặt phòng trong tháng" (5 KPI + biểu đồ cột theo ngày) từ màn hình Trạng thái phòng sang tab Lịch đặt phòng trong Dashboard, đặt phía trên bảng Gantt.</td></tr>
+<tr><td>26/07/2026</td><td>Dashboard, Trạng thái phòng, Dịch vụ, Tiện ích, Sidebar, Chi phí</td><td>Tái cấu trúc BA thành 5 phần theo vai trò (PO/PM/UI/UX/DEV); cập nhật toàn bộ nghiệp vụ mới: Gantt lịch đặt phòng, điều khiển nguồn điện phòng, trả phòng 2 bước tự động chốt tiền, phê duyệt chi phí, dải KPI + nhóm hoá theo nghiệp vụ trên Dashboard, Dịch vụ (đối tác + gói riêng), Tiện ích Google Maps/Hotel, sidebar mở rộng có nhãn.</td></tr>
+<tr><td>25/07/2026</td><td>Toàn bộ prototype</td><td>Bản v1.0 — 5 luồng lõi: Đặt→Nhận→Trả phòng, Đồng bộ OTA, Thanh toán/Kế toán đêm, Phân quyền, Dọn phòng/Bảo trì.</td></tr>
+</tbody></table>
+
+<h2>8. Ghi chú &amp; giả định chung</h2>
+<ul>
+<li>Ngưỡng giờ/mức giảm giá cụ thể, độ trễ nguồn điện, mô hình hoa hồng đối tác là giá trị mẫu minh hoạ — cần cơ sở xác nhận trước khi phát triển backend thật (xem mục 1.5).</li>
+<li>Phần Kế toán tổng hợp, Nhân sự, Tickets/Reviews, kết nối thiết bị Camera/Khoá cửa thực tế thuộc 133 màn hình gốc trong Figma, chưa đặc tả trong tài liệu này — đưa vào Đợt 4 (mục 1.3).</li>
+</ul>
+</doc-page>
+
+</x-dc>
+</body>
+</html>

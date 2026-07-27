@@ -30,6 +30,14 @@ Hoàn thành bộ tài liệu yêu cầu và kiến trúc trước khi code, the
 - [x] Xác nhận ranh giới với `hq-console` (lớp quản trị nội bộ công ty mới) — ADR-008.
 - [ ] Bổ sung webhook Admin API (`tenant.created`, `subscription.changed`, `subscription.cancelled`) để `hq-console` đồng bộ — xem `ASSUMPTIONS.md` mục 9, chưa thiết kế chi tiết.
 
+## 2026-07-27 — property-web: implement UI PMS pixel-perfect từ bundle thiết kế
+
+- [x] Đọc toàn bộ bundle `hotel-pms-software-design-phase-1/` (README, `project/CLAUDE.md`, `Hotel PMS.dc.html` 3307 dòng, `support.js` — phần khởi động runtime, `BA - Luong nghiep vu PMS.dc.html`, design tokens `_ds/.../tokens/*.css`).
+- [x] Tạo `property-web/` (Next.js App Router + TypeScript + Tailwind, convention giống `webadmin/apps/web`) — xem `property-web/README.md` và `property-web/PROGRESS.md` (chi tiết đầy đủ từng màn hình đã/chưa làm).
+- [x] Implement pixel-perfect: Dashboard (Overview + Calendar/Gantt), Booking (list + 3 modal + contract template), Rooms (4 panel donut lọc + lưới phòng + 3 modal), Price (2 bảng + 2 modal), Payment (cấu hình cổng + hoá đơn).
+- [x] `npm install` + `npx tsc --noEmit` + `next build` chạy sạch (build test tại `/tmp`, source thật nằm ở `property-web/apps/web`, không có `node_modules`/`.next` trong mount).
+- [ ] Các màn hình còn lại (Expenses, Night Audit, Channel, Users, Assets, Branches, cụm Settings, Customers, Services, Utilities, Modules, Printer) — hiện dẫn tới trang giữ chỗ `/stub/[key]`, đúng tinh thần khối `isStub` có sẵn trong bản thiết kế gốc.
+
 ## Chưa làm (bước tiếp theo)
 
 1. Duyệt tài liệu với người có thẩm quyền quyết định sản phẩm (đặc biệt các mục còn mở trong `ASSUMPTIONS.md`/`DECISIONS.md`: cổng thanh toán, message bus, nguồn dữ liệu giá đối thủ).

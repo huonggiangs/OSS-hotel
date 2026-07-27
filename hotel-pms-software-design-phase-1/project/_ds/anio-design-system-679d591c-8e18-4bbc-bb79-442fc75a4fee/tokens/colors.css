@@ -1,0 +1,44 @@
+:root{
+  /* base palette — from Figma Variables (Ungrouped collection) + usage scan */
+  --anio-purple-500:#5F60B9;
+  --anio-purple-600:#3F3FA6;
+  --anio-purple-100:#EFEFF8;
+  --anio-ink-900:#1C1F34;
+  --anio-slate-500:#6C757D;
+  --anio-mist-100:#F6F7F9;
+  --anio-line-200:#EBEBEB;
+  --anio-white:#FFFFFF;
+  --anio-black:#000000;
+  --anio-gold-400:#FFBD00;
+  --anio-gold-100:#FFF07C;
+  --anio-green-500:#3CAE5C;
+  --anio-green-600:#39B54A;
+  --anio-red-500:#FB2F2F;
+  --anio-red-600:#EA2F2F;
+  --anio-red-outline:#F24141;
+  --anio-orange-500:#FC7F3A;
+  --anio-orange-700:#A8542A;
+  --anio-icon-muted:#9CA1A6;
+
+  /* semantic aliases — use these in components */
+  --color-primary:var(--anio-purple-500);
+  --color-primary-hover:var(--anio-purple-600);
+  --color-primary-soft:var(--anio-purple-100);
+  --color-heading:var(--anio-ink-900);
+  --color-body:var(--anio-slate-500);
+  --color-background:var(--anio-mist-100);
+  --color-surface:var(--anio-white);
+  --color-border:var(--anio-line-200);
+  --color-icon:var(--anio-icon-muted);
+  --color-secondary:var(--anio-gold-100);
+  --color-accent:var(--anio-gold-400);
+
+  --color-success:var(--anio-green-600);
+  --color-success-bg:#EAF9EE;
+  --color-danger:var(--anio-red-600);
+  --color-danger-bg:#FDEAEA;
+  --color-warning:var(--anio-orange-500);
+  --color-warning-bg:#FFF1E8;
+
+  --shadow-color:rgba(30,28,28,0.1);
+}

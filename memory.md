@@ -2,7 +2,7 @@
 
 File này tồn tại để **phiên làm việc (Cowork session) sau có thể tiếp tục ngay** mà không phải đọc lại toàn bộ lịch sử chat. Luôn đọc file này đầu tiên khi bắt đầu một phiên mới trên dự án `D:\hotel\OSS`, và **cập nhật lại file này ở cuối mỗi phiên** (mục "Đã xong" / "Đang làm" / "Chưa làm" + ngày).
 
-Cập nhật lần cuối: **2026-07-27**
+Cập nhật lần cuối: **2026-07-27** (phiên 2: implement UI PMS `property-web`)
 
 ## 1. Tổng quan dự án
 
@@ -11,7 +11,7 @@ Ba hệ thống độc lập (không dùng chung database, giao tiếp qua API �
 | Repo | Vai trò | Trạng thái |
 |---|---|---|
 | `kiosk.md` (+ `kiosk-management/` tương lai) | Spec sản phẩm Kiosk Remote Management | Chỉ có spec gốc (không phải do phiên Cowork tạo), **chưa có code** |
-| `smart-hotel-os/` | Spec sản phẩm PMS SaaS (PMS + Channel Manager + AI Pricing + IoT + CRM) | **Chỉ có tài liệu đầy đủ, chưa có code** |
+| `smart-hotel-os/` | Spec sản phẩm PMS SaaS (PMS + Channel Manager + AI Pricing + IoT + CRM) | Tài liệu đầy đủ; **`smart-hotel-os/property-web/` đã có code UI chạy được** (5 màn hình PMS pixel-perfect, xem mục 2) |
 | `hq-console/` | Spec HQ Console (quản trị nội bộ công ty) | **Chỉ có tài liệu đầy đủ** |
 | `webadmin/` | Code chạy được của HQ Console (implementation của `hq-console/`) | **Có code MVP chạy được**, đã build/test thành công |
 
@@ -33,6 +33,15 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 - **README.md đã sửa lại hướng dẫn chạy cho đúng Windows** (PowerShell dùng `;`/`Set-Location`, CMD dùng `cd /d`/`&`, không dùng `&&` trực tiếp) — vì người dùng báo lỗi `&&` không chạy được trên CMD/PowerShell của họ (2026-07-27).
 - `RULES_COMPLIANCE.md` — đối chiếu từng mục `RULES.md` với thiết kế webadmin.
 
+### Code chạy được — `smart-hotel-os/property-web/` (PMS Property Web UI, từ bundle thiết kế Claude Design)
+
+- Nguồn: bundle handoff `hotel-pms-software-design-phase-1/` (local, do người dùng export từ claude.ai/design) — file chính `Hotel PMS.dc.html` (3307 dòng) + `support.js` (runtime, chỉ đọc để hiểu semantics, KHÔNG copy) + `BA - Luong nghiep vu PMS.dc.html` (nghiệp vụ) + design tokens `_ds/.../tokens/*.css`. Đã đọc toàn bộ.
+- **Next.js 16.2.12 (App Router) + TypeScript + Tailwind**, cấu trúc `property-web/apps/web/` giống hệt convention `webadmin/apps/web/`. Chạy ở cổng 3100 (song song được với `webadmin` ở cổng 3000).
+- Đã implement **pixel-perfect** 5 màn hình ưu tiên: **Dashboard** (Overview 3 cột đầy đủ + Calendar/Gantt có kéo-chọn ngày thật), **Booking** (list + 3 modal + contract template editor có chèn tham số), **Rooms** (4 panel donut lọc + lưới 32 phòng + 3 modal theo trạng thái phòng, có công tắc bật/tắt điện IoT tại chỗ), **Price** (2 bảng loại phòng/phòng + 2 modal thêm mới), **Payment** (cấu hình cổng thanh toán + bảng hoá đơn). Shared layout: Sidebar collapsible + panel Cài đặt + Topbar (cỡ chữ/ngôn ngữ/profile modal).
+- Dữ liệu mẫu tách riêng vào `apps/web/src/lib/mock-data.ts` (chưa có `apps/api`/DB riêng — ưu tiên UI đúng trước, xem `property-web/PROGRESS.md` mục "Điểm mơ hồ/tự quyết định" giải thích rõ).
+- Build sạch: `npm install` + `npx tsc --noEmit` + `next build` (test tại `/tmp`, source thật trong mount không có `node_modules`/`.next`).
+- Các màn hình còn lại (Expenses, Night Audit, Channel, Users, Assets, Branches, cụm Settings 10 mục, Customers, Services, Utilities, Modules, Printer) dẫn vào trang giữ chỗ `/stub/[key]` — đúng khối `isStub` có sẵn trong bản gốc, KHÔNG bị lỗi/link chết. Danh sách đầy đủ theo tên `is...` xem `property-web/PROGRESS.md`.
+
 ### Hạ tầng version control
 - **Git repo cục bộ đã khởi tạo tại `D:\hotel\OSS`** (2026-07-27), branch `main`, có `.gitignore` (loại trừ node_modules/.next/dist/.env), đã có 1 commit ban đầu (107 file, "Initial commit"). **CHƯA kết nối remote GitHub** — bạn sẽ tự tạo repo + push, xem hướng dẫn ở mục 3.
 
@@ -41,8 +50,9 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 
 ## 3. Đang làm / đang bị chặn (cần bạn cung cấp thêm thông tin)
 
-1. **Tham khảo thiết kế PMS Windows từ Claude.ai Design** — bạn gửi 2 link `claude.ai/design/p/b57eb999-...` (file "Hotel PMS.dc.html" và "BA - Luong nghiep vu PMS.dc.html"). Đã thử fetch trực tiếp và qua Claude in Chrome (2026-07-27) — cả hai đều redirect về trang đăng nhập / extension báo chưa kết nối. Bạn đã chọn phương án "kết nối Claude in Chrome rồi thử lại" — **vẫn đang chờ bạn cài/đăng nhập extension** (link: https://chromewebstore.google.com/detail/fcoeoabgfenejglbffodgkkbkcdhcgfn). Khi xong, nhắn để tôi thử lại `navigate` tới 2 link đó. Chưa có nội dung design nào được dùng để code PMS Windows — `apps/property-windows` chưa bắt đầu code.
-2. **Backup GitHub** — bạn chọn "tự push từ máy mình". Git repo cục bộ đã có sẵn tại `D:\hotel\OSS` (branch `main`, 1 commit) — vì thư mục này mount thẳng vào máy thật của bạn, repo đó CŨNG đã tồn tại trên máy bạn, mở PowerShell/CMD tại `D:\hotel\OSS` là thấy ngay. **Việc còn lại là của bạn**: tạo repo trống trên GitHub rồi chạy (PowerShell):
+1. **[ĐÃ GIẢI QUYẾT 2026-07-27]** Thiết kế PMS Windows từ Claude.ai Design — bạn đã export bundle handoff ra local tại `hotel-pms-software-design-phase-1/` (không cần Claude in Chrome nữa). Đã đọc toàn bộ và implement UI tại `smart-hotel-os/property-web/` (xem mục 2). Còn 1 quyết định nhỏ tự đưa ra khi đọc thiết kế (điều hướng SPA → route Next.js thật, chèn tham số hợp đồng, v.v.) — liệt kê đầy đủ ở `smart-hotel-os/property-web/PROGRESS.md` mục "Điểm mơ hồ/tự quyết định", có thể xem lại nếu muốn đổi cách làm.
+2. **property-web còn nhiều màn hình chưa làm** (Expenses, Night Audit, Channel, Users, Assets, Branches, cụm Settings, Customers, Services, Utilities, Modules, Printer) — xem danh sách đầy đủ theo tên `is...` ở mục 4 bên dưới và `smart-hotel-os/property-web/PROGRESS.md`. Phiên sau làm tiếp theo đúng thứ tự đó nếu không có chỉ định khác.
+3. **Backup GitHub** — bạn chọn "tự push từ máy mình". Git repo cục bộ đã có sẵn tại `D:\hotel\OSS` (branch `main`, 1 commit) — vì thư mục này mount thẳng vào máy thật của bạn, repo đó CŨNG đã tồn tại trên máy bạn, mở PowerShell/CMD tại `D:\hotel\OSS` là thấy ngay. **Việc còn lại là của bạn**: tạo repo trống trên GitHub rồi chạy (PowerShell):
    ```powershell
    Set-Location D:\hotel\OSS
    git remote add origin https://github.com/<tên-bạn>/<tên-repo>.git
@@ -52,7 +62,9 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 
 ## 4. Chưa làm (rõ ràng, chưa bắt đầu)
 
-- Code thật cho `smart-hotel-os` (PMS Core, Channel Manager, AI Pricing, IoT, CRM) — mới chỉ có tài liệu.
+- **`smart-hotel-os/property-web/` — các màn hình UI chưa implement** (đang trỏ về trang giữ chỗ `/stub/[key]`, tên theo đúng biến `is...` trong `Hotel PMS.dc.html`): `isExpenses` (+ `isExpenseTabExpenses`/`isExpenseTabDaily`), `isNightAudit`, `isChannel`, `isUsers`, `isAssets`, `isBranches`, `isBasic` (+ info/owner/payment), `isAmenities` (+ info/activities/services), `isImages`, `isEmail` (+ settings/content), `isSecurity`, `isCurrency`, `isTax`, `isTime`, `isSync`, `isDb`, `isSocial`, `isMarketing`, `isCustomers`, `isServices`, `isUtilities`, `isModules`, `isPrinter`. Chi tiết + gợi ý thứ tự làm tiếp: `smart-hotel-os/property-web/PROGRESS.md`.
+- API/DB thật cho `property-web` (hiện 100% mock data trong `lib/mock-data.ts`) — cần khi tích hợp PMS Core thật.
+- Code thật cho phần backend `smart-hotel-os` (PMS Core, Channel Manager, AI Pricing, IoT, CRM) — mới chỉ có tài liệu, `property-web` mới chỉ là UI.
 - Code thật cho `kiosk-management` — mới chỉ có `kiosk.md` (spec gốc, không phải do Cowork tạo).
 - `apps/property-windows` (PMS Windows Desktop App) — mới có tài liệu (`smart-hotel-os/docs/MODULE_PMS_WINDOWS_CLIENT.md`), **chưa có code**; đang chờ nội dung design ở mục 3.1 trước khi bắt đầu.
 - Admin API thật phía `smart-hotel-os`/`kiosk-management` để `webadmin` đồng bộ (hiện `webadmin` chỉ có dữ liệu riêng, chưa gọi sang hai hệ thống kia).
