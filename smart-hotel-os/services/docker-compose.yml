@@ -1,0 +1,155 @@
+# services/docker-compose.yml — chạy cả 4 service backend (channel-manager,
+# ai-pricing, iot, crm) + 1 Postgres dùng chung (4 database riêng biệt, xem
+# infra/postgres-init.sql) bằng một lệnh duy nhất:
+#
+#   docker compose -f services/docker-compose.yml up --build
+#
+# Đây là 4 microservice ĐỘC LẬP (không import code lẫn nhau, không chung
+# schema) — dùng chung 1 tiến trình Postgres chỉ để tiết kiệm tài nguyên khi
+# chạy demo cục bộ. Ở production thật, mỗi service có thể tách sang cụm
+# Postgres riêng mà không đổi code (chỉ đổi DATABASE_URL) — xem PROGRESS.md.
+#
+# KHÔNG đụng gì tới webadmin/docker-compose.yml hay property-web — service ở
+# đây độc lập hoàn toàn với 2 hệ thống đó.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5433:5432" # cổng 5433 để không đụng Postgres 5432 của webadmin nếu chạy song song
+    volumes:
+      - smart_hotel_services_postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres-init.sql:/docker-entrypoint-initdb.d/001-init-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------------- channel-manager-service ----------------
+  channel-manager-migrate:
+    build:
+      context: ./channel-manager-service
+      dockerfile: Dockerfile
+      target: build # stage còn đủ devDependencies (tsx) + toàn bộ source + file .sql gốc
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://channel_manager:channel_manager@postgres:5432/channel_manager"
+    command: ["sh", "-c", "npx tsx db/migrate.ts && npx tsx db/seed.ts"]
+    restart: "no"
+
+  channel-manager-service:
+    build:
+      context: ./channel-manager-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      channel-manager-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://channel_manager:channel_manager@postgres:5432/channel_manager"
+      PORT: "4101"
+    ports:
+      - "4101:4101"
+
+  # ---------------- ai-pricing-service ----------------
+  ai-pricing-migrate:
+    build:
+      context: ./ai-pricing-service
+      dockerfile: Dockerfile
+      target: build
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://ai_pricing:ai_pricing@postgres:5432/ai_pricing"
+    command: ["sh", "-c", "npx tsx db/migrate.ts && npx tsx db/seed.ts"]
+    restart: "no"
+
+  ai-pricing-service:
+    build:
+      context: ./ai-pricing-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-pricing-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://ai_pricing:ai_pricing@postgres:5432/ai_pricing"
+      PORT: "4102"
+    ports:
+      - "4102:4102"
+
+  # ---------------- iot-service ----------------
+  iot-migrate:
+    build:
+      context: ./iot-service
+      dockerfile: Dockerfile
+      target: build
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://iot_service:iot_service@postgres:5432/iot_service"
+    command: ["sh", "-c", "npx tsx db/migrate.ts && npx tsx db/seed.ts"]
+    restart: "no"
+
+  iot-service:
+    build:
+      context: ./iot-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      iot-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://iot_service:iot_service@postgres:5432/iot_service"
+      PORT: "4103"
+    ports:
+      - "4103:4103"
+
+  # ---------------- crm-service ----------------
+  crm-migrate:
+    build:
+      context: ./crm-service
+      dockerfile: Dockerfile
+      target: build
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://crm_service:crm_service@postgres:5432/crm_service"
+    command: ["sh", "-c", "npx tsx db/migrate.ts && npx tsx db/seed.ts"]
+    restart: "no"
+
+  crm-service:
+    build:
+      context: ./crm-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      crm-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://crm_service:crm_service@postgres:5432/crm_service"
+      PORT: "4104"
+    ports:
+      - "4104:4104"
+
+volumes:
+  smart_hotel_services_postgres_data:

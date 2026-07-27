@@ -11,6 +11,9 @@ import { hardwareAssetsRouter } from "./routes/hardware-assets.routes";
 import { commissionsRouter } from "./routes/commissions.routes";
 import { dashboardRouter } from "./routes/dashboard.routes";
 import { auditLogsRouter } from "./routes/audit-logs.routes";
+import { usersRouter } from "./routes/users.routes";
+import { releasesRouter } from "./routes/releases.routes";
+import { purchaseOrdersRouter } from "./routes/purchase-orders.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { pool } from "./lib/db";
@@ -37,6 +40,9 @@ app.use("/api/v1/hardware-assets", hardwareAssetsRouter);
 app.use("/api/v1/commissions", commissionsRouter);
 app.use("/api/v1/dashboard", dashboardRouter);
 app.use("/api/v1/audit-logs", auditLogsRouter);
+app.use("/api/v1/users", usersRouter);
+app.use("/api/v1/releases", releasesRouter);
+app.use("/api/v1/purchase-orders", purchaseOrdersRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error_code: "ROUTE_NOT_FOUND", message: "Không tìm thấy endpoint." });

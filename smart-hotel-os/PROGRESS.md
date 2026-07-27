@@ -38,13 +38,25 @@ Hoàn thành bộ tài liệu yêu cầu và kiến trúc trước khi code, the
 - [x] `npm install` + `npx tsc --noEmit` + `next build` chạy sạch (build test tại `/tmp`, source thật nằm ở `property-web/apps/web`, không có `node_modules`/`.next` trong mount).
 - [ ] Các màn hình còn lại (Expenses, Night Audit, Channel, Users, Assets, Branches, cụm Settings, Customers, Services, Utilities, Modules, Printer) — hiện dẫn tới trang giữ chỗ `/stub/[key]`, đúng tinh thần khối `isStub` có sẵn trong bản thiết kế gốc.
 
+## 2026-07-27 (phiên backend services) — Code thật cho 4 service còn thiếu
+
+- [x] Tạo mới `services/` (chưa từng tồn tại) — 4 microservice ĐỘC LẬP, KHÔNG chung database, KHÔNG đụng `webadmin/`/`property-web/`: `channel-manager-service/`, `ai-pricing-service/`, `iot-service/`, `crm-service/`.
+- [x] Mỗi service: Express + TypeScript + `pg` thuần (không Prisma, đúng convention `webadmin/`), migration SQL đánh số từ `001_init.sql`, `.env.example`, `Dockerfile` riêng, seed demo.
+- [x] `channel-manager-service`: `OtaAdapter` interface + `MockOtaAdapter`, API inventory/price sync + webhook booking idempotent + chống overbooking (transaction `FOR UPDATE`).
+- [x] `ai-pricing-service`: thuật toán rule-based thật (`src/pricing/engine.ts`) — weekday/occupancy/holiday/lead-time multiplier, kẹp min/max, có `scripts/demo-pricing.ts` (10 assertion PASS).
+- [x] `iot-service`: idempotent command + ack + timeout thật (đúng RULES.md mục 10), mô phỏng qua HTTP thay MQTT (chưa có Edge Node/broker thật) — `scripts/simulate-device.ts` chứng minh luồng end-to-end.
+- [x] `crm-service`: phân khúc khách rule-based (`src/segmentation/engine.ts`), `NotificationProvider` + `ConsoleNotificationProvider` (che số điện thoại khi log), campaign tôn trọng `opt_out` + frequency cap.
+- [x] `services/docker-compose.yml` (1 Postgres dùng chung, 4 database riêng) + `services/README.md` + `services/PROGRESS.md` (chi tiết đầy đủ giới hạn/quyết định kiến trúc — đọc file đó, không lặp lại ở đây).
+- [x] Build sạch (`tsc --noEmit`) cả 4 service; test chạy thật bằng Postgres thật qua wire protocol (`@electric-sql/pglite-socket` trong sandbox) + `curl`/script — phát hiện và sửa 1 bug timezone thật khi đọc cột DATE qua `pg` (chi tiết ở `services/PROGRESS.md`).
+- [ ] PMS Core vẫn CHƯA có code thật — 4 service này hiện dùng dữ liệu seed độc lập thay vì đồng bộ thật từ PMS Core qua API/event bus (xem mục dưới).
+
 ## Chưa làm (bước tiếp theo)
 
 1. Duyệt tài liệu với người có thẩm quyền quyết định sản phẩm (đặc biệt các mục còn mở trong `ASSUMPTIONS.md`/`DECISIONS.md`: cổng thanh toán, message bus, nguồn dữ liệu giá đối thủ).
-2. Scaffold monorepo thật theo cấu trúc ở `docs/SYSTEM_ARCHITECTURE.md` mục 7 (chưa tạo — phiên làm việc này chỉ dừng ở tài liệu theo lựa chọn của người yêu cầu).
-3. Thiết kế database migration thật cho các bảng ở `docs/DATA_MODEL.md`.
-4. Xây dựng Auth/RBAC/Audit log (Step 3 theo mô hình thứ tự triển khai của `kiosk.md` mục 22, áp dụng tương tự cho sản phẩm này).
-5. Xây PMS Core (Giai đoạn 1 MVP theo `docs/ROADMAP.md`).
+2. Xây PMS Core thật (`services/pms-service/` chưa tồn tại) — đây là phần còn thiếu quan trọng nhất, 4 service backend mới thêm (channel-manager/ai-pricing/iot/crm) đều đang phụ thuộc dữ liệu seed vì chưa có PMS Core để đồng bộ thật.
+3. Auth & IAM Service thật cho tầng backend `smart-hotel-os` (hiện `property-web` có auth riêng, các service mới thêm ở `services/` chưa có xác thực API-to-API).
+4. Direct Booking Service, Revenue/Reporting Service, Notification Service, Audit Service — vẫn chỉ có đặc tả (`docs/`), chưa có code.
+5. Kết nối `property-web` (hiện 100% mock data) với các service backend thật ở `services/`.
 
 ## Ghi chú
 

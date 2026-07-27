@@ -110,8 +110,8 @@ Phân quyền chi tiết theo module: `../hq-console/docs/PERMISSION_MATRIX.md` 
 
 ## Đã triển khai ở bản MVP này
 
-Auth (JWT) + RBAC theo role, Đối tác (partners), Nhà cung cấp (suppliers), Khách hàng 360 (customers + support tickets), Thiết bị phần cứng (hardware assets + warranty claims), Hoa hồng (commission rules + records + duyệt/thanh toán), Dashboard tổng hợp, Audit log.
+Auth (JWT) + RBAC theo role, Đối tác (partners), Nhà cung cấp (suppliers), Khách hàng 360 (customers + support tickets), Thiết bị phần cứng (hardware assets + warranty claims), Hoa hồng (commission rules + records + duyệt/thanh toán), Dashboard tổng hợp, Audit log, **Quản lý user/role qua UI** (`/users`, chỉ SUPER_ADMIN), **Release Console** tổng hợp phiên bản app (`/releases`), **Mua hàng/tồn kho chi tiết** (`/purchase-orders` — `purchase_orders` + `purchase_order_items`, tự sinh `hardware_assets` khi nhận hàng). Chi tiết đầy đủ 3 phần mới nhất: `PROGRESS.md`.
 
 ## Chưa triển khai (xem `PROGRESS.md` gốc dự án và `../hq-console/PROGRESS.md`)
 
-Đồng bộ thật với Admin API của `smart-hotel-os`/`kiosk-management` (hiện các API đó cần bổ sung endpoint/webhook — xem `../hq-console/ASSUMPTIONS.md`), quản lý user/role qua UI (hiện chỉ seed sẵn), Release Console tổng hợp phiên bản app, quản lý mua hàng/tồn kho chi tiết (`purchase_orders`).
+Đồng bộ thật với Admin API của `smart-hotel-os`/`kiosk-management` (hiện các API đó cần bổ sung endpoint/webhook — xem `../hq-console/ASSUMPTIONS.md`), MFA/VPN cho production, CI/CD và blue-green/canary deployment thật (Release Console hiện chỉ là MVP quản lý version, không phải pipeline deploy — xem `PROGRESS.md`).

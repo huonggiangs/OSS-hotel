@@ -1,58 +1,116 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import {
-  dashboardKpis,
   incomeSources,
   fixedCostItems,
   variableCostItems,
   smallBars,
   smallBars2,
-  roomUsage,
-  bookingHistory,
   packages,
   activityTabs,
   activity,
   newCustomers,
+  roomTypeColors,
 } from "@/lib/mock-data";
 import { Donut, buildConicGradient } from "@/components/ui/Donut";
+import { api, isApiError } from "@/lib/api-client";
 
-// Tab "Tổng quan cơ sở" — pixel-perfect theo khối `isDashOverview` (dòng 302-457
-// trong bản gốc): 4 thẻ KPI + lưới 3 cột (Doanh thu & đặt phòng / Phòng & dịch vụ /
-// Khách hàng & hoạt động).
+interface DashboardSummary {
+  total_bookings: number;
+  occupancy_rate_pct: number;
+  active_staff: number;
+  total_customers: number;
+  total_rooms: number;
+  room_type_breakdown: { type_name: string; count: number }[];
+  booking_status_breakdown: { status: string; count: number }[];
+}
+
+const BOOKING_STATUS_INFO: Record<string, { label: string; color: string }> = {
+  CONFIRMED: { label: "Đã xác nhận", color: "#284AB1" },
+  CHECKED_IN: { label: "Đang ở", color: "#00C853" },
+  PENDING: { label: "Chờ xác nhận", color: "#FAB505" },
+  CHECKED_OUT: { label: "Đã trả phòng", color: "#B1B5C3" },
+  CANCELLED: { label: "Huỷ", color: "#CC2F42" },
+};
+const TYPE_COLOR_FALLBACK = ["#284AB1", "#00C853", "#FAB505", "#FC7F3A", "#FF5A9E"];
+
+function withPct<T extends { count: number }>(items: T[]) {
+  const total = items.reduce((s, i) => s + i.count, 0) || 1;
+  let acc = 0;
+  return items.map((i) => {
+    const pct = Math.round((i.count / total) * 1000) / 10;
+    const seg = { ...i, pct, from: acc, to: acc + pct };
+    acc += pct;
+    return seg;
+  });
+}
+
+// Tab "Tổng quan cơ sở" — ĐÃ NỐI API THẬT cho 4 thẻ KPI đầu trang + 2 biểu đồ donut
+// (Biểu đồ sử dụng phòng / Tổng quan lịch sử đặt), gọi GET /api/v1/dashboard/summary
+// và tính trực tiếp từ dữ liệu rooms/bookings/customers/property_users thật trong DB.
+// Các khối còn lại (thu nhập/chi phí theo dòng thời gian, gói dịch vụ phổ biến, hoạt
+// động mới nhất, khách hàng mới) CHƯA có bảng dữ liệu nguồn tương ứng trong migration
+// MVP này (revenue_daily, activity_log theo sự kiện, etc. — xem docs/DATA_MODEL.md
+// mục Revenue & Reporting, chưa làm ở đợt này) nên GIỮ MOCK, có ghi rõ trong
+// PROGRESS.md để không nhầm là dữ liệu thật.
 export function DashboardOverview() {
-  const roomUsageGradient = buildConicGradient([
-    { color: "#284AB1", from: 0, to: 58.63 },
-    { color: "#00C853", from: 58.63, to: 82.57 },
-    { color: "#FAB505", from: 82.57, to: 95.51 },
-    { color: "#FC7F3A", from: 95.51, to: 100 },
-  ]);
-  const bookingHistoryGradient = buildConicGradient([
-    { color: "#284AB1", from: 0, to: 58.63 },
-    { color: "#00C853", from: 58.63, to: 82.57 },
-    { color: "#FAB505", from: 82.57, to: 95.51 },
-    { color: "#CC2F42", from: 95.51, to: 100 },
-  ]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get<DashboardSummary>("/api/v1/dashboard/summary")
+      .then(setSummary)
+      .catch((err) => setError(isApiError(err) ? err.message : "Không tải được số liệu tổng quan."));
+  }, []);
+
+  const kpis = summary
+    ? [
+        { label: "Tổng số đặt phòng", value: String(summary.total_bookings) },
+        { label: "Công suất phòng (hiện tại)", value: `${summary.occupancy_rate_pct}%`, valueColor: "#284AB1" },
+        { label: "Nhân sự đang hoạt động", value: String(summary.active_staff) },
+        { label: "Tổng số khách hàng", value: String(summary.total_customers) },
+      ]
+    : [];
+
+  const typeSegments = summary ? withPct(summary.room_type_breakdown.map((t) => ({ ...t, count: t.count }))) : [];
+  const roomUsageGradient = buildConicGradient(
+    typeSegments.map((s, i) => ({ color: roomTypeColors[s.type_name] ?? TYPE_COLOR_FALLBACK[i % TYPE_COLOR_FALLBACK.length], from: s.from, to: s.to }))
+  );
+
+  const statusSegments = summary
+    ? withPct(summary.booking_status_breakdown.map((s) => ({ ...s, count: s.count })))
+    : [];
+  const bookingHistoryGradient = buildConicGradient(
+    statusSegments.map((s) => ({ color: BOOKING_STATUS_INFO[s.status]?.color ?? "#B1B5C3", from: s.from, to: s.to }))
+  );
 
   return (
     <div>
+      {error && <p className="mb-3.5 rounded-lg bg-pms-danger-bg px-3 py-2 text-[12.5px] text-pms-danger">{error}</p>}
+
       <div className="mb-3.5 grid grid-cols-4 gap-3.5">
-        {dashboardKpis.map((k) => (
-          <div key={k.label} className="rounded-xl bg-white p-3.5 px-4 shadow-card">
-            <span className="text-[11px] text-pms-muted">{k.label}</span>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <b className="text-[22px]" style={{ color: k.valueColor }}>
-                {k.value}
-              </b>
-              {k.trend && (
-                <span className="text-[11px] font-semibold" style={{ color: k.trendColor }}>
-                  {k.trend}
-                </span>
-              )}
-            </div>
+        {(summary ? kpis : Array.from({ length: 4 })).map((k, i) => (
+          <div key={k ? (k as { label: string }).label : i} className="rounded-xl bg-white p-3.5 px-4 shadow-card">
+            {k ? (
+              <>
+                <span className="text-[11px] text-pms-muted">{(k as { label: string }).label}</span>
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <b className="text-[22px]" style={{ color: (k as { valueColor?: string }).valueColor }}>
+                    {(k as { value: string }).value}
+                  </b>
+                </div>
+              </>
+            ) : (
+              <span className="text-[11px] text-pms-muted">Đang tải...</span>
+            )}
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-3 items-start gap-4">
-        {/* Cột 1: Doanh thu & đặt phòng */}
+        {/* Cột 1: Doanh thu & đặt phòng (giữ mock — chưa có bảng revenue_daily) */}
         <div className="flex flex-col gap-3">
           <div className="text-[11px] font-bold uppercase tracking-wide text-pms-primary">Doanh thu &amp; đặt phòng</div>
 
@@ -156,56 +214,62 @@ export function DashboardOverview() {
           </div>
         </div>
 
-        {/* Cột 2: Phòng & dịch vụ */}
+        {/* Cột 2: Phòng & dịch vụ — 2 donut đầu ĐÃ NỐI API thật, "Gói được lựa chọn" giữ mock */}
         <div className="flex flex-col gap-3">
           <div className="text-[11px] font-bold uppercase tracking-wide text-pms-primary">Phòng &amp; dịch vụ</div>
 
           <div className="rounded-xl bg-white p-4 shadow-card">
             <div className="mb-2.5 flex items-center justify-between">
               <h3 className="m-0 text-[13px] font-semibold">Biểu đồ sử dụng phòng</h3>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10.5px] font-semibold text-pms-success">▲ 4,2%</span>
-                <span className="rounded-lg bg-pms-divider px-2 py-0.5 text-[10.5px] text-pms-muted">1 tháng</span>
-              </div>
+              <span className="rounded-lg bg-pms-divider px-2 py-0.5 text-[10.5px] text-pms-muted">Theo loại phòng</span>
             </div>
-            <div className="flex items-center gap-3.5">
-              <Donut gradient={roomUsageGradient} holeSize={60}>
-                <b className="text-[11px]">Single</b>
-                <span className="text-[9px] text-pms-muted">1913 phòng</span>
-              </Donut>
-              <div className="flex flex-col gap-1.5">
-                {roomUsage.map((u) => (
-                  <div key={u.label} className="flex items-center gap-1.5 text-[11.5px]">
-                    <span className="h-[7px] w-[7px] rounded-full" style={{ background: u.color }} />
-                    {u.label} <span className="text-pms-muted">{u.pct}%</span>
-                  </div>
-                ))}
+            {summary ? (
+              <div className="flex items-center gap-3.5">
+                <Donut gradient={roomUsageGradient} holeSize={60}>
+                  <b className="text-[11px]">{summary.total_rooms}</b>
+                  <span className="text-[9px] text-pms-muted">phòng</span>
+                </Donut>
+                <div className="flex flex-col gap-1.5">
+                  {typeSegments.map((u, i) => (
+                    <div key={u.type_name} className="flex items-center gap-1.5 text-[11.5px]">
+                      <span
+                        className="h-[7px] w-[7px] rounded-full"
+                        style={{ background: roomTypeColors[u.type_name] ?? TYPE_COLOR_FALLBACK[i % TYPE_COLOR_FALLBACK.length] }}
+                      />
+                      {u.type_name} <span className="text-pms-muted">{u.pct}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-[12px] text-pms-muted">Đang tải...</div>
+            )}
           </div>
 
           <div className="rounded-xl bg-white p-4 shadow-card">
             <div className="mb-2.5 flex items-center justify-between">
               <h3 className="m-0 text-[13px] font-semibold">Tổng quan lịch sử đặt</h3>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10.5px] font-semibold text-pms-success">▲ 2,8%</span>
-                <span className="rounded-lg bg-pms-divider px-2 py-0.5 text-[10.5px] text-pms-muted">1 tháng</span>
-              </div>
+              <span className="rounded-lg bg-pms-divider px-2 py-0.5 text-[10.5px] text-pms-muted">Theo trạng thái</span>
             </div>
-            <div className="flex items-center gap-3.5">
-              <Donut gradient={bookingHistoryGradient} holeSize={60}>
-                <b className="text-[12px]">Đang chờ</b>
-                <span className="text-[10px] text-pms-muted">337</span>
-              </Donut>
-              <div className="flex flex-col gap-1.5">
-                {bookingHistory.map((h) => (
-                  <div key={h.label} className="flex items-center gap-1.5 text-[11.5px]">
-                    <span className="h-[7px] w-[7px] rounded-full" style={{ background: h.color }} />
-                    {h.label} <b className="ml-0.5">{h.value}</b> <span className="text-pms-muted">{h.pct}%</span>
-                  </div>
-                ))}
+            {summary ? (
+              <div className="flex items-center gap-3.5">
+                <Donut gradient={bookingHistoryGradient} holeSize={60}>
+                  <b className="text-[12px]">{summary.total_bookings}</b>
+                  <span className="text-[10px] text-pms-muted">hợp đồng</span>
+                </Donut>
+                <div className="flex flex-col gap-1.5">
+                  {statusSegments.map((h) => (
+                    <div key={h.status} className="flex items-center gap-1.5 text-[11.5px]">
+                      <span className="h-[7px] w-[7px] rounded-full" style={{ background: BOOKING_STATUS_INFO[h.status]?.color ?? "#B1B5C3" }} />
+                      {BOOKING_STATUS_INFO[h.status]?.label ?? h.status} <b className="ml-0.5">{h.count}</b>{" "}
+                      <span className="text-pms-muted">{h.pct}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-[12px] text-pms-muted">Đang tải...</div>
+            )}
           </div>
 
           <div className="rounded-xl bg-white p-4 shadow-card">
@@ -230,7 +294,7 @@ export function DashboardOverview() {
           </div>
         </div>
 
-        {/* Cột 3: Khách hàng & hoạt động */}
+        {/* Cột 3: Khách hàng & hoạt động (giữ mock — chưa có bảng activity log/newsletter) */}
         <div className="flex flex-col gap-3">
           <div className="text-[11px] font-bold uppercase tracking-wide text-pms-primary">Khách hàng &amp; hoạt động</div>
 
@@ -261,7 +325,7 @@ export function DashboardOverview() {
           <div className="rounded-xl bg-white p-4 shadow-card">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="m-0 text-[13px] font-semibold">Khách hàng mới</h3>
-              <a href="#" className="text-[11px] font-semibold no-underline">
+              <a href="/customers" className="text-[11px] font-semibold no-underline">
                 Xem tất cả
               </a>
             </div>

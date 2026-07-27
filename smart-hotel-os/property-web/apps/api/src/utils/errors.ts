@@ -1,0 +1,21 @@
+export class ApiError extends Error {
+  statusCode: number;
+  errorCode: string;
+  details?: Record<string, unknown>;
+
+  constructor(statusCode: number, errorCode: string, message: string, details?: Record<string, unknown>) {
+    super(message);
+    this.statusCode = statusCode;
+    this.errorCode = errorCode;
+    this.details = details;
+  }
+}
+
+export const Errors = {
+  invalidCredentials: () => new ApiError(401, "INVALID_CREDENTIALS", "Email hoặc mật khẩu không đúng."),
+  unauthorized: () => new ApiError(401, "UNAUTHORIZED", "Thiếu hoặc token không hợp lệ."),
+  forbidden: () => new ApiError(403, "PERMISSION_DENIED", "Tài khoản không có quyền thực hiện thao tác này."),
+  notFound: (entity: string) => new ApiError(404, "NOT_FOUND", `Không tìm thấy ${entity}.`),
+  validation: (details?: Record<string, unknown>) => new ApiError(422, "VALIDATION_ERROR", "Dữ liệu không hợp lệ.", details),
+  conflict: (message: string) => new ApiError(409, "CONFLICT", message),
+};

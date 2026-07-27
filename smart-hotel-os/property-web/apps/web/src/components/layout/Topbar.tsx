@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { currentUser } from "@/lib/mock-data";
+import { useAuth, roleLabel } from "@/lib/auth";
+
+function initialsOf(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  const last2 = parts.slice(-2);
+  return last2.map((p) => p[0]?.toUpperCase() ?? "").join("");
+}
 
 const FONT_SCALES = [
   { v: 1, label: "Nhỏ" },
@@ -21,6 +27,7 @@ export function Topbar({
   onOpenUserProfile: () => void;
 }) {
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <div className="flex h-20 flex-shrink-0 items-center justify-between border-b border-pms-border bg-white px-8">
@@ -79,15 +86,17 @@ export function Topbar({
           <path d="M13.73 21a2 2 0 01-3.46 0" />
         </svg>
         <div className="h-6 w-px bg-pms-border" />
-        <div className="flex cursor-pointer items-center gap-2.5" onClick={onOpenUserProfile}>
-          <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-pms-primary text-[13px] font-semibold text-white">
-            {currentUser.initials}
+        {user && (
+          <div className="flex cursor-pointer items-center gap-2.5" onClick={onOpenUserProfile}>
+            <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-pms-primary text-[13px] font-semibold text-white">
+              {initialsOf(user.full_name)}
+            </div>
+            <div className="text-[13px]">
+              <b>{user.full_name}</b>
+              <div className="text-[12px] text-pms-muted">{roleLabel[user.role]}</div>
+            </div>
           </div>
-          <div className="text-[13px]">
-            <b>{currentUser.name}</b>
-            <div className="text-[12px] text-pms-muted">{currentUser.role}</div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

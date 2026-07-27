@@ -1,0 +1,74 @@
+# property-web — chạy toàn bộ hệ thống bằng một lệnh:
+#
+#   docker compose up --build
+#
+# Cổng khác với webadmin (web 3000/api 4000/postgres 5432) để chạy SONG SONG được
+# trên cùng máy: web 3100, api 4100, postgres 5433.
+#
+# Lần đầu chạy: service "migrate" tự động tạo schema + seed dữ liệu demo trước khi
+# "api" khởi động. Sau khi tất cả lên, mở http://localhost:3100 và đăng nhập bằng
+# manager@anio-riverside.local / ChangeMe123!
+#
+# Copy .env.example thành .env và đổi JWT_SECRET trước khi dùng thật.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: property_web
+      POSTGRES_PASSWORD: property_web
+      POSTGRES_DB: property_web
+    ports:
+      - "5433:5432"
+    volumes:
+      - property_web_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U property_web"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: database/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://property_web:property_web@postgres:5432/property_web?schema=public"
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://property_web:property_web@postgres:5432/property_web?schema=public"
+      JWT_SECRET: "${JWT_SECRET:-please-change-this-secret-in-.env}"
+      PORT: "4100"
+      WEB_ORIGIN: "http://localhost:3100"
+    ports:
+      - "4100:4100"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: "http://localhost:4100"
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3100:3100"
+
+volumes:
+  property_web_postgres_data:

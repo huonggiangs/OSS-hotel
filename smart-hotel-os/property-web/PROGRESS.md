@@ -1,5 +1,142 @@
 # Progress — property-web
 
+## 2026-07-27 (phiên 4) — Xây `apps/api` thật + Auth thật, nối API cho luồng lõi
+
+Nhiệm vụ: property-web trước phiên này 100% dữ liệu mock và KHÔNG có đăng nhập (ai mở
+link cũng vào thẳng được) — lỗ hổng nghiêm trọng. Phiên này xây API thật song song với
+`apps/web/` đã có (đúng cấu trúc `webadmin/apps/api`: Express + TypeScript + `pg` thuần,
+KHÔNG dùng Prisma, JWT auth, migration SQL đánh số, docker-compose riêng) + vá lỗ hổng đăng
+nhập.
+
+### Migration / database (MỚI — `database/`)
+
+`database/migrations/001_init.sql` — 10 bảng, đầy đủ enum, index, đúng convention SQL thuần
+của `webadmin/database` (không ORM):
+
+- `properties` — cơ sở lưu trú, có `tenant_id` (multi-tenant: 1 tenant nhiều property).
+- `property_users` — người dùng CẤP CƠ SỞ (lễ tân/quản lý/buồng phòng), **TÁCH BIỆT HOÀN
+  TOÀN** với bảng `users` của `webadmin` (không dùng chung, không JOIN chéo được — đúng
+  `ARCHITECTURE_OVERVIEW.md`). Vai trò: `OWNER`, `MANAGER`, `RECEPTIONIST`, `HOUSEKEEPING`.
+- `room_types`, `rooms` (có cột `power_on boolean` — nối thẳng vào UI công tắc điện IoT đã
+  có sẵn trong `RoomGrid.tsx`), `customers`, `bookings` (hợp đồng/đặt phòng), `invoices`
+  (đóng vai trò payments/hoá đơn), `expenses`, `devices` (đăng ký thiết bị theo phòng, tối
+  thiểu cho UI công tắc điện — mỗi phòng có 1 device `POWER_SWITCH` sau seed), `audit_log`
+  (append-only).
+- MỌI bảng nghiệp vụ có cả `tenant_id` VÀ `property_id` (RULES.md + SYSTEM_ARCHITECTURE.md
+  mục 3 multi-tenant — đối chiếu đúng yêu cầu).
+- `database/migrate.ts`/`seed.ts`/`package.json`/`Dockerfile` — copy nguyên convention từ
+  `webadmin/database`, chỉ đổi tên bảng/seed data. Seed sinh 32 phòng theo ĐÚNG thuật toán
+  `buildRooms()` trong `mock-data.ts` (cùng công thức modulo tầng/loại/khu/trạng thái) để
+  dữ liệu thật gần giống bản mock cũ nhất có thể.
+
+### API (MỚI — `apps/api/`, cổng 4100)
+
+Cấu trúc y hệt `webadmin/apps/api` (routes/repositories/middleware/types/utils, `pg` thuần,
+`zod` validate, `bcryptjs` hash mật khẩu, `jsonwebtoken` JWT 12h, `asyncHandler`,
+`ApiError`/`errorHandler` dùng chung format lỗi).
+
+- **Auth**: `POST /api/v1/auth/login` (email+password → JWT chứa `propertyId`/`tenantId`/
+  `role`), `GET /api/v1/auth/me`. Middleware `requireAuth` (verify JWT) + `requireRole(...)`
+  (RBAC theo 4 vai trò, đối chiếu `docs/PERMISSION_MATRIX.md` — có điều chỉnh tên vai trò,
+  xem mục quyết định bên dưới). Mọi query business đều lọc theo `property_id` lấy từ JWT
+  (không tin `property_id` gửi từ client).
+- **Room Types**: `GET/POST/PATCH /api/v1/room-types`.
+- **Rooms**: `GET/POST/PATCH /api/v1/rooms` + `PATCH /api/v1/rooms/:id/power` (bật/tắt điện
+  — endpoint riêng, tách khỏi PATCH cấu hình phòng, để mọi vai trò cấp cơ sở kể cả buồng
+  phòng/lễ tân đều bấm được công tắc, đúng RULES.md mục 10 "lệnh phải idempotent": set thẳng
+  `power_on = true/false`, không phải toggle mù ở DB).
+- **Customers**: `GET/POST/PATCH /api/v1/customers` (có `?search=`).
+- **Bookings**: `GET/POST/PATCH/GET:id /api/v1/bookings` — JOIN sẵn customer/room/room_type
+  để trả về đúng shape UI cần (`guest_name`, `room_number`, `room_type_name`), tự sinh mã
+  `HD-2026NNN`.
+- **Payments/Invoices**: `GET/POST/PATCH /api/v1/payments` (bảng `invoices`).
+- **Expenses**: `GET/POST /api/v1/expenses`.
+- **Devices**: `GET/POST /api/v1/devices` + `PATCH /api/v1/devices/:id/power`.
+- **Dashboard**: `GET /api/v1/dashboard/summary` (KPI tổng hợp: tổng đặt phòng, công suất
+  phòng, nhân sự hoạt động, tổng khách hàng, phân bổ loại phòng/trạng thái phòng/trạng thái
+  đặt phòng, doanh thu đã thu hôm nay, tổng chi phí) + `GET /api/v1/dashboard/gantt` (dữ
+  liệu đặt phòng theo phòng, JOIN room/room_type/customer, cho tab Lịch đặt phòng — **đã có
+  endpoint nhưng CHƯA nối vào UI Gantt**, xem mục "Còn mock" bên dưới).
+- Audit log ghi cho mọi hành động ghi (login, tạo/sửa phòng, bật/tắt điện, tạo/sửa hợp
+  đồng, tạo khách hàng, tạo hoá đơn/chi phí/thiết bị).
+
+### Frontend — nối API thật (`apps/web/`)
+
+**MỚI**: `src/lib/api-client.ts` (fetch thuần gắn JWT từ `localStorage` key
+`property_web_token` — đổi tên khác `webadmin` để 2 app không đụng token khi chạy song
+song trên cùng trình duyệt), `src/lib/auth.tsx` (`AuthProvider`/`useAuth`, cùng pattern
+`webadmin/apps/web/src/lib/auth.tsx`), `src/app/login/page.tsx` (trang đăng nhập MỚI —
+xem mục quyết định), `src/components/auth/RequireAuth.tsx` (redirect `/login` nếu chưa có
+JWT hợp lệ).
+
+`src/app/layout.tsx` bọc toàn app bằng `AuthProvider`; `src/app/(pms)/layout.tsx` bọc thêm
+`RequireAuth` — **toàn bộ 28 màn hình PMS giờ bắt buộc đăng nhập**, không còn "ai mở link
+cũng vào thẳng được". `Sidebar.tsx`/`Topbar.tsx`/`UserProfileModal.tsx` đổi từ đọc
+`currentUser` (mock tĩnh) sang đọc user thật từ `useAuth()`; `UserProfileModal` có thêm nút
+"Đăng xuất" (không có trong bản gốc vì bản gốc không có đăng nhập).
+
+**Màn hình đã nối API thật** (ưu tiên đúng theo yêu cầu — luồng lõi nhất):
+
+- **Đăng nhập** (`/login`) — thật 100%, JWT lưu localStorage, `RequireAuth` chặn mọi route
+  `(pms)` nếu chưa đăng nhập.
+- **Dashboard** (`/dashboard`, tab "Tổng quan cơ sở") — 4 thẻ KPI đầu trang (tổng đặt phòng/
+  công suất phòng/nhân sự hoạt động/tổng khách hàng) + 2 donut ("Biểu đồ sử dụng phòng",
+  "Tổng quan lịch sử đặt") gọi `GET /api/v1/dashboard/summary`, tính trực tiếp từ dữ liệu
+  rooms/bookings/customers/property_users thật. 3 khối còn lại của cột 1 (thu nhập/chi phí
+  theo thời gian, lợi nhuận thuần) + "Gói được lựa chọn nhiều nhất" + cột 3 (hoạt động mới
+  nhất, khách hàng mới) **CÒN MOCK** — chưa có bảng nguồn tương ứng trong migration MVP này
+  (`revenue_daily`, activity log theo sự kiện... xem `docs/DATA_MODEL.md` mục Revenue &
+  Reporting, để dành phase sau).
+- **Rooms** (`/rooms`) — `GET /api/v1/rooms` thật, ánh xạ (map) sang đúng shape `RoomCard`
+  cũ nên `RoomFilterPanels`/`RoomGrid`/3 modal (Nhận phòng nhanh/Quản lý lưu trú/Đã gửi dọn
+  phòng) **giữ nguyên không sửa 1 dòng nào**. Công tắc điện gọi thật
+  `PATCH /api/v1/rooms/:id/power` (optimistic update + rollback nếu lỗi).
+- **Booking** (`/booking`) — `GET /api/v1/bookings` thật (map sang `BookingRow` cũ, bảng +
+  modal Xem/Sửa/Mẫu hợp đồng giữ nguyên); `AddBookingModal` viết lại thành form thật (trước
+  đây toàn bộ ô là placeholder tĩnh) — tạo khách hàng rồi tạo hợp đồng
+  (`POST /api/v1/customers` → `POST /api/v1/bookings`), chỉ hiện phòng đang trống trong
+  select.
+
+**Còn mock (chưa nối API, KHÔNG lỗi build, hiển thị bình thường)**: Price, Payment,
+Expenses, Night Audit, Marketing, Customers (trang danh sách khách hàng riêng — có API
+`/api/v1/customers` rồi nhưng UI trang này chưa đổi sang gọi, chỉ `AddBookingModal` đang
+dùng), Services, Utilities, Modules, toàn bộ 16 màn hình panel Cài đặt, và tab "Lịch đặt
+phòng" (Gantt) trong Dashboard (endpoint `GET /api/v1/dashboard/gantt` đã có sẵn ở API
+nhưng UI vẫn dùng `buildGanttGroups()` mock — việc tính lại `startCol`/`span` từ ngày
+checkin/checkout thật theo đúng cột tuần đang xem là khối việc riêng, để dành phiên sau).
+
+### Quyết định tự đưa ra (cần người dùng biết)
+
+1. **Trang đăng nhập là thiết kế MỚI, không có trong bundle gốc** (bản gốc giả định đã đăng
+   nhập sẵn) — dùng lại đúng token màu/logo "ANIO PMS" từ `Sidebar.tsx` để không lạc tông,
+   nhưng bố cục card-trắng-giữa-màn-hình là tự thiết kế.
+2. **Đổi tên vai trò cấp cơ sở**: yêu cầu nêu tối thiểu `OWNER, MANAGER, RECEPTIONIST,
+   HOUSEKEEPING`, trong khi `docs/PERMISSION_MATRIX.md` dùng tên `OWNER, PROPERTY_MANAGER,
+   FRONT_DESK, HOUSEKEEPING, MAINTENANCE` (5 vai trò, có `MAINTENANCE` riêng). Quyết định:
+   theo đúng danh sách 4 vai trò yêu cầu tường minh (`MANAGER`/`RECEPTIONIST` thay vì
+   `PROPERTY_MANAGER`/`FRONT_DESK`, bỏ `MAINTENANCE` riêng — gộp vào `HOUSEKEEPING` cho MVP
+   này). Nếu cần khớp đúng permission matrix gốc, thêm migration `002_...sql` mở rộng enum
+   sau.
+3. **bcrypt + JWT**: dùng đúng `bcryptjs` + `jsonwebtoken` (không phải `bcrypt` native) —
+   đồng nhất 100% với lựa chọn đã có ở `webadmin/apps/api`, tránh phải build lại native
+   addon trong môi trường sandbox.
+4. **`invoices` đóng vai trò "payments"**: yêu cầu gốc nói "payments/invoices" — gộp thành
+   1 bảng `invoices` duy nhất (có `method`, `status`, `paid_at`) thay vì tách riêng
+   `payments` + `invoices` 2 bảng, vì UI (`InvoiceRow`) chỉ cần 1 khái niệm hoá đơn.
+5. **Rooms trạng thái 4 giá trị** (`OCCUPIED/VACANT/DIRTY/MAINTENANCE`) thay vì mô hình đầy
+   đủ hơn ở `docs/DATA_MODEL.md` mục 3 (`VACANT_CLEAN → OCCUPIED → VACANT_DIRTY →
+   CLEANING...`) — chọn khớp đúng `RoomStatusKey` đã có sẵn trong `mock-data.ts` để nối UI
+   không phải viết lại `RoomGrid`/`RoomFilterPanels`. Mô hình đầy đủ để dành khi làm
+   Housekeeping module riêng.
+6. **`AddBookingModal` đơn giản hoá so với bản pixel-perfect ban đầu**: bỏ bước chọn riêng
+   "Loại phòng" trước "Phòng" (bản gốc/pixel-perfect có 2 select), chỉ còn 1 select "Phòng"
+   (chỉ hiện phòng `VACANT`) — vì tạo hợp đồng cần `room_id` cụ thể, chọn thẳng phòng đơn
+   giản hơn mà vẫn đủ nghiệp vụ.
+7. **Phòng "Đang ở" chưa có tên khách/giờ đã ở thật**: MVP API `GET /api/v1/rooms` chưa
+   JOIN booking đang hiệu lực vào phòng (cần thêm logic "booking nào đang CHECKED_IN cho
+   phòng này" — để dành phiên sau), nên `rooms/page.tsx` tạm gán nhãn chung "Khách đang lưu
+   trú" / "—" cho các trường này thay vì để trống hẳn hoặc hiện "undefined".
+
 ## 2026-07-27 (phiên 2) — Implement toàn bộ 23 màn hình còn lại (nhóm main nav + panel Cài đặt)
 
 ### Đã xong thêm (pixel-perfect, đối chiếu trực tiếp với `Hotel PMS.dc.html`)

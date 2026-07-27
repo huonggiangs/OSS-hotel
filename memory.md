@@ -2,7 +2,7 @@
 
 File này tồn tại để **phiên làm việc (Cowork session) sau có thể tiếp tục ngay** mà không phải đọc lại toàn bộ lịch sử chat. Luôn đọc file này đầu tiên khi bắt đầu một phiên mới trên dự án `D:\hotel\OSS`, và **cập nhật lại file này ở cuối mỗi phiên** (mục "Đã xong" / "Đang làm" / "Chưa làm" + ngày).
 
-Cập nhật lần cuối: **2026-07-27** (phiên 3: implement NỐT toàn bộ 23 màn hình còn lại của `property-web`)
+Cập nhật lần cuối: **2026-07-27 22:56** (phiên 4: Auth+API/DB thật cho `property-web`, 4 service backend `smart-hotel-os/services/` (Channel Manager/AI Pricing/IoT/CRM), webadmin thêm User/Role UI + Release Console + Purchase Orders — chạy 3 nhánh song song bằng subagent)
 
 ## 1. Tổng quan dự án
 
@@ -11,9 +11,9 @@ Ba hệ thống độc lập (không dùng chung database, giao tiếp qua API �
 | Repo | Vai trò | Trạng thái |
 |---|---|---|
 | `kiosk.md` (+ `kiosk-management/` tương lai) | Spec sản phẩm Kiosk Remote Management | Chỉ có spec gốc (không phải do phiên Cowork tạo), **chưa có code** |
-| `smart-hotel-os/` | Spec sản phẩm PMS SaaS (PMS + Channel Manager + AI Pricing + IoT + CRM) | Tài liệu đầy đủ; **`smart-hotel-os/property-web/` đã có code UI chạy được** (5 màn hình PMS pixel-perfect, xem mục 2) |
+| `smart-hotel-os/` | Spec sản phẩm PMS SaaS (PMS + Channel Manager + AI Pricing + IoT + CRM) | Tài liệu đầy đủ; **`smart-hotel-os/property-web/` có đủ 28 màn hình UI + Auth thật + API/DB thật cho luồng lõi**; **`smart-hotel-os/services/` có code thật 4 service (Channel Manager, AI Pricing, IoT, CRM)** — xem mục 2 |
 | `hq-console/` | Spec HQ Console (quản trị nội bộ công ty) | **Chỉ có tài liệu đầy đủ** |
-| `webadmin/` | Code chạy được của HQ Console (implementation của `hq-console/`) | **Có code MVP chạy được**, đã build/test thành công |
+| `webadmin/` | Code chạy được của HQ Console (implementation của `hq-console/`) | **Có code MVP chạy được** + User/Role UI + Release Console + Purchase Orders, đã build/test thành công |
 
 Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud là nguồn sự thật) và `CLAUDE.md` (yêu cầu gốc PMS+Automation) ở thư mục gốc — mọi thiết kế mới phải đối chiếu hai file này.
 
@@ -43,6 +43,28 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 - **[PHIÊN 3 — 2026-07-27] Đã implement NỐT toàn bộ 23 màn hình còn lại — property-web giờ có ĐỦ 28 màn hình pixel-perfect, không còn màn hình nào là stub.** Nhóm main nav (7): Chi phí (`/expenses`, 2 tab), Kế toán đêm (`/night-audit`), Marketing (`/marketing`), Khách hàng (`/customers`), Dịch vụ (`/services`), Tiện ích (`/utilities`), Module nâng cao (`/modules`). Nhóm panel Cài đặt (16): Danh sách cơ sở (`/branches`), Cơ bản (`/basic`, 3 tab), Tiện ích cơ sở (`/amenities`, 3 tab, copy đủ danh sách tiện ích/hoạt động/dịch vụ dài của bản gốc), Hình ảnh (`/images`), Email (`/email`, 2 tab), Bảo vệ (`/security`), Tiền tệ (`/currency`), Thuế (`/tax`), Thời gian (`/time`), Máy in & mẫu in (`/printer`), Kênh bán OTA (`/channel`), Đồng bộ hoá (`/sync`), Cơ sở dữ liệu (`/db`), Người dùng & phân quyền (`/users`), Mạng xã hội (`/social`), Quản lý tài sản (`/assets`). `src/lib/nav.ts` đã trỏ toàn bộ `mainNav`/`settingsTree` sang route thật (không còn trỏ `/stub/[key]`). Chi tiết đầy đủ từng màn hình + điểm tự quyết định mới: `property-web/PROGRESS.md` mục "2026-07-27 (phiên 2)".
 - `/stub/[key]` (component `StubPage`) vẫn còn trong code (không xoá, không gây lỗi) nhưng hiện KHÔNG còn nơi nào trong app trỏ tới nó nữa — an toàn nếu tái sử dụng cho màn hình mới sau này.
 
+### [PHIÊN 4 — 2026-07-27] Auth thật + API/DB thật cho `property-web`
+- **`property-web/apps/api/`** (mới, cổng 4100) — Express + TS + `pg` thuần, đúng convention `webadmin`. Migration `properties`, `property_users` (role OWNER/MANAGER/RECEPTIONIST/HOUSEKEEPING — **tách biệt hoàn toàn** bảng `users` của `webadmin`), `room_types`, `rooms` (có `power_on`), `customers`, `bookings`, `invoices`, `expenses`, `devices`, `audit_log`. Mọi bảng có `tenant_id`+`property_id`. Seed: 32 phòng + 4 tài khoản demo (`owner/manager/reception/housekeeping@anio-riverside.local`, mật khẩu chung `ChangeMe123!`).
+- API: `POST /auth/login`, `GET /auth/me`, CRUD room-types/rooms(+bật tắt điện)/customers/bookings/payments/expenses/devices, `dashboard/summary`+`dashboard/gantt`.
+- **Đã vá lỗ hổng "ai mở link cũng vào được"**: thêm trang `/login` (tự thiết kế mới, bản gốc không có màn đăng nhập), `RequireAuth` chặn toàn bộ route `(pms)`, JWT lưu localStorage.
+- Đã nối API thật cho: **Đăng nhập, Dashboard (KPI+donut), Rooms (list+bật/tắt điện thật), Booking (list+tạo hợp đồng thật)**. Các màn còn lại (Price, Payment, Expenses, 16 màn Cài đặt...) **vẫn dùng mock** — không lỗi build nhưng chưa phải dữ liệu thật, xem danh sách đầy đủ ở `property-web/PROGRESS.md`.
+- `docker-compose.yml` riêng cho `property-web` (web 3100, api 4100, postgres 5433 — chạy song song được với `webadmin` cổng 3000/4000/5432).
+- Build: `tsc --noEmit` sạch (api+web), `next build` thành công đủ route kể cả `/login`, migration test qua `@electric-sql/pglite`.
+
+### [PHIÊN 4 — 2026-07-27] `smart-hotel-os/services/` — 4 service backend THẬT (mới, chưa từng có code)
+- **`channel-manager-service/`** (4101): `ota_connections`, sync log, `booking_ingestion_log` (idempotency_key chống trùng), `overbooking_alerts`. `OtaAdapter` interface + `MockOtaAdapter` (chưa có credential Booking/Agoda/Airbnb thật). API sync tồn phòng/giá + webhook nhận booking, đã test thật: chống overbooking hoạt động đúng.
+- **`ai-pricing-service/`** (4102): thuật toán rule-based THẬT (`src/pricing/engine.ts` — occupancy/ngày trong tuần/lễ/lead-time, kẹp min-max), có `npm run demo:pricing` (10 assertion PASS). API `POST /pricing/suggest`.
+- **`iot-service/`** (4103): `device_commands` idempotent + ack + timeout (đúng RULES.md), `device_heartbeats` gộp theo cửa sổ giờ (không lưu vô hạn). **Mô phỏng qua HTTP** vì chưa có MQTT broker/phần cứng thật (`scripts/simulate-device.ts` chứng minh luồng end-to-end chạy được). Khi có Edge Node/MQTT thật chỉ cần thay tầng transport.
+- **`crm-service/`** (4104): phân khúc khách hàng rule-based (VIP/mới/quay lại), `NotificationProvider` + `ConsoleNotificationProvider` (chưa có SMS/Zalo/Email thật — kiến trúc cho phép cắm provider thật sau), tôn trọng opt-out + frequency cap.
+- Cả 4 service: build `tsc --noEmit` sạch + **đã test chạy thật qua `@electric-sql/pglite-socket`** (không chỉ build sạch), phát hiện và sửa 1 bug thật lúc test (parse cột DATE lệch múi giờ trong `pg`). `services/docker-compose.yml` gộp cả 4 + 1 Postgres (4 database riêng). Chi tiết đầy đủ + giới hạn từng service: `smart-hotel-os/services/PROGRESS.md`.
+- **Giới hạn rõ ràng còn lại**: chưa có credential OTA/SMS/Zalo thật (cần hợp đồng đối tác), chưa có MQTT broker/Edge Node thật, chưa có Auth API-to-API giữa các service, 4 service này dùng dữ liệu seed độc lập (chưa nối với PMS Core của `property-web`).
+
+### [PHIÊN 4 — 2026-07-27] `webadmin` — 3 phần bổ sung
+- **Quản lý user/role qua UI**: `GET/POST/PATCH /api/v1/users` + trang `/users` — chỉ `SUPER_ADMIN` gọi được (kể cả xem). Reset password trả mật khẩu tạm 1 lần (chưa có email service).
+- **Release Console**: migration `002_release_console.sql` — bảng `app_releases` (6 app: kiosk/property-web/property-windows/owner-mobile/housekeeping-mobile/super-admin-web), unique index đảm bảo 1 bản active/app+channel ở tầng DB. Trang `/releases` (phát hành + rollback). **Đây là MVP quản lý version, CHƯA phải deploy pipeline thật** (chưa gửi lệnh xuống thiết bị/server).
+- **Purchase Orders**: migration `003_purchase_orders.sql` — `purchase_orders`+`purchase_order_items`, workflow DRAFT→ORDERED→RECEIVED/CANCELLED, khi RECEIVED tự sinh `hardware_assets` cho dòng có gắn asset_type. Trang `/purchase-orders` (danh sách + chi tiết).
+- Build: `tsc --noEmit` sạch (api+web), `next build` đủ 14 route, migration 001→003 test nối tiếp OK. Chi tiết: `webadmin/PROGRESS.md` (mới tạo).
+
 ### Hạ tầng version control
 - **Git repo cục bộ đã khởi tạo tại `D:\hotel\OSS`** (2026-07-27), branch `main`, có `.gitignore` (loại trừ node_modules/.next/dist/.env), đã có 1 commit ban đầu (107 file, "Initial commit"). **CHƯA kết nối remote GitHub** — bạn sẽ tự tạo repo + push, xem hướng dẫn ở mục 3.
 
@@ -64,13 +86,17 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 ## 4. Chưa làm (rõ ràng, chưa bắt đầu)
 
 - **[ĐÃ XONG 2026-07-27, phiên 3]** ~~`smart-hotel-os/property-web/` — các màn hình UI chưa implement~~ — toàn bộ 28 màn hình (`Hotel PMS.dc.html`) đã pixel-perfect, không còn `is...` nào trỏ `/stub/[key]`.
-- API/DB thật cho `property-web` (hiện 100% mock data trong `lib/mock-data.ts`) — cần khi tích hợp PMS Core thật.
-- Code thật cho phần backend `smart-hotel-os` (PMS Core, Channel Manager, AI Pricing, IoT, CRM) — mới chỉ có tài liệu, `property-web` mới chỉ là UI.
+- **[ĐÃ XONG MỘT PHẦN 2026-07-27, phiên 4]** ~~API/DB thật cho `property-web`~~ — đã có API/DB thật, nhưng **chỉ 4/28 màn hình đã nối** (Đăng nhập, Dashboard, Rooms, Booking). **Còn lại 24 màn hình vẫn dùng `mock-data.ts`** — việc tiếp theo rõ ràng: nối nốt Price/Payment/Expenses/Night Audit/Marketing/Customers/Services/Utilities/Modules + toàn bộ 16 màn Cài đặt vào API thật (tự thêm bảng/endpoint khi cần, theo đúng convention đã có trong `property-web/apps/api/`).
+- **[ĐÃ XONG MỘT PHẦN 2026-07-27, phiên 4]** ~~Code thật cho phần backend `smart-hotel-os`~~ — đã có code thật cho Channel Manager/AI Pricing/IoT/CRM (`smart-hotel-os/services/`) NHƯNG: (a) PMS Core hiện chỉ tồn tại dưới dạng API trong `property-web/apps/api/` (chưa tách thành service riêng theo đúng `services/pms-service/` như kiến trúc gốc dự kiến — quyết định thực dụng, ghi rõ trong `property-web/PROGRESS.md`), (b) 4 service mới chưa nối với nhau/với PMS Core (dùng seed riêng), (c) chưa có credential OTA/SMS/Zalo thật, chưa có MQTT broker thật — xem `smart-hotel-os/services/PROGRESS.md`.
 - Code thật cho `kiosk-management` — mới chỉ có `kiosk.md` (spec gốc, không phải do Cowork tạo).
-- `apps/property-windows` (PMS Windows Desktop App) — mới có tài liệu (`smart-hotel-os/docs/MODULE_PMS_WINDOWS_CLIENT.md`), **chưa có code**; đang chờ nội dung design ở mục 3.1 trước khi bắt đầu.
-- Admin API thật phía `smart-hotel-os`/`kiosk-management` để `webadmin` đồng bộ (hiện `webadmin` chỉ có dữ liệu riêng, chưa gọi sang hai hệ thống kia).
-- `webadmin`: quản lý user/role qua UI, Release Console tổng hợp, module mua hàng/tồn kho chi tiết (`purchase_orders`), MFA/VPN cho production.
+- `apps/property-windows` (PMS Windows Desktop App) — mới có tài liệu (`smart-hotel-os/docs/MODULE_PMS_WINDOWS_CLIENT.md`), **chưa có code**.
+- Nối 4 service (Channel Manager/AI Pricing/IoT/CRM) với PMS Core thật của `property-web` (hiện tách rời, seed riêng).
+- **[ĐÃ XONG 2026-07-27, phiên 4]** ~~`webadmin`: quản lý user/role qua UI, Release Console tổng hợp, module mua hàng/tồn kho chi tiết (`purchase_orders`)~~ — xem mục 2. Còn lại: MFA/VPN cho production.
 - CI/CD, blue-green/canary deployment (RULES.md mục 14) — chưa làm cho bất kỳ repo nào.
+- **Auth API-to-API giữa các service** (webadmin ↔ property-web ↔ 4 service mới) — hiện mỗi hệ thống có JWT/user riêng, chưa có cơ chế service-to-service auth (API key/OAuth2 client credentials như `PARTNER_API_STANDARDS.md` mô tả cho đối tác ngoài).
+
+### Vụ "PowerShell không chạy được" (2026-07-27, phiên 4)
+Người dùng báo chạy lệnh PowerShell không được, cả 3 cổng 3000/4000/3100 đều "connection refused" (đúng — chưa có server nào đang chạy). Đã thử dùng computer-use tạo file `D:\hotel\OSS\_start-property-web.bat` để tự động chạy giúp nhưng **double-click/"Open" không mở được Command Prompt** dù đã xin quyền — nghi có phần mềm bảo mật (Windows Defender/EDR) trên máy người dùng chặn chạy script, hoặc có hộp thoại SmartScreen hệ thống ẩn mà computer-use không thấy được (elevated dialog). Đã hướng dẫn người dùng tự gõ lệnh thủ công (gồm `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` để sửa lỗi phổ biến nhất). **Chưa xác nhận được người dùng đã chạy thành công** — phiên sau nếu người dùng báo lỗi cụ thể, ưu tiên đọc đúng nội dung lỗi trước khi đoán.
 
 ## 5. Lưu ý kỹ thuật quan trọng cho phiên sau
 
@@ -80,3 +106,6 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 - Build/test code nặng (npm install nhiều gói) nên làm ở `/tmp` (sandbox, nhanh, xoá được tự do) rồi mới copy source (không copy `node_modules`) sang `D:\hotel\OSS\...` — mount OSS chậm hơn và có giới hạn xoá.
 - Next.js đã bump lên `16.2.12` (từ `14.2.5`) vì lỗi bảo mật đã biết ở 14.2.5 — nếu nâng cấp thêm, nhớ chạy lại `npm audit`.
 - Người dùng dùng Windows, **không phải** macOS/Linux — mọi hướng dẫn dòng lệnh trong README phải có bản PowerShell/CMD riêng, không giả định `bash`/`&&` hoạt động được.
+- **Bảng cổng đang dùng (để tránh xung đột khi chạy song song nhiều service)**: `webadmin` web=3000/api=4000/postgres=5432; `property-web` web=3100/api=4100/postgres=5433; `services/` channel-manager=4101, ai-pricing=4102, iot=4103, crm=4104 (1 postgres chung, 4 database riêng — cổng cụ thể xem `smart-hotel-os/services/docker-compose.yml`).
+- File `D:\hotel\OSS\_start-property-web.bat` (tạo ở phiên 4, KHÔNG commit vào git) là script thử tự động chạy `property-web` qua computer-use nhưng KHÔNG chạy được trên máy người dùng (double-click không mở được cửa sổ) — có thể xoá nếu người dùng không cần, không phải một phần của sản phẩm.
+- Từ phiên 4: khi cần làm nhiều nhánh việc lớn, độc lập (không đụng chung file) cùng lúc — dùng nhiều subagent chạy SONG SONG (1 message nhiều Agent call) để tiết kiệm thời gian, nhưng dặn từng agent KHÔNG được tự sửa `memory.md` và KHÔNG tự `git commit` (dễ xung đột khi chạy song song) — người điều phối (phiên chính) gộp lại và commit tập trung 1 lần ở cuối, sau khi kiểm tra `git status` không có file đè lên nhau.

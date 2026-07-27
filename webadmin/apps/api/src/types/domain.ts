@@ -22,6 +22,15 @@ export type HardwareAssetStatus = "IN_STOCK" | "DEPLOYED" | "UNDER_WARRANTY_CLAI
 export type WarrantyClaimStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "REJECTED";
 export type ProductScope = "KIOSK" | "SMART_HOTEL_OS" | "BOTH";
 export type CommissionStatus = "CALCULATED" | "PENDING_APPROVAL" | "APPROVED" | "PAID" | "REJECTED";
+export type AppKey =
+  | "KIOSK_APP"
+  | "PROPERTY_WEB"
+  | "PROPERTY_WINDOWS"
+  | "OWNER_MOBILE"
+  | "HOUSEKEEPING_MOBILE"
+  | "SUPER_ADMIN_WEB";
+export type ReleaseChannel = "STABLE" | "BETA";
+export type PurchaseOrderStatus = "DRAFT" | "ORDERED" | "RECEIVED" | "CANCELLED";
 
 export interface User {
   id: string;
@@ -140,6 +149,43 @@ export interface CommissionRecord {
   approved_by_id: string | null;
   approved_at: Date | null;
   paid_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface AppRelease {
+  id: string;
+  app_key: AppKey;
+  version: string;
+  release_notes: string | null;
+  channel: ReleaseChannel;
+  published_at: Date | null;
+  published_by: string | null;
+  artifact_url: string | null;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  supplier_id: string;
+  status: PurchaseOrderStatus;
+  expected_at: Date | null;
+  created_by: string | null;
+  notes: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  purchase_order_id: string;
+  product_name: string;
+  asset_type: HardwareAssetType | null;
+  quantity: number;
+  unit_price: string; // NUMERIC trả về dạng string từ pg theo mặc định
+  received_quantity: number;
   created_at: Date;
   updated_at: Date;
 }

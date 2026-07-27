@@ -1,0 +1,32 @@
+{
+  "name": "@smart-hotel-os/iot-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "IoT Service — mô phỏng luồng lệnh idempotent + ack + timeout cho thiết bị điện/điều hoà phòng qua HTTP (thay cho MQTT broker thật khi chưa có phần cứng). SQL thuần qua node-postgres, không dùng ORM code-gen.",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "tsx db/migrate.ts",
+    "seed": "tsx db/seed.ts",
+    "simulate:device": "tsx scripts/simulate-device.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "pg": "^8.12.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.10",
+    "@types/pg": "^8.11.6",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}

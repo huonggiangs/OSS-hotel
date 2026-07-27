@@ -12,6 +12,9 @@ const NAV = [
   { href: "/customers", label: "Khách hàng" },
   { href: "/hardware-assets", label: "Thiết bị phần cứng" },
   { href: "/commissions", label: "Hoa hồng" },
+  { href: "/purchase-orders", label: "Mua hàng / tồn kho" },
+  { href: "/releases", label: "Release Console" },
+  { href: "/users", label: "Người dùng & phân quyền" },
   { href: "/audit-logs", label: "Audit log" },
 ];
 

@@ -4,7 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { mainNav } from "@/lib/nav";
-import { currentUser } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth";
+
+// Tính chữ viết tắt (initials) từ họ tên đầy đủ — lấy chữ cái đầu của 2 từ cuối
+// (đúng cách hiển thị avatar tròn kiểu "LT" cho "Lê Thảo" trong bản mock cũ).
+function initialsOf(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  const last2 = parts.slice(-2);
+  return last2.map((p) => p[0]?.toUpperCase() ?? "").join("");
+}
 
 // Sidebar chính — pixel-perfect theo khối sidebar 208px/64px (thu gọn) trong bản gốc:
 // logo vuông 36px bo góc 10px nền #284AB1, danh sách navMain, nút "Cài đặt" ở cuối.
@@ -20,6 +28,7 @@ export function Sidebar({
   onToggleSettings: () => void;
 }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const width = collapsed ? 64 : 208;
 
   return (
@@ -88,14 +97,16 @@ export function Sidebar({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2.5 px-2.5 py-2">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-pms-primary-soft text-[12px] font-bold text-pms-primary">
-            {currentUser.initials}
+        {user && (
+          <div className="flex items-center gap-2.5 px-2.5 py-2">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-pms-primary-soft text-[12px] font-bold text-pms-primary">
+              {initialsOf(user.full_name)}
+            </div>
+            {!collapsed && (
+              <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] font-semibold">{user.full_name}</div>
+            )}
           </div>
-          {!collapsed && (
-            <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] font-semibold">{currentUser.name}</div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
