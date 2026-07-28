@@ -84,6 +84,17 @@ export const invoicesRepo = {
     return rows[0] ?? null;
   },
 
+  // Hoá đơn phát sinh trong ngày hôm nay — dùng cho màn "Kế toán đêm" (đối
+  // soát cuối ngày). Lọc theo created_at (thời điểm phát hành), khác
+  // sumPaidToday lọc theo paid_at (thời điểm thu tiền thật).
+  async listToday(propertyId: string): Promise<Invoice[]> {
+    const { rows } = await pool.query<Invoice>(
+      `SELECT * FROM invoices WHERE property_id = $1 AND created_at::date = CURRENT_DATE ORDER BY created_at DESC`,
+      [propertyId]
+    );
+    return rows;
+  },
+
   async sumPaidToday(propertyId: string): Promise<number> {
     const { rows } = await pool.query<{ sum: string }>(
       `SELECT COALESCE(SUM(amount), 0)::text AS sum FROM invoices

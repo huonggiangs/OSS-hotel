@@ -1,34 +1,64 @@
 "use client";
 
-import { useState } from "react";
-import { securityItemsSeed, accountActivity } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { useSettings } from "@/lib/useSettings";
+import { accountActivity } from "@/lib/mock-data";
 
-// Trang "Bảo vệ" (mở từ panel Cài đặt) — pixel-perfect theo khối `isSecurity` (dòng
-// 1733-1755 bản gốc): chính sách bảo mật (công tắc bật/tắt thật) + nhật ký hoạt động.
+interface SecurityItem {
+  key: string;
+  label: string;
+  desc: string;
+  on: boolean;
+}
+interface SecurityData {
+  items: SecurityItem[];
+}
+const FALLBACK: SecurityData = { items: [] };
+
+// Trang "Bảo vệ" (mở từ panel Cài đặt) — ĐÃ NỐI API THẬT: property_settings
+// nhóm "security". Công tắc bấm là LƯU NGAY (PUT), không cần nút "Cập nhật"
+// riêng — đúng hành vi công tắc cấu hình bật/tắt tức thời. Nhật ký hoạt động
+// tài khoản vẫn dùng mock (chưa có bảng audit trình bày riêng cho UI này —
+// bảng audit_log thật đã có nhưng có shape khác, để dành phiên sau nối đúng).
 export default function SecurityPage() {
-  const [items, setItems] = useState(securityItemsSeed);
+  const { data, loading, saving, save } = useSettings<SecurityData>("security", FALLBACK);
+  const [items, setItems] = useState<SecurityItem[]>([]);
+
+  useEffect(() => {
+    if (!loading) setItems(data.items);
+  }, [loading, data]);
+
+  function toggle(key: string) {
+    const next = items.map((it) => (it.key === key ? { ...it, on: !it.on } : it));
+    setItems(next);
+    save({ items: next });
+  }
 
   return (
     <div>
       <h1 className="mb-5 text-[22px] font-bold">Bảo mật</h1>
 
       <div className="mb-4 rounded-xl bg-white p-6 shadow-card">
-        <h3 className="mb-3.5 text-[15px] font-semibold">Chính sách bảo mật</h3>
-        {items.map((s) => (
-          <div key={s.key} className="flex items-center justify-between border-b border-pms-divider py-3">
-            <div>
-              <div className="text-[13px] font-semibold">{s.label}</div>
-              <div className="text-[12px] text-pms-muted">{s.desc}</div>
+        <h3 className="mb-3.5 text-[15px] font-semibold">
+          Chính sách bảo mật {saving && <span className="text-[11px] font-normal text-pms-muted">(đang lưu...)</span>}
+        </h3>
+        {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
+        {!loading &&
+          items.map((s) => (
+            <div key={s.key} className="flex items-center justify-between border-b border-pms-divider py-3">
+              <div>
+                <div className="text-[13px] font-semibold">{s.label}</div>
+                <div className="text-[12px] text-pms-muted">{s.desc}</div>
+              </div>
+              <div
+                className="relative h-6 w-10 flex-shrink-0 cursor-pointer rounded-full"
+                style={{ background: s.on ? "#284AB1" : "#E6E8EC" }}
+                onClick={() => toggle(s.key)}
+              >
+                <div className="absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white" style={{ left: s.on ? "auto" : 3, right: s.on ? 3 : "auto" }} />
+              </div>
             </div>
-            <div
-              className="relative h-6 w-10 flex-shrink-0 cursor-pointer rounded-full"
-              style={{ background: s.on ? "#284AB1" : "#E6E8EC" }}
-              onClick={() => setItems((prev) => prev.map((it) => (it.key === s.key ? { ...it, on: !it.on } : it)))}
-            >
-              <div className="absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white" style={{ left: s.on ? "auto" : 3, right: s.on ? 3 : "auto" }} />
-            </div>
-          </div>
-        ))}
+          ))}
       </div>
 
       <div className="rounded-xl bg-white p-6 shadow-card">

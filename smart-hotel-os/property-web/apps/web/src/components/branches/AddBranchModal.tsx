@@ -1,10 +1,27 @@
 "use client";
 
-import { Modal, ButtonGhost, ButtonPrimary, FieldBox } from "@/components/ui/Modal";
+import { useState } from "react";
+import { Modal, ButtonGhost, ButtonPrimary } from "@/components/ui/Modal";
 
-// Modal "Thêm cơ sở mới" — pixel-perfect theo khối `showAddBranch` (dòng 1529-1550
-// bản gốc). Toàn bộ trường là placeholder tĩnh đúng bản gốc (không bind state thật).
-export function AddBranchModal({ onClose }: { onClose: () => void }) {
+// Modal "Thêm cơ sở mới" — ĐÃ NỐI API THẬT tối thiểu (POST /api/v1/branches,
+// chỉ OWNER được gọi — xem apps/api/src/routes/branches.routes.ts). 2 trường
+// còn thiếu bảng nguồn phù hợp (Tỉnh/Thành, Phường/Xã — địa giới hành chính,
+// Tên tòa/Số tầng — chưa có cột riêng) giữ placeholder tĩnh đúng bản gốc.
+export function AddBranchModal({ onClose, onCreate }: { onClose: () => void; onCreate: (input: { name: string; address: string }) => void }) {
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      onCreate({ name, address });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Modal
       title="Thêm cơ sở mới"
@@ -13,14 +30,19 @@ export function AddBranchModal({ onClose }: { onClose: () => void }) {
       footer={
         <>
           <ButtonGhost onClick={onClose}>Hủy</ButtonGhost>
-          <ButtonPrimary onClick={onClose}>Thêm cơ sở</ButtonPrimary>
+          <ButtonPrimary onClick={handleSubmit}>{saving ? "Đang lưu..." : "Thêm cơ sở"}</ButtonPrimary>
         </>
       }
     >
       <div className="grid grid-cols-2 gap-4 px-6 py-5">
         <div>
           <label className="mb-1.5 block text-[12px]">Tên khu vực</label>
-          <FieldBox placeholder>Input</FieldBox>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
+            placeholder="Tên cơ sở/khu vực"
+          />
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Tỉnh/ Thành Phố</label>
@@ -36,15 +58,20 @@ export function AddBranchModal({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Địa chỉ chi tiết</label>
-          <FieldBox placeholder>Input</FieldBox>
+          <input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
+            placeholder="Địa chỉ chi tiết"
+          />
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Tên tòa</label>
-          <FieldBox placeholder>Input</FieldBox>
+          <div className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted-2">Input</div>
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Số tầng</label>
-          <FieldBox placeholder>Input</FieldBox>
+          <div className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted-2">Input</div>
         </div>
       </div>
     </Modal>

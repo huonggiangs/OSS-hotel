@@ -16,7 +16,8 @@ import { releasesRouter } from "./routes/releases.routes";
 import { purchaseOrdersRouter } from "./routes/purchase-orders.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
-import { pool } from "./lib/db";
+import { pool, DB_MODE, embeddedDb } from "./lib/db";
+import { bootstrapEmbeddedDb } from "./lib/embeddedBootstrap";
 
 const app = express();
 
@@ -29,7 +30,7 @@ app.use(
 );
 app.use(express.json());
 
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/health", (_req, res) => res.json({ status: "ok", db_mode: DB_MODE }));
 
 app.use("/api/v1/auth", authRouter);
 app.get("/api/v1/me", requireAuth, (req, res) => res.json(req.user));
@@ -50,9 +51,25 @@ app.use((_req, res) => {
 app.use(errorHandler);
 
 const PORT = Number(process.env.PORT) || 4000;
-app.listen(PORT, () => {
+
+async function start() {
+  // Chế độ embedded (PGlite, không cần Docker/PostgreSQL): tự chạy migration +
+  // seed lần đầu TRƯỚC khi mở cổng lắng nghe, để `npm run dev` là có ngay dữ
+  // liệu để đăng nhập, không phải chạy thêm lệnh migrate/seed thủ công nào.
+  if (DB_MODE === "embedded" && embeddedDb) {
+    await bootstrapEmbeddedDb(embeddedDb);
+  }
+
+  app.listen(PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`HQ Console API đang chạy tại http://localhost:${PORT} (DB_MODE=${DB_MODE})`);
+  });
+}
+
+start().catch((err) => {
   // eslint-disable-next-line no-console
-  console.log(`HQ Console API đang chạy tại http://localhost:${PORT}`);
+  console.error("Không khởi động được API:", err);
+  process.exit(1);
 });
 
 process.on("SIGTERM", async () => {

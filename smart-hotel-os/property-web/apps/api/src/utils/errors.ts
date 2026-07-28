@@ -12,7 +12,7 @@ export class ApiError extends Error {
 }
 
 export const Errors = {
-  invalidCredentials: () => new ApiError(401, "INVALID_CREDENTIALS", "Email hoặc mật khẩu không đúng."),
+  invalidCredentials: () => new ApiError(401, "INVALID_CREDENTIALS", "Tên đăng nhập hoặc mật khẩu không đúng."),
   unauthorized: () => new ApiError(401, "UNAUTHORIZED", "Thiếu hoặc token không hợp lệ."),
   forbidden: () => new ApiError(403, "PERMISSION_DENIED", "Tài khoản không có quyền thực hiện thao tác này."),
   notFound: (entity: string) => new ApiError(404, "NOT_FOUND", `Không tìm thấy ${entity}.`),

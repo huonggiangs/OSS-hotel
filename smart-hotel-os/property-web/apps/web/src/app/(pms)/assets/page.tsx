@@ -1,16 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { assets } from "@/lib/mock-data";
+import { useSettings } from "@/lib/useSettings";
 import { AddAssetModal } from "@/components/assets/AddAssetModal";
+
+interface AssetItem {
+  stt: number;
+  name: string;
+  code: string;
+  room: string;
+  value: string;
+  qty: number;
+  unit: string;
+  depMonths: number;
+  depValue: string;
+  status: string;
+  fg: string;
+}
+interface AssetsData {
+  items: AssetItem[];
+}
+const FALLBACK: AssetsData = { items: [] };
 
 const TH = "border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted";
 const TD = "border-b border-pms-divider px-2 py-3";
 
-// Trang "Quản lý tài sản" (mở từ panel Cài đặt) — pixel-perfect theo khối `isAssets`
-// (dòng 1383-1479 bản gốc): bảng tài sản theo phòng + modal Thêm tài sản mới.
+// Trang "Quản lý tài sản" (mở từ panel Cài đặt) — ĐÃ NỐI API THẬT:
+// property_settings nhóm "assets". Modal Thêm tài sản giữ đúng bản gốc (form
+// tĩnh, chỉ 2 nút −/+ khấu hao có state thật, không gọi API — quyết định cũ ở
+// phiên 2 vẫn giữ nguyên).
 export default function AssetsPage() {
   const [showAdd, setShowAdd] = useState(false);
+  const { data, loading, error } = useSettings<AssetsData>("assets", FALLBACK);
 
   return (
     <div>
@@ -35,47 +56,51 @@ export default function AssetsPage() {
             </div>
           </div>
         </div>
-        <table className="w-full min-w-[1200px] border-collapse whitespace-nowrap text-[13px]">
-          <thead>
-            <tr>
-              <th className={`${TH} w-7`}>
-                <input type="checkbox" />
-              </th>
-              {["STT", "Tên tài sản", "Mã TS", "Phòng lắp đặt", "Giá trị", "S.lượng", "ĐVT", "Khấu hao (tháng)", "Giá trị KH", "Hình ảnh", "Trạng thái", ""].map(
-                (h) => (
-                  <th key={h} className={TH}>
-                    {h}
-                  </th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {assets.map((a) => (
-              <tr key={a.stt}>
-                <td className={TD}>
+        {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
+        {error && <div className="text-[13px] text-red-500">{error}</div>}
+        {!loading && (
+          <table className="w-full min-w-[1200px] border-collapse whitespace-nowrap text-[13px]">
+            <thead>
+              <tr>
+                <th className={`${TH} w-7`}>
                   <input type="checkbox" />
-                </td>
-                <td className={`${TD} text-pms-muted`}>{a.stt}</td>
-                <td className={`${TD} font-semibold`}>{a.name}</td>
-                <td className={`${TD} text-pms-muted`}>{a.code}</td>
-                <td className={TD}>{a.room}</td>
-                <td className={TD}>{a.value}</td>
-                <td className={TD}>{a.qty}</td>
-                <td className={TD}>{a.unit}</td>
-                <td className={TD}>{a.depMonths}</td>
-                <td className={TD}>{a.depValue}</td>
-                <td className={TD}>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-pms-primary text-[14px] text-white">🖼</div>
-                </td>
-                <td className={TD} style={{ fontWeight: 600, color: a.fg }}>
-                  {a.status}
-                </td>
-                <td className={`${TD} cursor-pointer text-center text-pms-muted`}>⋯</td>
+                </th>
+                {["STT", "Tên tài sản", "Mã TS", "Phòng lắp đặt", "Giá trị", "S.lượng", "ĐVT", "Khấu hao (tháng)", "Giá trị KH", "Hình ảnh", "Trạng thái", ""].map(
+                  (h) => (
+                    <th key={h} className={TH}>
+                      {h}
+                    </th>
+                  ),
+                )}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.items.map((a) => (
+                <tr key={a.stt}>
+                  <td className={TD}>
+                    <input type="checkbox" />
+                  </td>
+                  <td className={`${TD} text-pms-muted`}>{a.stt}</td>
+                  <td className={`${TD} font-semibold`}>{a.name}</td>
+                  <td className={`${TD} text-pms-muted`}>{a.code}</td>
+                  <td className={TD}>{a.room}</td>
+                  <td className={TD}>{a.value}</td>
+                  <td className={TD}>{a.qty}</td>
+                  <td className={TD}>{a.unit}</td>
+                  <td className={TD}>{a.depMonths}</td>
+                  <td className={TD}>{a.depValue}</td>
+                  <td className={TD}>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-pms-primary text-[14px] text-white">🖼</div>
+                  </td>
+                  <td className={TD} style={{ fontWeight: 600, color: a.fg }}>
+                    {a.status}
+                  </td>
+                  <td className={`${TD} cursor-pointer text-center text-pms-muted`}>⋯</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
         <div className="mt-5 flex justify-center">
           <div className="cursor-pointer rounded-[10px] bg-pms-primary px-10 py-[11px] text-[13.5px] font-semibold text-white">Update</div>
         </div>

@@ -1,5 +1,295 @@
 # Progress — property-web
 
+## 2026-07-28 (phiên 6) — Nối NỐT 24/24 màn hình còn lại vào API thật
+
+Nhiệm vụ: trước phiên này chỉ 4/28 màn hình (Đăng nhập, Dashboard, Rooms,
+Booking) nối API thật, 24 màn còn lại đọc `mock-data.ts` tĩnh. Phiên này nối
+**TOÀN BỘ 24/24 màn hình còn lại** vào API thật — property-web giờ **KHÔNG
+còn màn hình nào dùng mock-data cho dữ liệu nghiệp vụ** (chỉ còn vài mảng
+tĩnh không thể/không cần nối API — liệt kê ở mục "Còn mock" cuối phần này).
+
+**Lưu ý quan trọng về lịch sử phiên này**: khi bắt đầu, phần lớn nhóm vận
+hành (9 màn: price/payment/expenses/night-audit/customers/services/marketing/
+utilities/modules) và 5/16 màn Cài đặt (branches/basic/amenities/images/
+email) đã được một lượt làm việc trước đó (cùng phiên, ngữ cảnh bị ngắt giữa
+chừng — chưa kịp cập nhật PROGRESS.md/memory.md) nối xong, kèm sẵn hạ tầng
+`database/migrations/003_property_settings.sql` + `apps/api/src/lib/
+defaultSettings.ts` + `settingsBootstrap.ts` + `apps/api/src/repositories/
+settings.repo.ts` + `apps/api/src/routes/settings.routes.ts` +
+`apps/web/src/lib/useSettings.ts` + route `branches`/`users`/`audit-log`.
+Phiên này: xác minh lại toàn bộ phần đã có, rồi nối nốt **11 màn Cài đặt còn
+lại** (security, currency, tax, time, printer, channel, sync, db, social,
+assets, users) theo đúng hạ tầng có sẵn, dọn `mock-data.ts`, và làm đầy đủ
+bước kiểm chứng bắt buộc (tsc/build/curl) cho toàn bộ 24 màn.
+
+### Quyết định kiến trúc (đã có sẵn từ trước, xác nhận lại + áp dụng tiếp)
+
+1. **1 bảng `property_settings` (key-value theo nhóm) thay vì ~18 bảng
+   riêng** cho các màn hình dạng "form cấu hình" (basic/amenities/images/
+   email/security/currency/tax/time/printer/channel/sync/db/social/modules/
+   utilities/assets/services/marketing/daily_entries/payment/roles — 21 nhóm).
+   Schema: `database/migrations/003_property_settings.sql` — cột `property_id`
+   + `tenant_id` + `group_key` + `data JSONB`, unique `(property_id,
+   group_key)`. Lý do: các màn này đều có hình dạng "đọc 1 blob cấu hình →
+   hiển thị → sửa → lưu lại nguyên blob", không cần join quan hệ; gọn hơn
+   nhiều so với 18+ bảng cho MVP; dễ mở rộng nhóm mới không cần migration.
+   Giá trị mặc định cho từng nhóm nằm ở `apps/api/src/lib/defaultSettings.ts`
+   (copy đúng số liệu mẫu từ `mock-data.ts` cũ để giao diện không đổi), được
+   seed lúc API khởi động qua `apps/api/src/lib/settingsBootstrap.ts` (chạy
+   SAU bootstrap embedded/seed property demo — vì cần `property_id` đã tồn
+   tại — idempotent, chỉ insert nhóm còn thiếu).
+2. **`GET/PUT /api/v1/settings/:group`** (`apps/api/src/routes/
+   settings.routes.ts`) — GET cho mọi role đã đăng nhập đọc được (kể cả
+   RECEPTIONIST/HOUSEKEEPING, đã test — vì nhiều form chỉ hiển thị thông tin
+   tham khảo không nhạy cảm); PUT chỉ OWNER/MANAGER (đối chiếu
+   `docs/PERMISSION_MATRIX.md` — RECEPTIONIST/HOUSEKEEPING không được sửa
+   cấu hình hệ thống). `VALID_GROUPS` chặn client ghi vào group_key tuỳ ý.
+3. **`/branches`** dùng lại bảng `properties` có sẵn (không bảng mới) —
+   `apps/api/src/repositories/properties.repo.ts` + `routes/branches.routes.ts`.
+   Xem toàn tenant (chuỗi khách sạn), chỉ OWNER được thêm cơ sở mới.
+4. **`/users`** dùng lại bảng `property_users` có sẵn (không bảng mới) —
+   bổ sung `propertyUsersRepo.listByProperty/countByRole/create/
+   updateRoleStatus` + `routes/users.routes.ts` (`GET/POST /users`,
+   `PATCH /users/:id` đổi role/status). Cả GET lẫn PUT chỉ OWNER/MANAGER
+   (khác các nhóm settings khác — danh sách tài khoản là dữ liệu nhạy cảm
+   nên hạn chế đọc luôn, không chỉ hạn chế ghi).
+   **UI `/users` được MỞ RỘNG so với bản gốc** (bản gốc pixel-perfect chỉ có
+   bảng "Danh sách vai trò" tĩnh, không có bảng tài khoản thật): giữ nguyên
+   bảng vai trò (đọc từ `property_settings` nhóm "roles" — mô tả phạm vi
+   quyền — ghép với số người dùng THẬT tính từ `property_users`), và **thêm
+   mới** khối "Tài khoản người dùng" bên dưới (không có trong bản gốc) để
+   thoả đúng yêu cầu nghiệp vụ "xem danh sách, thêm user, đổi vai trò,
+   khoá/mở" — có modal thêm tài khoản thật (trả mật khẩu tạm 1 lần, giống
+   cách `webadmin` xử lý), dropdown đổi vai trò, nút khoá/mở tại chỗ. Đã
+   test: khoá tài khoản → đăng nhập tài khoản đó trả 401 ngay (route
+   `/auth/login` vốn đã kiểm tra `status !== 'ACTIVE'` sẵn từ trước, không
+   cần sửa gì thêm).
+5. **`/channel` và `/sync`** (kênh bán OTA/đồng bộ) lưu cấu hình cấp cơ sở
+   trong `property_settings` (nhóm "channel"/"sync") của property-web —
+   **KHÔNG gọi chéo trực tiếp** sang `smart-hotel-os/services/
+   channel-manager-service` (đúng ranh giới kiến trúc `ARCHITECTURE_OVERVIEW.md`
+   — 2 hệ thống không dùng chung DB, chỉ giao tiếp qua API nếu cần, và việc
+   đó chưa nằm trong phạm vi phiên này). Đồng bộ THẬT với service kia (OTA
+   thật, credential thật) là bước sau — hiện tại dữ liệu ở đây thuần là cấu
+   hình/khai báo hiển thị trên UI, khớp đúng dữ liệu mẫu cũ.
+6. **Công tắc bật/tắt (`security`, `social`, `sync`) lưu NGAY khi bấm** (gọi
+   `save()` trực tiếp trong `onClick`, không cần nút "Cập nhật" riêng) — hợp
+   lý hơn cho hành vi bật/tắt tức thời. Khác quyết định cũ ở phiên 2 (giữ 3
+   công tắc trang `/sync` tĩnh vì bản gốc không có `onClick`) — nay đã có
+   bảng cấu hình thật để đọc/ghi nên bật `onClick` thật cho cả 3, đổi quyết
+   định cũ (ghi rõ ở đây để không mâu thuẫn với ghi chú phiên 2).
+7. **`/time`**: nút "Cập nhật" (bản gốc tĩnh, không có `onClick`) nay gọi
+   PUT thật, lưu lại danh sách ngày lễ (thêm dòng bằng nút "+") +
+   `checkinTime`/`checkoutTime`. Các trường còn lại (định dạng giờ, múi giờ,
+   làm tròn giờ, cấu hình giờ qua đêm) vẫn tĩnh — không có cột dữ liệu tương
+   ứng trong nhóm "time", để dành mở rộng sau nếu cần.
+8. **`/currency`, `/tax`, `/printer`, `/channel`, `/db`, `/assets`**: chỉ có
+   bảng hiển thị (đọc thật từ API), nút "+ Thêm..." giữ tĩnh đúng hành vi
+   bản gốc (modal placeholder có sẵn từ phiên 2, không có form thật) — vì
+   bản gốc không có trường nào sửa được tại chỗ trong các bảng này, "lưu"
+   không áp dụng ở đây (đã đọc thật là đủ thoả yêu cầu tối thiểu).
+
+### Đã xoá khỏi `mock-data.ts` (dữ liệu mẫu tĩnh — không xoá các type/interface còn dùng)
+
+`channels`/`ChannelRow`, `roles`/`RoleRow`, `assets`/`AssetRow`,
+`branches`/`BranchRow`, `floorInputs`, `amenityGroups`+`zip3`+`activitiesList`+
+`amenityServicesList`, `photoGalleryCount`+`roomImageTypes`, `emailFields`+
+`autoEmails`, `securityItemsSeed`, `currencies`, `taxes`, `holidaysSeed`+
+`prepaidServices`, `otaChannels`, `dbInfo`, `socialLinksSeed`/`SocialLink`,
+`printTemplates`, `campaignsSeed`, `customersSeed`, `ownServicesSeed`,
+`partnerServicesList`, `utilityLinksSeed`, `advancedModulesSeed`. Giữ lại các
+type/interface còn được import làm kiểu dữ liệu ở nơi khác (`CampaignRow`,
+`CustomerRow`, `OwnServiceRow`, `PartnerServiceRow`, `UtilityLink`,
+`AdvancedModule`, `permissionGroups`, `accountActivity`...) — file
+`mock-data.ts` co lại đáng kể nhưng chưa xoá hẳn (còn Dashboard/Rooms/
+Booking/Price/Payment/Expenses dùng type + vài hàm dựng dữ liệu Gantt, xem
+mục "Còn mock" bên dưới).
+
+### Trạng thái CHÍNH XÁC 28/28 màn hình (sau phiên 6)
+
+**Đã nối API thật (28/28 — TOÀN BỘ):**
+
+| Nhóm | Màn hình | Nguồn dữ liệu |
+|---|---|---|
+| Lõi (phiên 4) | Đăng nhập, Dashboard, Rooms, Booking | bảng nghiệp vụ riêng |
+| Vận hành | `/price` | `room_types`+`rooms` |
+| Vận hành | `/payment` | `invoices` + `property_settings` nhóm "payment" |
+| Vận hành | `/expenses` (2 tab) | `expenses` + `property_settings` nhóm "daily_entries" |
+| Vận hành | `/night-audit` | `invoices` |
+| Vận hành | `/customers` | `customers` |
+| Vận hành | `/services` | `property_settings` nhóm "services" |
+| Vận hành | `/marketing` | `property_settings` nhóm "marketing" |
+| Vận hành | `/utilities` | `property_settings` nhóm "utilities" |
+| Vận hành | `/modules` | `property_settings` nhóm "modules" |
+| Cài đặt | `/branches` | bảng `properties` |
+| Cài đặt | `/basic` (3 tab), `/amenities` (3 tab), `/images`, `/email` (2 tab) | `property_settings` |
+| Cài đặt | `/security`, `/currency`, `/tax`, `/time`, `/printer` | `property_settings` |
+| Cài đặt | `/channel`, `/sync`, `/db`, `/social`, `/assets` | `property_settings` |
+| Cài đặt | `/users` | bảng `property_users` + `property_settings` nhóm "roles" |
+
+**Còn mock (không phải dữ liệu nghiệp vụ chính, giữ tĩnh có chủ đích):**
+
+- `accountActivity` (nhật ký hoạt động tài khoản, trang `/security`) — chưa
+  có bảng trình bày riêng cho UI này (bảng `audit_log` thật đã có nhưng shape
+  khác — ghi mọi hành động hệ thống, không riêng "đăng nhập/đổi mật khẩu" —
+  để dành phiên sau nối đúng qua `GET /api/v1/audit-log` đã có sẵn route).
+- Dashboard: 3 khối cột 1 (thu/chi theo thời gian, lợi nhuận thuần), "Gói
+  được lựa chọn nhiều nhất", cột 3 (hoạt động mới nhất, khách hàng mới), tab
+  Gantt Lịch đặt phòng — như đã ghi từ phiên 4, chưa có bảng nguồn tương ứng
+  (`revenue_daily`...), ngoài phạm vi phiên này.
+- Các modal "+Thêm" placeholder tĩnh (AddTaxModal, AddAssetModal, AddOtaModal,
+  RolePopupModal, AddPartnerModal...) — kế thừa đúng hành vi bản gốc (không
+  có form thật trong thiết kế gốc), không tự chế thêm ngoài đặc tả.
+- `booking`/`rooms`/`price`/`payment`/`expenses` vẫn import vài `interface`/
+  hàm tiện ích từ `mock-data.ts` (`RoomCard`, `BookingRow`, `buildGanttGroups`,
+  `roomStatusInfo`...) — đây là kiểu dữ liệu dùng chung, KHÔNG phải dữ liệu
+  mock hiển thị, giữ nguyên.
+
+### Đã kiểm chứng THẬT (bắt buộc — không chỉ build sạch)
+
+Cài đặt + build tại `/tmp/pw` (rsync từ `D:\hotel\OSS\...`, loại trừ
+`node_modules`/`.next`/`.data`/`.git`), source thật đã sửa trực tiếp tại
+`D:\hotel\OSS\smart-hotel-os\property-web\...` từ đầu:
+
+- `npx tsc --noEmit` sạch cho cả `apps/api` và `apps/web` (test lại 2 lần —
+  trước và sau khi dọn `mock-data.ts` — cả 2 lần đều sạch).
+- `next build` (Turbopack) thành công đủ **32 route** (28 màn PMS + `/login`
+  + `/` + `/_not-found` + `/stub/[key]`).
+- Chạy API thật `npx tsx src/index.ts` ở `DB_MODE=embedded` (không Docker),
+  DB xoá sạch mỗi lần test để xác nhận migration 001→003 + seed chạy lại từ
+  đầu đúng, sau đó `curl` qua JWT thật (`manager`/`Anio2026@`):
+  - `GET/PUT /api/v1/settings/security|currency|tax|social|roles|printer|db|channel|sync|payment|marketing|services|utilities|modules|assets|amenities|basic|images|email` — **tất cả 200**, PUT `/settings/tax` xác nhận ghi rồi đọc lại đúng dữ liệu vừa lưu.
+  - `GET /api/v1/branches` — 200, trả đúng property demo + `room_count`.
+  - `GET /api/v1/users` — 200, trả 4 tài khoản demo + `role_counts`.
+  - `POST /api/v1/users` — 201, tạo tài khoản mới kèm `temp_password`.
+  - `PATCH /api/v1/users/:id` — đổi `status: DISABLED` rồi thử đăng nhập lại
+    → **401 INVALID_CREDENTIALS đúng như kỳ vọng**; đổi lại `ACTIVE` +
+    `role: HOUSEKEEPING` → đăng nhập lại thành công, JWT phản ánh role mới.
+  - RBAC: RECEPTIONIST gọi `GET /api/v1/users` → **403**; RECEPTIONIST gọi
+    `PUT /api/v1/settings/tax` → **403**; RECEPTIONIST gọi
+    `GET /api/v1/settings/tax` → **200** (đọc vẫn được, đúng thiết kế); MANAGER
+    gọi `POST /api/v1/branches` (chỉ OWNER) → **403**.
+  - `GET /api/v1/dashboard/summary`, `/rooms`, `/bookings`, `/payments`,
+    `/expenses` — vẫn 200 sau toàn bộ thay đổi (không phá luồng lõi phiên 4).
+  - `GET /api/v1/settings/badgroup` (nhóm không hợp lệ) → đúng **404**.
+
+### Giới hạn còn lại (rõ ràng, không che giấu)
+
+- `accountActivity` (trang Bảo vệ) và 3-4 khối Dashboard vẫn mock — xem mục
+  "Còn mock" ở trên, không phải lỗi bỏ sót mà là thiếu bảng nguồn tương ứng
+  trong phạm vi MVP hiện tại.
+- `/channel`, `/sync` chỉ là cấu hình cấp cơ sở lưu trong DB property-web,
+  CHƯA đồng bộ thật với `services/channel-manager-service` (đúng ranh giới
+  kiến trúc, xem mục quyết định #5) — việc nối 2 hệ thống này là bước sau,
+  cần thiết kế API-to-API auth trước (đã ghi trong `memory.md` mục "Chưa
+  làm" từ phiên 4).
+- `JWT_SECRET` mặc định dev vẫn là giá trị cố định trong code (kế thừa phiên
+  5, không đổi ở phiên này) — chỉ an toàn cho máy cá nhân.
+- Chưa test `docker compose up --build` thật (không có Docker trong sandbox)
+  — chỉ test qua chế độ embedded, đúng phạm vi "test bằng curl trong sandbox"
+  theo yêu cầu.
+
+## 2026-07-28 (phiên 5) — Chạy được KHÔNG CẦN DOCKER + đổi tài khoản demo đơn giản
+
+Nhiệm vụ: người dùng dùng Windows, không bật được Docker Desktop (lỗi
+`failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine ...
+The system cannot find the file specified`) nên bị chặn hoàn toàn — mở được
+`http://localhost:3100/login` (Next.js dev chạy độc lập, không cần backend) nhưng bấm đăng
+nhập luôn báo "Đăng nhập thất bại" vì API (4100) và Postgres (5433) trước đây CHỈ chạy được
+qua `docker compose`.
+
+### 1. Chế độ database "embedded" — không cần Docker, không cần cài PostgreSQL
+
+- Thêm `@electric-sql/pglite` vào `apps/api/package.json` (PostgreSQL biên dịch WASM, chạy
+  thẳng trong tiến trình Node, lưu ra thư mục file — tải qua `registry.npmjs.org`, không bị
+  chặn bởi allowlist sandbox khác với `binaries.prisma.sh`).
+- `apps/api/src/lib/db.ts` — viết lại: biến `DB_MODE` (`"postgres"` khi có `DATABASE_URL`,
+  ngược lại mặc định `"embedded"`, có thể ép bằng biến môi trường `DB_MODE`). Chế độ embedded
+  bọc PGlite bằng 1 adapter mỏng khớp đúng interface `pool.query(text, params) ->
+  { rows, rowCount }` mà TOÀN BỘ 9 file repository đang dùng — **không sửa bất kỳ file
+  repository nào**. Đã kiểm tra kỹ: không có file nào dùng `pool.connect()`/transaction thủ
+  công (`grep pool\.connect` ra rỗng) nên không cần adapter transaction phức tạp hơn.
+- `apps/api/src/lib/embeddedBootstrap.ts` (MỚI) — khi API khởi động ở chế độ embedded: tự
+  chạy các file `database/migrations/*.sql` còn thiếu (theo dõi qua bảng `_migrations`, dùng
+  `db.transaction()` của PGlite để BEGIN/COMMIT từng file), rồi tự seed dữ liệu demo NẾU bảng
+  `property_users` đang rỗng — idempotent, an toàn gọi lại mỗi lần khởi động. `index.ts` gọi
+  `bootstrapEmbeddedDb()` trước `app.listen()`.
+- `apps/api/src/middleware/auth.ts` — `JWT_SECRET` giờ có giá trị mặc định CHỈ DÀNH CHO DEV
+  khi `NODE_ENV !== "production"` và biến môi trường không được set (kèm `console.warn`) —
+  để `npm run dev` chạy được ngay không cần tạo `.env` thủ công, đúng yêu cầu "càng ít bước
+  thủ công càng tốt". Production vẫn bắt buộc phải set `JWT_SECRET` (throw nếu thiếu).
+- Sự cố gặp khi test: PGlite không tự tạo thư mục cha đệ quy → lỗi `ENOENT` khi thư mục
+  `apps/api/.data/` chưa tồn tại — đã sửa bằng `mkdirSync(dir, { recursive: true })` trước
+  khi khởi tạo `new PGlite(...)`.
+- `.data/` (thư mục dữ liệu PGlite) đã thêm vào `.gitignore`.
+
+### 2. Đổi tài khoản demo — bỏ đuôi email, mật khẩu mới
+
+- Migration MỚI `database/migrations/002_add_username.sql` (KHÔNG sửa `001_init.sql`) —
+  thêm cột `username TEXT UNIQUE NOT NULL` vào `property_users` (backfill từ phần trước `@`
+  của email cho bản ghi cũ nếu có). Cột `email` VẪN GIỮ nguyên (tương thích ngược).
+- `POST /auth/login` — đổi schema Zod từ `email: z.string().email()` (từ chối tên đăng nhập
+  ngắn không có `@`) sang `username: z.string().min(1)`. `propertyUsers.repo.ts` thêm
+  `findByUsernameOrEmail(identifier)` — tra theo `username = $1 OR email = $1`, tra cứu được
+  cả username ngắn LẪN email đầy đủ dạng cũ.
+- Tài khoản demo mới: `owner` / `manager` / `reception` / `housekeeping` (bỏ đuôi
+  `@anio-riverside.local`), mật khẩu chung đổi từ `ChangeMe123!` → `Anio2026@`.
+- Cập nhật đồng bộ: `database/seed.ts`, `apps/api/src/lib/embeddedBootstrap.ts` (seed riêng
+  cho chế độ embedded, cùng dữ liệu), trang `apps/web/src/app/login/page.tsx` (label "Tên
+  đăng nhập" thay "Email", khối gợi ý tài khoản demo), `apps/web/src/lib/auth.tsx` (đổi tham
+  số `login(email, password)` → `login(username, password)`, payload gửi API đổi key), `README.md`,
+  `docker-compose.yml` (comment đầu file), `.env.example`.
+
+### 3. Script khởi động 1 cú bấm cho Windows + tài liệu
+
+- `property-web/start-dev.bat` (MỚI) — tự kiểm tra Node, tự `npm install` nếu thiếu
+  `node_modules`, mở 2 cửa sổ CMD (API chế độ embedded + Web), in rõ URL/tài khoản demo.
+  Có cảnh báo ngay trong file: nếu double-click không mở được cửa sổ (nghi phần mềm bảo
+  mật/EDR chặn, đã từng gặp ở phiên 4 với `_start-property-web.bat` tại gốc `D:\hotel\OSS`),
+  đây chỉ là tiện ích phụ — đường chính là gõ tay lệnh trong README.
+- `README.md` — viết lại hoàn toàn mục "Chạy thử": **Cách 1 (khuyến nghị, không cần
+  Docker)** lên đầu, lệnh PowerShell + CMD riêng biệt (không dùng `&&` trần), 2 cửa sổ
+  terminal; **Cách 2 (nếu có Docker)** giữ nguyên `docker compose up --build`, nhấn mạnh
+  phải mở Docker Desktop và đợi hết xoay trước. Thêm mục "Xử lý sự cố" — 3 lỗi thực tế người
+  dùng đã gặp: (a) lỗi npipe `dockerDesktopLinuxEngine` → Docker Desktop chưa chạy; (b)
+  "Đăng nhập thất bại" → kiểm tra `http://localhost:4100/health`; (c) PowerShell chặn script
+  → `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+### 4. Đã kiểm chứng THẬT (không chỉ build sạch)
+
+Làm việc nặng (`npm install`) tại `/tmp/pw` (copy source, KHÔNG copy `node_modules`/`.next`/
+`.data`/`.git`), test chạy thật rồi mới đối chiếu lại source ở `D:\hotel\OSS\...` (source đã
+sửa trực tiếp tại đường dẫn thật ngay từ đầu, `/tmp` chỉ dùng để cài gói + chạy thử):
+
+- `npx tsc --noEmit` sạch cho cả `apps/api` và `apps/web`; `database/` cũng sạch.
+- `next build` (Turbopack) thành công đủ 32 route kể cả `/login`.
+- Chạy thật `npx tsx src/index.ts` ở `DB_MODE=embedded` KHÔNG cần Docker/PostgreSQL: log cho
+  thấy tự áp dụng `001_init.sql` + `002_add_username.sql`, tự seed demo lần đầu.
+- `curl POST /api/v1/auth/login` với `{"username":"manager","password":"Anio2026@"}` →
+  **trả về JWT thành công** (200, `access_token` + `user` object).
+- `curl GET /api/v1/auth/me` và `curl GET /api/v1/rooms` kèm `Authorization: Bearer <token>`
+  → đều trả dữ liệu thật (32 phòng seed sẵn) — chứng minh luồng đăng nhập chạy end-to-end,
+  không chỉ trả token suông.
+- Login sai mật khẩu → đúng lỗi `INVALID_CREDENTIALS` (401).
+- Khởi động lại lần 2 (không xoá `.data/`) → log cho thấy bỏ qua migration đã áp dụng, bỏ
+  qua seed (đã có dữ liệu), đăng nhập lại vẫn thành công, kể cả bằng email cũ
+  `owner@anio-riverside.local` (tương thích ngược) — xác nhận persistence + idempotency.
+
+### Giới hạn còn lại
+
+- Chưa test được `docker compose up --build` thật trong sandbox (không có Docker) — chỉ sửa
+  comment/README, dựa trên cấu trúc docker-compose không đổi từ phiên 4 (đã test lúc đó).
+  Nếu người dùng bật được Docker Desktop sau này và gặp lỗi mới, cần test lại.
+- `start-dev.bat` chưa test được double-click thật trên máy Windows của người dùng (sandbox
+  không có GUI Windows) — dựa trên bài học từ `_start-property-web.bat` ở phiên 4 (không mở
+  được cửa sổ trên máy người dùng) nên README đã nhấn mạnh lệnh gõ tay là đường chính.
+- Chưa nối 24/28 màn hình còn lại vào API thật (việc của một agent khác đang chạy song
+  song, xem `memory.md` mục "Đang làm") — nhiệm vụ phiên này chỉ tập trung "chạy được không
+  cần Docker" + đổi tài khoản demo, không mở rộng phạm vi.
+- `JWT_SECRET` mặc định dev là giá trị cố định trong code — CHỈ an toàn cho máy cá nhân chạy
+  cục bộ, không dùng cho môi trường nhiều người dùng/production (đã có cảnh báo `console.warn`
+  + code chặn cứng nếu `NODE_ENV=production`).
+
 ## 2026-07-27 (phiên 4) — Xây `apps/api` thật + Auth thật, nối API cho luồng lõi
 
 Nhiệm vụ: property-web trước phiên này 100% dữ liệu mock và KHÔNG có đăng nhập (ai mở

@@ -477,12 +477,9 @@ export interface CampaignRow {
   fg: string;
 }
 
-export const campaignsSeed: CampaignRow[] = [
-  { name: "Ưu đãi hè 2026", channel: "Email", start: "01/06/2026", end: "31/08/2026", sent: 1203, opened: "38%", status: "Đang chạy", bg: "#E6F9EE", fg: "#00C853" },
-  { name: "Giảm 20% đặt sớm", channel: "SMS", start: "01/03/2026", end: "15/04/2026", sent: 850, opened: "61%", status: "Đã kết thúc", bg: "#F4F5F6", fg: "#777E90" },
-  { name: "Khách hàng thân thiết", channel: "Email", start: "01/01/2026", end: "31/12/2026", sent: 430, opened: "52%", status: "Đang chạy", bg: "#E6F9EE", fg: "#00C853" },
-];
-
+// campaignsSeed (mảng dữ liệu mẫu) đã XOÁ — trang /marketing ĐÃ NỐI API THẬT
+// (property_settings nhóm "marketing"), chỉ còn giữ type `CampaignRow` để dùng
+// chung + `campaignAudienceOptions` (modal Thêm chiến dịch vẫn dùng tĩnh).
 export const campaignAudienceOptions = [
   { value: "all", label: "Tất cả khách hàng" },
   { value: "vip", label: "Khách VIP" },
@@ -520,74 +517,8 @@ export const customerSegmentColors: Record<string, { bg: string; fg: string }> =
   Mới: { bg: "#EEF1FB", fg: "#284AB1" },
 };
 
-export const customersSeed: CustomerRow[] = [
-  {
-    key: "an",
-    name: "Nguyễn Văn An",
-    phone: "0912 345 678",
-    email: "a.nguyen@anio.vn",
-    bookings: 5,
-    rebookings: 3,
-    careAfterStay: 4,
-    spent: "12.400.000đ",
-    segment: "Khách quen",
-    note: "Thích phòng tầng cao, yên tĩnh",
-    preferences: "Ưa phòng view biển, hay đặt bữa sáng muộn, thích trà xanh thay cà phê.",
-    servicesUsed: ["Đưa đón sân bay", "Giặt là", "Spa"],
-    transactions: [
-      { date: "02/06/2026", desc: "Đặt phòng Deluxe 3N2Đ", amount: "4.500.000đ" },
-      { date: "15/03/2026", desc: "Dịch vụ Spa", amount: "800.000đ" },
-    ],
-  },
-  {
-    key: "bich",
-    name: "Trần Thị Bích",
-    phone: "0987 654 321",
-    email: "b.tran@anio.vn",
-    bookings: 2,
-    rebookings: 0,
-    careAfterStay: 1,
-    spent: "3.200.000đ",
-    segment: "Mới",
-    note: "Khách mới, chưa có ghi chú thêm",
-    preferences: "Đi cùng gia đình có trẻ nhỏ, cần nôi em bé.",
-    servicesUsed: ["Đưa đón sân bay"],
-    transactions: [{ date: "20/05/2026", desc: "Đặt phòng Superior 2N1Đ", amount: "1.600.000đ" }],
-  },
-  {
-    key: "nam",
-    name: "Lê Hoàng Nam",
-    phone: "0901 222 333",
-    email: "nam.le@anio.vn",
-    bookings: 8,
-    rebookings: 6,
-    careAfterStay: 7,
-    spent: "24.900.000đ",
-    segment: "VIP",
-    note: "Khách VIP, ưu tiên nâng hạng phòng khi còn trống",
-    preferences: "Hay đi công tác, cần phòng có bàn làm việc, không hút thuốc.",
-    servicesUsed: ["Đưa đón sân bay", "Giặt là", "Thuê xe", "Tour trải nghiệm"],
-    transactions: [
-      { date: "10/07/2026", desc: "Đặt phòng Suite 4N3Đ", amount: "9.800.000đ" },
-      { date: "01/04/2026", desc: "Thuê xe + tài xế", amount: "1.200.000đ" },
-    ],
-  },
-  {
-    key: "ha",
-    name: "Phạm Thu Hà",
-    phone: "0933 111 222",
-    email: "ha.pham@anio.vn",
-    bookings: 1,
-    rebookings: 0,
-    careAfterStay: 0,
-    spent: "1.100.000đ",
-    segment: "Mới",
-    note: "",
-    preferences: "Chưa đủ dữ liệu.",
-    servicesUsed: [],
-    transactions: [{ date: "05/06/2026", desc: "Đặt phòng Standard 1N", amount: "1.100.000đ" }],
-  },
-];
+// customersSeed (mảng dữ liệu mẫu) đã XOÁ — trang /customers ĐÃ NỐI API THẬT
+// (GET /api/v1/customers), chỉ còn giữ type `CustomerRow`/`CustomerTransaction`.
 
 // ---------- Dịch vụ (Services) — khối `isServices`, dòng 2111 ----------
 
@@ -603,19 +534,8 @@ export interface OwnServiceRow {
   linked: boolean;
 }
 
-export const ownServicesSeed: OwnServiceRow[] = [
-  { id: 0, name: "Tour đi bộ", category: "Tour trải nghiệm", unit: "Lượt", schedule: "Thứ hai, 12/08/2022 · 5:30", vehicle: "Xe đạp", price: "300.000đ", location: "Đón tại cơ sở", linked: true },
-  { id: 1, name: "Tour lặn biển", category: "Tour trải nghiệm", unit: "Lượt", schedule: "Thứ ba, 13/08/2022 · 5:30", vehicle: "Ô tô", price: "300.000đ", location: "Đón tại cơ sở", linked: true },
-  { id: 2, name: "Tour leo núi", category: "Tour trải nghiệm", unit: "Lượt", schedule: "Thứ tư, 14/08/2022 · 5:30", vehicle: "Tàu biển", price: "300.000đ", location: "Đón tại cơ sở", linked: true },
-  { id: 3, name: "Bus dạo phố", category: "Tour trải nghiệm", unit: "Lượt", schedule: "Thứ năm, 15/08/2022 · 5:30", vehicle: "Xe bus", price: "300.000đ", location: "Tại quầy lễ tân", linked: false },
-  { id: 4, name: "Chạy bộ cùng HLV", category: "Tour trải nghiệm", unit: "Lượt", schedule: "Thứ sáu, 16/08/2022 · 5:30", vehicle: "Không cần", price: "300.000đ", location: "Tại cơ sở", linked: true },
-  { id: 5, name: "Khám phá hang động", category: "Tour trải nghiệm", unit: "Lượt", schedule: "Thứ bảy, 17/08/2022 · 5:30", vehicle: "Xe địa hình", price: "300.000đ", location: "Đón tại cơ sở", linked: true },
-  { id: 6, name: "Mạng Internet", category: "Vệ sinh", unit: "Tháng", schedule: "Định kỳ hàng tháng", vehicle: "—", price: "100.000đ", location: "Tại phòng", linked: true },
-  { id: 7, name: "Vệ sinh phòng", category: "Vệ sinh", unit: "Tháng", schedule: "Định kỳ hàng tháng", vehicle: "—", price: "150.000đ", location: "Tại phòng", linked: false },
-  { id: 8, name: "Gửi xe", category: "Gửi xe", unit: "Tháng", schedule: "Định kỳ hàng tháng", vehicle: "—", price: "100.000đ", location: "Tại cơ sở", linked: true },
-  { id: 9, name: "Nước", category: "Nước", unit: "m3", schedule: "Theo chỉ số hàng tháng", vehicle: "—", price: "15.000đ", location: "Tại phòng", linked: true },
-  { id: 10, name: "Điện", category: "Điện", unit: "Số", schedule: "Theo chỉ số hàng tháng", vehicle: "—", price: "3.500đ", location: "Tại phòng", linked: true },
-];
+// ownServicesSeed (mảng dữ liệu mẫu) đã XOÁ — trang /services ĐÃ NỐI API THẬT
+// (property_settings nhóm "services"), chỉ còn giữ type `OwnServiceRow`.
 
 export interface PartnerServiceRow {
   name: string;
@@ -625,13 +545,7 @@ export interface PartnerServiceRow {
   linked: boolean;
 }
 
-export const partnerServicesList: PartnerServiceRow[] = [
-  { name: "Spa Hương Sen", category: "Spa & Massage", distance: "150m", commission: "10%", linked: true },
-  { name: "Nhà hàng Biển Đông", category: "Ẩm thực", distance: "300m", commission: "8%", linked: true },
-  { name: "Tour Đảo Ngọc", category: "Tour & Trải nghiệm", distance: "1.2km", commission: "15%", linked: false },
-  { name: "Cho thuê xe máy Minh Phát", category: "Di chuyển", distance: "80m", commission: "12%", linked: true },
-  { name: "Phòng gym FitZone", category: "Thể thao", distance: "400m", commission: "5%", linked: false },
-];
+// partnerServicesList (mảng dữ liệu mẫu) đã XOÁ cùng lý do trên.
 
 // ---------- Tiện ích (Utilities) — khối `isUtilities`, dòng 2246 ----------
 
@@ -642,10 +556,8 @@ export interface UtilityLink {
   linked: boolean;
 }
 
-export const utilityLinksSeed: UtilityLink[] = [
-  { key: "maps", name: "Google Maps", desc: "Hiển thị vị trí cơ sở trên Google Maps để khách dễ dàng tìm đường", linked: true },
-  { key: "hotel", name: "Google Hotel (Google Hotel Ads)", desc: "Đồng bộ giá phòng, tình trạng còn phòng để hiển thị trên Google Hotel Search", linked: false },
-];
+// utilityLinksSeed (mảng dữ liệu mẫu) đã XOÁ — trang /utilities ĐÃ NỐI API
+// THẬT (property_settings nhóm "utilities").
 
 // ---------- Module nâng cao (Modules) — khối `isModules`, dòng 2262 ----------
 
@@ -659,69 +571,17 @@ export interface AdvancedModule {
   on: boolean;
 }
 
-export const advancedModulesSeed: AdvancedModule[] = [
-  { key: "power", name: "Liên kết điện", icon: "🔌", bg: "#EAF2FF", price: "3.000đ/phòng/tháng", on: true },
-  { key: "notify", name: "Thông báo", icon: "🔔", bg: "#FFF7E0", free: true, on: true },
-  { key: "cots", name: "Dịch vụ order trong phòng", icon: "🧸", bg: "#FDEFE9", free: true, on: true },
-  { key: "housekeeping", name: "Dọn phòng (Housekeeping)", icon: "🧹", bg: "#FDF3D8", price: "3.000đ/phòng/tháng", on: true },
-  { key: "rfid", name: "Liên kết ScanQr", icon: "📶", bg: "#E6F4FF", price: "2.000đ/phòng/tháng", on: true },
-  { key: "camera", name: "Camera", icon: "📷", bg: "#EEF1F4", price: "200.000đ", on: true },
-  { key: "passport", name: "Hộ chiếu, CCCD", icon: "🛂", bg: "#EAF0FF", price: "200.000đ", on: true },
-  { key: "gatelock", name: "Khóa cổng", icon: "🔒", bg: "#E7F7EE", price: "200.000đ", on: false },
-  { key: "cms", name: "Quản trị nội dung — Liên kết OTA", icon: "⚙️", bg: "#EDEFF2", price: "Liên hệ", on: true },
-  { key: "marketing2", name: "Marketing", icon: "📣", bg: "#FFF1E6", price: "200.000đ", on: true },
-  { key: "account", name: "Tài khoản", icon: "✅", bg: "#E9F0FF", price: "200.000đ", on: true },
-  { key: "doorlock", name: "Liên kết khoá từ", icon: "🔢", bg: "#E6F6FF", price: "3.000đ/phòng/tháng", on: true },
-  { key: "task", name: "Công việc", icon: "📋", bg: "#E9F0FF", price: "200.000đ", on: true },
-  { key: "hrm", name: "Nhân sự (HRM)", icon: "🧑‍🤝‍🧑", bg: "#F1ECFB", price: "200.000đ", on: true },
-  { key: "webbooking", name: "Đặt phòng qua Web", icon: "✈️", bg: "#E9F0FF", price: "200.000đ", on: true },
-  { key: "otasync", name: "Đồng bộ OTA", icon: "☁️", bg: "#E6F4FF", price: "200.000đ", on: true },
-  { key: "extend", name: "Gia hạn lưu trú", icon: "↗️", bg: "#FFF4D6", price: "200.000đ", on: true },
-  { key: "breakeven", name: "Điểm hòa vốn", icon: "👛", bg: "#F3E9E0", price: "200.000đ", on: true },
-  { key: "combo", name: "Gói combo", icon: "🧳", bg: "#FDEDE6", price: "200.000đ", on: true },
-  { key: "aicamera", name: "Thống kê khách hàng AI Camera", icon: "📊", bg: "#E6F4FF", price: "200.000đ", on: false },
-  { key: "screenlink", name: "Liên kết màn hình phụ", icon: "🖥️", bg: "#EAF2FF", price: "3.000đ/phòng/tháng", on: false },
-  { key: "einvoice", name: "Xuất hoá đơn điện", icon: "🧾", bg: "#FFF7E0", price: "500.000–900.000đ/năm", on: false },
-  { key: "voiceassistant", name: "Trợ lý ảo AI cho khách (Voice/Chatbot)", icon: "🗣️", bg: "#F1ECFB", price: "250.000đ/phòng/tháng", on: false },
-  { key: "smartenergy", name: "Tiết kiệm năng lượng AI", icon: "🌿", bg: "#E7F7EE", price: "5.000đ/phòng/tháng", on: false },
-  { key: "facecheckin", name: "Nhận diện khuôn mặt check-in", icon: "🪪", bg: "#EAF0FF", price: "300.000đ/tháng", on: false },
-  { key: "dynamicpricing", name: "Định giá phòng linh hoạt (Dynamic Pricing AI)", icon: "📈", bg: "#FFF4D6", price: "400.000đ/tháng", on: false },
-  { key: "contactlessagent", name: "Trợ lý nghỉ dưỡng không tiếp xúc (QR trong phòng)", icon: "📲", bg: "#E6F4FF", price: "2.000đ/phòng/tháng", on: false },
-];
+// advancedModulesSeed (mảng dữ liệu mẫu) đã XOÁ — trang /modules ĐÃ NỐI API
+// THẬT (property_settings nhóm "modules").
 
 // ---------- Kênh bán OTA (Channel) — khối `isChannel`, dòng 1274 ----------
-
-export interface ChannelRow {
-  name: string;
-  initial: string;
-  color: string;
-  status: string;
-  statusColor: string;
-  stat: string;
-}
-
-export const channels: ChannelRow[] = [
-  { name: "Booking.com", initial: "B", color: "#003580", status: "Đã kết nối", statusColor: "#00C853", stat: "37 đặt phòng tháng này · đồng bộ 2 phút trước" },
-  { name: "Agoda", initial: "A", color: "#5A1F8A", status: "Đã kết nối", statusColor: "#00C853", stat: "22 đặt phòng tháng này · đồng bộ 5 phút trước" },
-  { name: "Airbnb", initial: "Ab", color: "#FF5A5F", status: "Đã kết nối", statusColor: "#00C853", stat: "15 đặt phòng tháng này · đồng bộ 9 phút trước" },
-  { name: "Traveloka", initial: "T", color: "#1B9AAA", status: "Chưa kết nối", statusColor: "#CC2F42", stat: "Cần nhập API key để bật đồng bộ" },
-];
+// channels/ChannelRow (mảng dữ liệu mẫu) đã XOÁ — trang /channel ĐÃ NỐI API
+// THẬT (property_settings nhóm "channel").
 
 // ---------- Người dùng & phân quyền (Users) — khối `isUsers`, dòng 1289 ----------
-
-export interface RoleRow {
-  name: string;
-  count: number;
-  scope: string;
-}
-
-export const roles: RoleRow[] = [
-  { name: "Quản lý", count: 2, scope: "Toàn quyền mọi module" },
-  { name: "Lễ tân", count: 6, scope: "Hợp đồng, Trạng thái phòng, Thanh toán (không xoá)" },
-  { name: "Kế toán", count: 2, scope: "Thanh toán, Kế toán đêm, Báo cáo" },
-  { name: "Buồng phòng", count: 5, scope: "Trạng thái phòng (chỉ cập nhật dọn phòng)" },
-  { name: "Bảo trì", count: 3, scope: "Trạng thái phòng (chỉ gắn/gỡ cờ bảo trì)" },
-];
+// roles/RoleRow (mảng dữ liệu mẫu) đã XOÁ — trang /users ĐÃ NỐI API THẬT
+// (property_settings nhóm "roles" + bảng property_users thật). permissionGroups
+// vẫn giữ (RolePopupModal dùng tĩnh).
 
 export const permissionGroups = [
   { group: "Đặt phòng", perms: ["Xem", "Tạo mới", "Sửa", "Hủy"] },
@@ -732,122 +592,33 @@ export const permissionGroups = [
 ];
 
 // ---------- Quản lý tài sản (Assets) — khối `isAssets`, dòng 1383 ----------
-
-export interface AssetRow {
-  stt: number;
-  name: string;
-  code: string;
-  room: string;
-  value: string;
-  qty: number;
-  unit: string;
-  depMonths: number;
-  depValue: string;
-  status: string;
-  fg: string;
-}
-
-export const assets: AssetRow[] = [
-  { name: "Điều hoà Daikin", code: "DH", room: "204", value: "10.000.000đ", qty: 35, unit: "Cái", depMonths: 12, depValue: "12.000.000đ", status: "Đang dùng", fg: "#00C853" },
-  { name: "Khoá cửa thông minh", code: "KC", room: "118", value: "1.500.000đ", qty: 35, unit: "Cái", depMonths: 12, depValue: "2.000.000đ", status: "Đang dùng", fg: "#00C853" },
-  { name: "TV Samsung 55\"", code: "TV", room: "310", value: "8.000.000đ", qty: 35, unit: "Cái", depMonths: 12, depValue: "9.500.000đ", status: "Cần kiểm tra", fg: "#946200" },
-  { name: "Bình nóng lạnh", code: "BNL", room: "402", value: "1.000.000đ", qty: 35, unit: "Cái", depMonths: 12, depValue: "12.000.000đ", status: "Hỏng", fg: "#CC2F42" },
-  { name: "Camera hành lang T3", code: "CAM", room: "Khu vực chung", value: "1.000.000đ", qty: 35, unit: "Cái", depMonths: 12, depValue: "12.000.000đ", status: "Đang dùng", fg: "#00C853" },
-  { name: "Giường đôi", code: "GD", room: "Nhiều phòng", value: "1.000.000đ", qty: 35, unit: "Bộ", depMonths: 12, depValue: "12.000.000đ", status: "Đang dùng", fg: "#00C853" },
-  { name: "Tủ lạnh mini", code: "TL", room: "Nhiều phòng", value: "1.000.000đ", qty: 35, unit: "Cái", depMonths: 12, depValue: "12.000.000đ", status: "Hỏng", fg: "#CC2F42" },
-  { name: "Quạt treo tường", code: "QT", room: "Nhiều phòng", value: "1.000.000đ", qty: 35, unit: "Cái", depMonths: 12, depValue: "12.000.000đ", status: "Đang dùng", fg: "#00C853" },
-  { name: "Tủ quần áo", code: "QA", room: "Nhiều phòng", value: "1.000.000đ", qty: 35, unit: "Cái", depMonths: 12, depValue: "12.000.000đ", status: "Đang dùng", fg: "#00C853" },
-].map((a, i) => ({ ...a, stt: i + 1 }));
+// assets/AssetRow (mảng dữ liệu mẫu) đã XOÁ — trang /assets ĐÃ NỐI API THẬT
+// (property_settings nhóm "assets").
 
 // ---------- Danh sách cơ sở (Branches) — khối `isBranches`, dòng 1481 ----------
-
-export interface BranchRow {
-  id: number;
-  area: string;
-  province: string;
-  building: string;
-  floors: number;
-  rooms: number;
-  status: string;
-  statusColor: string;
-}
-
-export const branches: BranchRow[] = [
-  { id: 1, area: "Khu vực A", province: "Hà Nội", building: "Tòa A", floors: 20, rooms: 16, status: "Hoạt động", statusColor: "#00C853" },
-  { id: 2, area: "Khu vực A", province: "Hà Nội", building: "Tòa A", floors: 20, rooms: 16, status: "Bảo trì", statusColor: "#CC2F42" },
-  { id: 3, area: "Khu vực B", province: "Hà Nội", building: "Tòa B", floors: 12, rooms: 10, status: "Hoạt động", statusColor: "#00C853" },
-  { id: 4, area: "Khu vực Riverside", province: "Đà Nẵng", building: "Tòa A", floors: 8, rooms: 24, status: "Hoạt động", statusColor: "#00C853" },
-];
+// branches/BranchRow (mảng dữ liệu mẫu) đã XOÁ — trang /branches ĐÃ NỐI API
+// THẬT (GET/POST /api/v1/branches, bảng "properties").
 
 // ---------- Cơ bản (Basic) — khối `isBasic`, dòng 1553 ----------
-
-export const floorInputs = Array.from({ length: 9 }, (_, i) => `Tầng ${i + 1}`);
+// floorInputs đã XOÁ — trang /basic ĐÃ NỐI API THẬT (property_settings nhóm "basic").
 
 // ---------- Tiện ích cơ sở (Amenities) — khối `isAmenities`, dòng 1610 ----------
-
-export const amenityGroups: { title: string; items: string[] }[] = [
-  { title: "Cơ bản", items: ["Wifi", "Disco (mùa hè)", "Đầu báo cháy", "Vườn", "Lễ tân 24 giờ", "Báo khói", "Sân thượng", "Fax/ Photocopy", "Bãi đỗ xe riêng của khách sạn", "Nhận/trả phòng nhanh", "TV màn hình phẳng", "Nhà để xe (gara)", "Toàn bộ không hút thuốc", "Phòng tân hôn", "Chỉ dành cho người lớn", "Phòng không hút thuốc", "Khuôn viên", "Ven biển", "Thang máy", "Thang máy", "Khách sạn có Spa", "Điều hòa", "Phòng chống dị ứng", "Khách sạn gần khu trượt tuyết", "TV", "Sát biển", "Khách sạn suối khoáng nóng", "Disco (mùa đông)", "Lối vào có camera giám sát"] },
-  { title: "Tổng quan", items: ["Ra vào tự do", "Lối đi vào riêng", "Không chung chủ", "Cửa cổng khóa vân tay/ thẻ từ", "Ban công", "Gắn biển", "Cắm trại"] },
-  { title: "An toàn - An ninh", items: ["Camera an ninh", "Bảo vệ chung", "Két sắt", "Khóa điện tử", "Bình chữa cháy", "Hệ thống báo cháy"] },
-  { title: "Phòng tắm", items: ["Bình nóng lạnh", "Đèn sưởi", "Khăn tắm", "Xà phòng", "Dầu gội", "Kem đánh răng", "Bồn sục", "Phòng tắm gương", "Chậu rửa mặt"] },
-  { title: "Mua sắm, giải trí", items: ["Chợ", "Siêu thị", "Tạp hóa"] },
-  { title: "Quy định chung", items: ["Cấm nhậu quá 23h", "Cấm làm ồn", "Cấm vật nuôi", "Về trước 22h đêm", "Không dẫn bạn về qua đêm", "Được nấu ăn"] },
-  { title: "Cao cấp", items: ["Smart Tivi", "Smarthome", "Smart hotel", "GYM", "Bể bơi"] },
-];
-
-// `zip3` — trộn 3 cột dữ liệu thành 1 mảng phẳng theo đúng thứ tự bản gốc (hàm
-// `zip3` dòng 2385 bản gốc), để hiển thị đúng thứ tự trong lưới 3 cột (grid-cols-3
-// điền theo hàng nên cần trộn xen kẽ mới ra đúng 3 "cột" logic như thiết kế).
-function zip3(a: string[], b: string[], c: string[]): string[] {
-  const out: string[] = [];
-  const n = Math.max(a.length, b.length, c.length);
-  for (let i = 0; i < n; i++) {
-    if (a[i]) out.push(a[i]);
-    if (b[i]) out.push(b[i]);
-    if (c[i]) out.push(c[i]);
-  }
-  return out;
-}
-
-export const activitiesList = zip3(
-  ["Xe đạp nước phiêu lưu", "Hộp đêm", "Cơ sở vật chất thể thao tại chỗ", "Cưỡi ngựa", "Hồ bơi ngoài trời (quanh năm)", "Hồ bơi ngoài trời (theo mùa)", "Hồ bơi trong nhà (quanh năm)", "Hồ bơi trong nhà (theo mùa)", "Sân golf nước khoáng nóng (trong vòng 3km)", "Lướt ván buồm", "Phi tiêu", "Casino mini", "Golf", "Karaoke", "Ca-nô", "Sân tennis"],
-  ["Câu cá", "Bóng bàn", "Phòng trưng bày", "Lặn", "Lặn ống thở", "Phòng trò chơi", "Bowling", "Trượt tuyết", "Bi-a", "Khu vui chơi trẻ em", "Đi bộ đường dài", "Hồ bơi ngoài trời", "Massage", "Xông hơi", "Bồn tắm nước nóng"],
-  ["Trung tâm Spa & chăm sóc sức khỏe", "Hồ bơi trong nhà", "Nhân viên giải trí, phòng xông hơi, phi tiêu...", "Bóng đá mini", "Khúc côn cầu bàn", "Trò chơi điện tử", "Bóng rổ", "Muối", "Nhà hát", "Tuyết", "Đài phun nước", "Cáp treo", "Kayak, xe kart, mô tô", "Vé trượt tuyết / Ghế treo", "Ghế nằm bãi biển & hồ bơi"],
-);
-
-export const amenityServicesList = zip3(
-  ["Dịch vụ hỗ trợ khách (Concierge)", "Đội ngũ hoạt náo", "Nhận/trả phòng riêng tư", "Cho thuê thiết bị trượt tuyết tại chỗ", "Bán vé trượt tuyết", "Lối vào trượt tuyết tận cửa", "Thực đơn ăn kiêng đặc biệt (theo yêu cầu)", "Máy ép quần", "Máy bán nước tự động", "Máy bán đồ ăn vặt tự động", "Suất ăn trưa mang đi", "Phòng họp/tiệc", "Phòng trăng mật", "Tiện nghi phòng VIP", "Dịch vụ trông trẻ", "Cửa hàng quà lưu niệm", "Đánh giày", "Cửa hàng làm đẹp", "Dịch vụ đặt vé", "Cho thuê xe đạp", "Giặt khô", "Đổi ngoại tệ", "Quầy tư vấn tour", "Thuê xe ô tô", "Ăn sáng tại phòng", "Dịch vụ ủi đồ", "Giặt ủi", "Xe đưa đón sân bay", "Xe đưa đón sân bay (phụ thu)", "Phục vụ phòng", "Máy ATM tại chỗ", "Phòng chống dị ứng", "Ăn sáng buffet", "Khu bãi biển riêng", "Nhà hàng gọi món", "Nhà hàng buffet", "Quầy đồ ăn nhẹ", "Sân thượng tắm nắng", "Tiện nghi cho khách khuyết tật", "Phòng cách âm", "Sưởi ấm", "Thân thiện với LGBT", "Kho chứa đồ trượt tuyết", "Dịch vụ đỗ xe hộ", "Khu vực hút thuốc riêng", "Cửa hàng trong khách sạn", "Phòng gia đình", "Két an toàn", "Báo, tạp chí", "Nhà hàng", "Giữ hành lý", "Quầy bar", "Lễ tân 24 giờ", "Trường dạy trượt tuyết", "Phòng tắm nắng nhân tạo", "Bóng quần (Squash)", "Khu vực BBQ", "Dù che bãi biển & hồ bơi", "Ghế nằm hồ bơi", "Bờ biển", "Ghế nằm bãi biển", "Cầu trượt nước"],
-  ["Khăn tắm biển", "Nhân viên cứu hộ", "Hồ bơi nước khoáng nóng", "Chứng nhận Cờ Xanh", "Ghế nằm hồ bơi", "Bờ biển", "Ghế nằm bãi biển", "Cầu trượt nước", "Khăn tắm biển", "Nhân viên cứu hộ", "Hồ bơi nước khoáng nóng", "Chứng nhận Cờ Xanh", "Công viên nước", "Phòng thay đồ", "Xe đưa đón", "Bóng rổ", "Bóng chuyền bãi biển", "Mô tô nước", "Rạp chiếu phim", "Bóng đá (có phí)", "Bữa tối muộn", "Trà chiều", "Hồ bơi trẻ em", "Phù hợp cho trẻ em", "Câu lạc bộ mini", "Cho phép thú cưng", "Quán cà phê Internet", "Cảng biển", "Bác sĩ", "Nhiếp ảnh gia", "Bãi đỗ xe", "Phòng xem TV", "Đèn chiếu sáng sân tennis", "Bãi cát biển", "Cửa hàng tạp hóa", "Máy chơi game Playstation", "Điện thoại gọi trực tiếp", "Dịch vụ báo thức", "Quầy bar mini", "Đồ dùng phòng tắm miễn phí", "Máy sấy tóc", "Dịch vụ đưa đón", "Bếp", "Gương trang điểm", "Sân tennis chiếu sáng ban đêm", "Y tá", "Chợ", "Máy pinball", "Chăm sóc da & cơ thể", "Bóng rổ ban đêm", "Tiệm làm tóc", "Giường tắm nắng", "Ghế cho bé", "Thể dục nhịp điệu", "Bắn cung", "Bóng nước", "Bóng rổ", "Giường cho bé", "Phục vụ phòng", "Dịch vụ nhà nghỉ", "Bữa tối", "Cà phê sân thượng"],
-  ["Đồ ăn nhẹ", "Quầy bar sảnh", "Ăn sáng", "Dịch vụ đưa đón", "Điện thoại", "Nhà hàng gọi món", "Bãi đỗ xe riêng", "Phòng tập gym", "Quầy cocktail", "Cửa hàng quà tặng", "Nhà hàng buffet", "Suất ăn kiêng đặc biệt", "Bãi đỗ xe riêng miễn phí", "Khu sinh hoạt chung/xem TV", "Dọn phòng hàng ngày", "Bãi đỗ xe công cộng miễn phí", "Tiệm cắt tóc/làm đẹp", "Hồ bơi", "Căng-tin", "Cửa hàng tiện lợi tại chỗ", "Bóng bàn", "Bồn tắm", "Phòng hội nghị", "Chấp nhận thẻ tín dụng", "Cửa hàng tại chỗ", "Giữ hành lý", "Hồ bơi ngoài trời nam", "Hồ bơi nữ & trẻ em", "Hồ bơi nam & trẻ em", "Bãi biển nữ", "Bãi biển nam", "Hồ bơi ngoài trời nữ", "Hồ bơi nước ấm nữ", "Công viên nước ngoài trời nữ", "Công viên nước nước ấm nữ", "Hồ công viên nước ấm nam", "Công viên nước nước ấm nam", "Công viên nước ngoài trời nam", "Phòng tắm gia đình", "Đồ uống không giới hạn cả ngày", "Súp đêm", "Ăn sáng sớm", "Hồ bơi ngoài trời chung", "Công viên nước trong nhà chung", "Hồ bơi trong nhà chung", "Trung tâm Spa nam", "Trung tâm Spa nữ", "Tắm hơi kiểu Thổ Nhĩ Kỳ (giờ riêng cho nữ)", "Tắm bùn", "Bồn sục Jacuzzi", "Nhà hát ngoài trời", "Hồ bơi trong nhà nữ", "Hồ bơi trong nhà nam", "Lò sưởi", "Đường trượt tuyết", "Quầy vitamin", "Thư viện", "Máy sấy quần áo", "Tùy chọn lưu trú", "Tùy chọn ẩm thực (F&B)", "Đồ ăn Halal"],
-);
+// amenityGroups/zip3/activitiesList/amenityServicesList đã XOÁ — trang
+// /amenities ĐÃ NỐI API THẬT (property_settings nhóm "amenities", đã seed đúng
+// nguyên văn danh sách dài trong apps/api/src/lib/defaultSettings.ts).
 
 // ---------- Hình ảnh (Images) — khối `isImages`, dòng 1662 ----------
-
-export const photoGalleryCount = 5;
-export const roomImageTypes = [
-  { name: "Single", photoCount: 5 },
-  { name: "Double", photoCount: 5 },
-];
+// photoGalleryCount/roomImageTypes đã XOÁ — trang /images ĐÃ NỐI API THẬT
+// (property_settings nhóm "images").
 
 // ---------- Email — khối `isEmail`, dòng 1692 ----------
-
-export const emailFields = [
-  { label: "Email", desc: "Nhập địa chỉ email của cơ sở." },
-  { label: "Mật khẩu", desc: "Nhập mật khẩu email." },
-  { label: "SMTP Host", desc: "Nhập máy chủ SMTP của email." },
-  { label: "SMTP Port", desc: "Nhập cổng SMTP của email." },
-  { label: "Mã hoá SMTP", desc: "Chọn kiểu mã hoá cho email của cơ sở." },
-];
-
-export const autoEmails = ["Khách đặt phòng lưu trú", "Nhắc khách sắp đến ngày đến cơ sở", "Nhắc khách thanh toán hóa đơn", "Cảm ơn khách khi check out khỏi cơ sở"];
+// emailFields/autoEmails đã XOÁ — trang /email ĐÃ NỐI API THẬT (property_settings
+// nhóm "email").
 
 // ---------- Bảo vệ (Security) — khối `isSecurity`, dòng 1733 ----------
-
-export const securityItemsSeed = [
-  { key: "2fa", label: "Xác thực 2 lớp (2FA)", desc: "Yêu cầu mã OTP khi đăng nhập từ thiết bị lạ", on: true },
-  { key: "autologout", label: "Tự động đăng xuất sau 30 phút", desc: "Đăng xuất khi không thao tác", on: true },
-  { key: "iprestrict", label: "Giới hạn IP truy cập", desc: "Chỉ cho phép đăng nhập từ IP nội bộ khách sạn", on: false },
-];
+// securityItemsSeed đã XOÁ — trang /security ĐÃ NỐI API THẬT (property_settings
+// nhóm "security"). accountActivity vẫn giữ mock (chưa có nguồn audit log
+// riêng cho UI này, xem PROGRESS.md).
 
 export const accountActivity = [
   { user: "Lê Thảo", action: "Đăng nhập thành công", time: "25/07 08:12", ip: "192.168.1.12" },
@@ -856,66 +627,26 @@ export const accountActivity = [
 ];
 
 // ---------- Tiền tệ (Currency) — khối `isCurrency`, dòng 1757 ----------
-
-export const currencies = [
-  { code: "VND", name: "Việt Nam Đồng", rate: "1 (mặc định)", isDefault: true },
-  { code: "USD", name: "Đô la Mỹ", rate: "1 USD = 25.400 VND", isDefault: false },
-  { code: "EUR", name: "Euro", rate: "1 EUR = 27.600 VND", isDefault: false },
-];
+// currencies đã XOÁ — trang /currency ĐÃ NỐI API THẬT (property_settings nhóm
+// "currency").
 
 // ---------- Thuế & phí (Tax) — khối `isTax`, dòng 1772 ----------
-
-export const taxes = [
-  { name: "Thuế GTGT (VAT)", rate: "8%", applyTo: "Toàn bộ hoá đơn" },
-  { name: "Phí dịch vụ", rate: "5%", applyTo: "Toàn bộ hoá đơn" },
-  { name: "Phí môi trường", rate: "20.000đ/phòng/đêm", applyTo: "Tiền phòng" },
-];
+// taxes đã XOÁ — trang /tax ĐÃ NỐI API THẬT (property_settings nhóm "tax").
 
 // ---------- Thời gian (Time) — khối `isTime`, dòng 1809 ----------
-
-export const holidaysSeed = ["Giỗ tổ", "Quốc khánh", "Dương lịch"];
-export const prepaidServices = ["Điện", "Nước", "Internet", "Vệ Sinh", "Thang máy"];
+// holidaysSeed/prepaidServices đã XOÁ — trang /time ĐÃ NỐI API THẬT
+// (property_settings nhóm "time").
 
 // ---------- Đồng bộ hoá (Sync) — khối `isSync`, dòng 1892 ----------
-
-export const otaChannels = ["Booking.com", "Agoda", "Airbnb", "Traveloka", "Expedia"];
+// otaChannels đã XOÁ — trang /sync ĐÃ NỐI API THẬT (property_settings nhóm "sync").
 
 // ---------- Cơ sở dữ liệu (Db) — khối `isDb`, dòng 1943 ----------
-
-export const dbInfo = [
-  { label: "Sao lưu gần nhất", value: "25/07/2026 03:00" },
-  { label: "Tần suất sao lưu", value: "Hàng ngày lúc 03:00" },
-  { label: "Dung lượng đã dùng", value: "4.2 GB / 20 GB" },
-  { label: "Vị trí lưu trữ", value: "Máy chủ đám mây ANIO Cloud" },
-];
+// dbInfo đã XOÁ — trang /db ĐÃ NỐI API THẬT (property_settings nhóm "db").
 
 // ---------- Mạng xã hội (Social) — khối `isSocial`, dòng 1958 ----------
-
-export interface SocialLink {
-  name: string;
-  handle: string;
-  on: boolean;
-  autoOn: boolean;
-}
-
-export const socialLinksSeed: SocialLink[] = [
-  { name: "Facebook", handle: "facebook.com/anio.riverside", on: true, autoOn: true },
-  { name: "Zalo OA", handle: "zalo.me/anioriverside", on: true, autoOn: true },
-  { name: "Instagram", handle: "instagram.com/anio.riverside", on: false, autoOn: false },
-  { name: "Website", handle: "anioriverside.vn", on: true, autoOn: true },
-];
+// socialLinksSeed/SocialLink đã XOÁ — trang /social ĐÃ NỐI API THẬT
+// (property_settings nhóm "social", interface khai báo lại tại chỗ trong page.tsx).
 
 // ---------- Máy in & mẫu in (Printer) — khối `isPrinter`, dòng 2333 ----------
-
-export const printTemplates = [
-  { doc: "Hợp đồng lưu trú", template: "Mẫu hợp đồng A4 song ngữ", size: "A4", linked: true },
-  { doc: "Hoá đơn thanh toán", template: "Mẫu hoá đơn K80 chuẩn", size: "K80 (80mm)", linked: true },
-  { doc: "Hoá đơn GTGT (VAT)", template: "Mẫu hoá đơn điện tử theo Nghị định 123", size: "A5", linked: true },
-  { doc: "Phiếu đăng ký lưu trú (tạm trú)", template: "Mẫu A5 theo quy định công an (NA17)", size: "A5", linked: true },
-  { doc: "Phiếu khai báo tạm trú người nước ngoài", template: "Mẫu NA17 song ngữ Anh–Việt", size: "A5", linked: true },
-  { doc: "Phiếu xác nhận đặt phòng (Booking Confirmation)", template: "Mẫu A4 có logo cơ sở", size: "A4", linked: true },
-  { doc: "Biên nhận tạm ứng (Deposit Receipt)", template: "Mẫu biên nhận K80", size: "K80 (80mm)", linked: true },
-  { doc: "Phiếu ghi dịch vụ phát sinh (Extra Charge Slip)", template: "Mẫu K80 kèm chữ ký khách", size: "K80 (80mm)", linked: true },
-  { doc: "Phiếu bàn giao ca (Shift Handover)", template: "Chưa chọn mẫu", size: "—", linked: false },
-  { doc: "Thẻ chìa khoá / thẻ phòng (Key Card Envelope)", template: "Mẫu bao thẻ phòng in logo", size: "Tuỳ chỉnh 8.5×5.4cm", linked: false },
-].map((t) => ({ ...t, statusLabel: t.linked ? "Đang dùng" : "Chưa cấu hình", bg: t.linked ? "#E9FBEF" : "#F4F5F6", fg: t.linked ? "#00C853" : "#777E90" }));
+// printTemplates đã XOÁ — trang /printer ĐÃ NỐI API THẬT (property_settings
+// nhóm "printer").

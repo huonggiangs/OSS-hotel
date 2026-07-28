@@ -12,9 +12,15 @@ import { invoicesRouter } from "./routes/invoices.routes";
 import { expensesRouter } from "./routes/expenses.routes";
 import { devicesRouter } from "./routes/devices.routes";
 import { dashboardRouter } from "./routes/dashboard.routes";
+import { settingsRouter } from "./routes/settings.routes";
+import { branchesRouter } from "./routes/branches.routes";
+import { usersRouter } from "./routes/users.routes";
+import { auditLogRouter } from "./routes/auditLog.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
-import { pool } from "./lib/db";
+import { pool, DB_MODE, embeddedDb } from "./lib/db";
+import { bootstrapEmbeddedDb } from "./lib/embeddedBootstrap";
+import { ensureDefaultSettings } from "./lib/settingsBootstrap";
 
 const app = express();
 
@@ -39,6 +45,10 @@ app.use("/api/v1/payments", invoicesRouter);
 app.use("/api/v1/expenses", expensesRouter);
 app.use("/api/v1/devices", devicesRouter);
 app.use("/api/v1/dashboard", dashboardRouter);
+app.use("/api/v1/settings", settingsRouter);
+app.use("/api/v1/branches", branchesRouter);
+app.use("/api/v1/users", usersRouter);
+app.use("/api/v1/audit-log", auditLogRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error_code: "ROUTE_NOT_FOUND", message: "Không tìm thấy endpoint." });
@@ -46,12 +56,38 @@ app.use((_req, res) => {
 app.use(errorHandler);
 
 const PORT = Number(process.env.PORT) || 4100;
-app.listen(PORT, () => {
+
+async function start() {
+  // Chế độ embedded (PGlite, không cần Docker/PostgreSQL): tự chạy migration +
+  // seed lần đầu TRƯỚC khi mở cổng lắng nghe, để `npm run dev` là có ngay dữ
+  // liệu để đăng nhập, không phải chạy thêm lệnh migrate/seed thủ công nào.
+  if (DB_MODE === "embedded" && embeddedDb) {
+    await bootstrapEmbeddedDb(embeddedDb);
+  }
+
+  // Seed mặc định cho property_settings (21 nhóm cấu hình) — chạy cho cả 2
+  // chế độ DB, idempotent (chỉ insert nhóm còn thiếu). Đặt sau bootstrap
+  // embedded ở trên để chắc chắn bảng "properties" đã có dữ liệu.
+  await ensureDefaultSettings();
+
+  app.listen(PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Property Web API đang chạy tại http://localhost:${PORT} (DB_MODE=${DB_MODE})`);
+  });
+}
+
+start().catch((err) => {
   // eslint-disable-next-line no-console
-  console.log(`Property Web API đang chạy tại http://localhost:${PORT}`);
+  console.error("Khởi động API thất bại:", err);
+  process.exit(1);
 });
 
 process.on("SIGTERM", async () => {
-  await pool.end();
+  if (DB_MODE === "embedded" && embeddedDb) {
+    await embeddedDb.close();
+  } else {
+    const maybePgPool = pool as unknown as { end?: () => Promise<void> };
+    if (typeof maybePgPool.end === "function") await maybePgPool.end();
+  }
   process.exit(0);
 });

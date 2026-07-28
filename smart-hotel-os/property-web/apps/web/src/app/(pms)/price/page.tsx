@@ -1,17 +1,82 @@
 "use client";
 
-import { useState } from "react";
-import { roomTypesFull, roomsFull } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
 import { AddRoomTypeModal } from "@/components/price/AddRoomTypeModal";
 import { AddRoomModal } from "@/components/price/AddRoomModal";
+import { api, isApiError } from "@/lib/api-client";
 
-// Trang "Phòng và giá" (mở từ panel Cài đặt) — pixel-perfect theo khối `isPrice`
-// (dòng 866-1049 trong bản gốc): bảng Danh sách loại phòng + bảng Danh sách phòng,
-// mỗi dòng có menu hành động (Sửa/Xóa), 2 modal Thêm loại phòng / Thêm phòng.
+// Trang "Phòng và giá" (mở từ panel Cài đặt) — ĐÃ NỐI API THẬT
+// (GET /api/v1/room-types + GET /api/v1/rooms, bảng đã có sẵn từ trước, chỉ
+// còn thiếu UI nối vào). Các cột không có trong schema MVP hiện tại (Tính
+// tiền/Giảm giá/Mã phòng/Bữa ăn/QR Code/Sync) giữ placeholder tĩnh đúng bản
+// gốc (chưa có bảng nguồn tương ứng) — xem PROGRESS.md.
+interface ApiRoomType {
+  id: string;
+  name: string;
+  base_price: string;
+  capacity: number;
+  beds_big: number;
+  beds_small: number;
+  area_m2: string | null;
+  status: "ACTIVE" | "INACTIVE";
+}
+interface ApiRoom {
+  id: string;
+  number: string;
+  floor: string;
+  room_type_id: string;
+  room_type_name: string;
+  room_type_price: string;
+  status: "OCCUPIED" | "VACANT" | "DIRTY" | "MAINTENANCE";
+}
+
+function formatVnd(v: string | number) {
+  return Number(v).toLocaleString("vi-VN") + "đ";
+}
+const ROOM_STATUS_LABEL: Record<ApiRoom["status"], { label: string; color: string }> = {
+  OCCUPIED: { label: "Đã đặt", color: "#284AB1" },
+  VACANT: { label: "Đang mở", color: "#00C853" },
+  DIRTY: { label: "Chờ xử lý", color: "#FAB505" },
+  MAINTENANCE: { label: "Ngừng hoạt động", color: "#CC2F42" },
+};
+
 export default function PricePage() {
+  const [roomTypes, setRoomTypes] = useState<ApiRoomType[]>([]);
+  const [rooms, setRooms] = useState<ApiRoom[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showAddRoomType, setShowAddRoomType] = useState(false);
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [rt, r] = await Promise.all([
+        api.get<{ items: ApiRoomType[] }>("/api/v1/room-types"),
+        api.get<{ items: ApiRoom[] }>("/api/v1/rooms"),
+      ]);
+      setRoomTypes(rt.items);
+      setRooms(r.items);
+    } catch (err) {
+      setError(isApiError(err) ? err.message : "Không tải được dữ liệu phòng và giá.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
+  if (error)
+    return (
+      <div className="rounded-xl bg-white p-6 text-[13px] text-pms-danger shadow-card">
+        {error} <span className="cursor-pointer font-semibold text-pms-primary" onClick={load}>Thử lại</span>
+      </div>
+    );
 
   return (
     <div>
@@ -38,23 +103,24 @@ export default function PricePage() {
             </tr>
           </thead>
           <tbody>
-            {roomTypesFull.map((rt) => {
-              const key = "rt" + rt.stt;
+            {roomTypes.map((rt, i) => {
+              const key = "rt" + rt.id;
+              const count = rooms.filter((r) => r.room_type_id === rt.id).length;
               return (
                 <tr key={key}>
-                  <td className="border-b border-pms-divider px-2 py-3">{rt.stt}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{i + 1}</td>
                   <td className="border-b border-pms-divider px-2 py-3 font-semibold">{rt.name}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{rt.count}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{count}</td>
                   <td className="border-b border-pms-divider px-2 py-3">
-                    🛏 {rt.bedsBig}　🛏 {rt.bedsSmall}
+                    🛏 {rt.beds_big}　🛏 {rt.beds_small}
                   </td>
                   <td className="border-b border-pms-divider px-2 py-3">{rt.capacity}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">📐 {rt.area}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{rt.basePrice}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{rt.method}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{rt.discount}</td>
-                  <td className="border-b border-pms-divider px-2 py-3 font-semibold" style={{ color: rt.statusColor }}>
-                    {rt.status}
+                  <td className="border-b border-pms-divider px-2 py-3">📐 {rt.area_m2 ?? "—"}m2</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{formatVnd(rt.base_price)}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">Giá ngày</td>
+                  <td className="border-b border-pms-divider px-2 py-3">—</td>
+                  <td className="border-b border-pms-divider px-2 py-3 font-semibold" style={{ color: rt.status === "ACTIVE" ? "#00C853" : "#CC2F42" }}>
+                    {rt.status === "ACTIVE" ? "Đang hoạt động" : "Ngừng hoạt động"}
                   </td>
                   <td className="relative border-b border-pms-divider px-2 py-3">
                     <RowMenu id={key} open={openMenu === key} onToggle={() => setOpenMenu(openMenu === key ? null : key)} />
@@ -64,7 +130,7 @@ export default function PricePage() {
             })}
           </tbody>
         </table>
-        <Pagination />
+        <Pagination count={roomTypes.length} />
       </div>
 
       <div className="mb-3 flex items-center justify-between">
@@ -85,26 +151,27 @@ export default function PricePage() {
             </tr>
           </thead>
           <tbody>
-            {roomsFull.map((r) => {
-              const key = "r" + r.room;
+            {rooms.map((r) => {
+              const key = "r" + r.id;
+              const st = ROOM_STATUS_LABEL[r.status];
               return (
                 <tr key={key}>
-                  <td className="border-b border-pms-divider px-2 py-3 font-semibold">{r.room}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{r.type}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{r.code}</td>
+                  <td className="border-b border-pms-divider px-2 py-3 font-semibold">{r.number}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{r.room_type_name}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">—</td>
                   <td className="border-b border-pms-divider px-2 py-3">{r.floor}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{r.meal}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{r.capacity}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{r.price}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{r.method}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">—</td>
+                  <td className="border-b border-pms-divider px-2 py-3">—</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{formatVnd(r.room_type_price)}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">Tự động</td>
                   <td className="border-b border-pms-divider px-2 py-3 text-pms-primary">▦</td>
                   <td className="border-b border-pms-divider px-2 py-3">
                     <div className="relative h-5 w-9 rounded-full bg-pms-border">
                       <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow" />
                     </div>
                   </td>
-                  <td className="border-b border-pms-divider px-2 py-3 font-semibold" style={{ color: r.statusColor }}>
-                    {r.status}
+                  <td className="border-b border-pms-divider px-2 py-3 font-semibold" style={{ color: st.color }}>
+                    {st.label}
                   </td>
                   <td className="relative border-b border-pms-divider px-2 py-3">
                     <RowMenu id={key} open={openMenu === key} onToggle={() => setOpenMenu(openMenu === key ? null : key)} />
@@ -114,7 +181,7 @@ export default function PricePage() {
             })}
           </tbody>
         </table>
-        <Pagination />
+        <Pagination count={rooms.length} />
       </div>
 
       {showAddRoomType && <AddRoomTypeModal onClose={() => setShowAddRoomType(false)} />}
@@ -143,12 +210,12 @@ function RowMenu({ open, onToggle }: { id: string; open: boolean; onToggle: () =
   );
 }
 
-function Pagination() {
+function Pagination({ count }: { count: number }) {
   return (
     <div className="mt-4 flex items-center justify-between text-[13px] text-pms-muted">
-      <span>Hiển thị 15 cơ sở 15/50</span>
+      <span>Hiển thị {count}/{count}</span>
       <div className="flex items-center gap-1.5">
-        {[1, 2, 3].map((n) => (
+        {[1].map((n) => (
           <div key={n} className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-pms-border">
             {n}
           </div>

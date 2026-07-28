@@ -24,7 +24,22 @@ declare global {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET;
+// Ở môi trường production BẮT BUỘC phải cấu hình JWT_SECRET (throw để chặn khởi
+// động nếu quên). Ở dev/local (NODE_ENV khác "production") — vd. người dùng chạy
+// `npm run dev` chế độ embedded không tạo file .env — dùng giá trị mặc định kèm
+// cảnh báo, để "chỉ cần npm run dev" là chạy được ngay, không cần thêm bước nào.
+const JWT_SECRET =
+  process.env.JWT_SECRET ??
+  (process.env.NODE_ENV === "production"
+    ? undefined
+    : (() => {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[auth] JWT_SECRET chưa được cấu hình — dùng giá trị mặc định CHỈ DÀNH CHO DEV. " +
+            "Đổi biến môi trường JWT_SECRET trước khi dùng cho môi trường thật."
+        );
+        return "dev-only-insecure-default-secret-do-not-use-in-production";
+      })());
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET chưa được cấu hình trong biến môi trường.");
 }

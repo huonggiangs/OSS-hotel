@@ -1,35 +1,101 @@
 "use client";
 
-import { useState } from "react";
-import {
-  expenses,
-  expenseTotal,
-  dailyEntriesBase,
-  dailyStatusInfo,
-  dailyIncomeTotal,
-  dailyExpenseTotal,
-  type DailyEntryStatus,
-} from "@/lib/mock-data";
+import { useEffect, useState } from "react";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
+import { api, isApiError } from "@/lib/api-client";
+import { useSettings } from "@/lib/useSettings";
 
 const TH = "border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted";
 const TD = "border-b border-pms-divider px-2 py-3";
 
-// Trang "Chi phí" — pixel-perfect theo khối `isExpenses` (dòng 1126-1234 bản gốc):
-// 2 tab con (Chi phí / Thu chi trong ngày), modal "Thêm chi phí" dùng chung cho cả 2 tab.
+// Trang "Chi phí" — ĐÃ NỐI API THẬT:
+// - Tab "Chi phí": GET/POST /api/v1/expenses (bảng expenses có sẵn).
+// - Tab "Thu chi trong ngày": property_settings nhóm "daily_entries" (chưa có
+//   bảng nghiệp vụ riêng cho luồng phê duyệt thu/chi trong ngày — quyết định
+//   dùng property_settings thay vì thêm bảng mới, xem PROGRESS.md). Duyệt/Từ
+//   chối giờ ghi thật xuống DB qua PUT (thay vì chỉ đổi state cục bộ như bản
+//   mock trước đây).
+type DailyEntryStatus = "approved" | "pending" | "rejected";
+interface DailyEntry {
+  id: string;
+  type: "Thu" | "Chi";
+  typeColor: string;
+  desc: string;
+  amount: string;
+  by: string;
+  status: DailyEntryStatus;
+}
+interface DailyEntriesData {
+  items: DailyEntry[];
+  incomeTotal: string;
+  expenseTotal: string;
+}
+const DAILY_FALLBACK: DailyEntriesData = { items: [], incomeTotal: "0đ", expenseTotal: "0đ" };
+const STATUS_INFO: Record<DailyEntryStatus, { label: string; bg: string; color: string }> = {
+  approved: { label: "Đã duyệt", bg: "#E6F9EE", color: "#00C853" },
+  pending: { label: "Chờ duyệt", bg: "#FFF6E5", color: "#FAB505" },
+  rejected: { label: "Đã từ chối", bg: "#FDECEE", color: "#CC2F42" },
+};
+
+interface ApiExpense {
+  id: string;
+  category: string;
+  description: string | null;
+  amount: string;
+  expense_date: string;
+}
+function formatVnd(v: string | number) {
+  return Number(v).toLocaleString("vi-VN") + "đ";
+}
+function formatDate(iso: string) {
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return `${d}/${m}/${y}`;
+}
+
 export default function ExpensesPage() {
   const [tab, setTab] = useState<"expenses" | "daily">("expenses");
   const [showAdd, setShowAdd] = useState(false);
-  // Trạng thái phê duyệt sổ thu chi — giữ tại chỗ trong trang, tương ứng
-  // `this.state.dailyStatuses` bản gốc (đổi trạng thái khi bấm Duyệt/Từ chối).
-  const [statuses, setStatuses] = useState<Record<string, DailyEntryStatus>>({});
 
-  const dailyEntries = dailyEntriesBase.map((e) => {
-    const status = statuses[e.id] || e.defaultStatus;
-    const s = dailyStatusInfo[status];
-    return { ...e, status, ...s, isPending: status === "pending" };
-  });
-  const dailyPendingCount = dailyEntries.filter((e) => e.isPending).length;
+  const [expenses, setExpenses] = useState<ApiExpense[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: daily, loading: loadingDaily, save: saveDaily } = useSettings<DailyEntriesData>("daily_entries", DAILY_FALLBACK);
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get<{ items: ApiExpense[] }>("/api/v1/expenses");
+      setExpenses(res.items);
+    } catch (err) {
+      setError(isApiError(err) ? err.message : "Không tải được danh sách chi phí.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCreateExpense(input: { category: string; amount: number; description: string; expenseDate: string }) {
+    try {
+      await api.post("/api/v1/expenses", input);
+      setShowAdd(false);
+      load();
+    } catch {
+      // Lỗi hiển thị qua trạng thái error chung nếu cần — modal tự đóng khi thành công.
+    }
+  }
+
+  async function setDailyStatus(id: string, status: DailyEntryStatus) {
+    const next = { ...daily, items: daily.items.map((it) => (it.id === id ? { ...it, status } : it)) };
+    await saveDaily(next);
+  }
+
+  const expenseTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
+  const dailyPendingCount = daily.items.filter((e) => e.status === "pending").length;
 
   return (
     <div>
@@ -59,7 +125,7 @@ export default function ExpensesPage() {
         <>
           <div className="mb-5 inline-block rounded-xl bg-white px-5 py-[18px] shadow-card">
             <span className="text-[12px] text-pms-muted">Tổng chi phí tháng này</span>
-            <b className="mt-1.5 block text-[22px] text-pms-danger">{expenseTotal}</b>
+            <b className="mt-1.5 block text-[22px] text-pms-danger">{formatVnd(expenseTotal)}</b>
           </div>
           <div className="rounded-xl bg-white p-6 shadow-card">
             <div className="mb-4 flex items-center justify-between">
@@ -71,29 +137,37 @@ export default function ExpensesPage() {
                 + Thêm chi phí
               </div>
             </div>
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr>
-                  {["Mã", "Ngày", "Loại chi phí", "Nội dung", "Số tiền", "Người ghi nhận"].map((h) => (
-                    <th key={h} className={TH}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.map((e) => (
-                  <tr key={e.id}>
-                    <td className={TD}>{e.id}</td>
-                    <td className={TD}>{e.date}</td>
-                    <td className={`${TD} font-semibold`}>{e.category}</td>
-                    <td className={`${TD} text-pms-muted`}>{e.desc}</td>
-                    <td className={`${TD} font-semibold text-pms-danger`}>{e.amount}</td>
-                    <td className={TD}>{e.by}</td>
+            {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
+            {error && (
+              <div className="text-[13px] text-pms-danger">
+                {error} <span className="cursor-pointer font-semibold text-pms-primary" onClick={load}>Thử lại</span>
+              </div>
+            )}
+            {!loading && !error && (
+              <table className="w-full border-collapse text-[13px]">
+                <thead>
+                  <tr>
+                    {["Mã", "Ngày", "Loại chi phí", "Nội dung", "Số tiền", "Người ghi nhận"].map((h) => (
+                      <th key={h} className={TH}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {expenses.map((e) => (
+                    <tr key={e.id}>
+                      <td className={TD}>{e.id.slice(0, 8)}</td>
+                      <td className={TD}>{formatDate(e.expense_date)}</td>
+                      <td className={`${TD} font-semibold`}>{e.category}</td>
+                      <td className={`${TD} text-pms-muted`}>{e.description}</td>
+                      <td className={`${TD} font-semibold text-pms-danger`}>{formatVnd(e.amount)}</td>
+                      <td className={TD}>—</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </>
       )}
@@ -106,11 +180,11 @@ export default function ExpensesPage() {
           <div className="mb-5 grid grid-cols-3 gap-4">
             <div className="rounded-xl bg-white px-5 py-[18px] shadow-card">
               <span className="text-[12px] text-pms-muted">Tổng thu hôm nay</span>
-              <b className="mt-1.5 block text-[22px] text-pms-success">{dailyIncomeTotal}</b>
+              <b className="mt-1.5 block text-[22px] text-pms-success">{daily.incomeTotal}</b>
             </div>
             <div className="rounded-xl bg-white px-5 py-[18px] shadow-card">
               <span className="text-[12px] text-pms-muted">Tổng chi hôm nay</span>
-              <b className="mt-1.5 block text-[22px] text-pms-danger">{dailyExpenseTotal}</b>
+              <b className="mt-1.5 block text-[22px] text-pms-danger">{daily.expenseTotal}</b>
             </div>
             <div className="rounded-xl bg-white px-5 py-[18px] shadow-card">
               <span className="text-[12px] text-pms-muted">Chờ phê duyệt</span>
@@ -118,72 +192,61 @@ export default function ExpensesPage() {
             </div>
           </div>
           <div className="rounded-xl bg-white p-6 shadow-card">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="m-0 text-[15px] font-semibold">Sổ thu chi trong ngày</h3>
-              <div
-                className="cursor-pointer rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
-                onClick={() => setShowAdd(true)}
-              >
-                + Ghi nhận thu/chi
-              </div>
-            </div>
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr>
-                  {["Mã", "Loại", "Nội dung", "Số tiền", "Người đề xuất", "Trạng thái", "Phê duyệt"].map((h) => (
-                    <th key={h} className={TH}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {dailyEntries.map((d) => (
-                  <tr key={d.id}>
-                    <td className={TD}>{d.id}</td>
-                    <td className={TD} style={{ fontWeight: 600, color: d.typeColor }}>
-                      {d.type}
-                    </td>
-                    <td className={`${TD} text-pms-muted`}>{d.desc}</td>
-                    <td className={TD} style={{ fontWeight: 600, color: d.typeColor }}>
-                      {d.amount}
-                    </td>
-                    <td className={TD}>{d.by}</td>
-                    <td className={TD}>
-                      <span
-                        className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                        style={{ background: d.bg, color: d.color }}
-                      >
-                        {d.label}
-                      </span>
-                    </td>
-                    <td className={TD}>
-                      {d.isPending && (
-                        <div className="flex gap-2">
-                          <span
-                            className="cursor-pointer font-semibold text-pms-success"
-                            onClick={() => setStatuses((prev) => ({ ...prev, [d.id]: "approved" }))}
-                          >
-                            Duyệt
-                          </span>
-                          <span
-                            className="cursor-pointer font-semibold text-pms-danger"
-                            onClick={() => setStatuses((prev) => ({ ...prev, [d.id]: "rejected" }))}
-                          >
-                            Từ chối
-                          </span>
-                        </div>
-                      )}
-                    </td>
+            <h3 className="m-0 mb-4 text-[15px] font-semibold">Sổ thu chi trong ngày</h3>
+            {loadingDaily && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
+            {!loadingDaily && (
+              <table className="w-full border-collapse text-[13px]">
+                <thead>
+                  <tr>
+                    {["Mã", "Loại", "Nội dung", "Số tiền", "Người đề xuất", "Trạng thái", "Phê duyệt"].map((h) => (
+                      <th key={h} className={TH}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {daily.items.map((d) => {
+                    const s = STATUS_INFO[d.status];
+                    return (
+                      <tr key={d.id}>
+                        <td className={TD}>{d.id}</td>
+                        <td className={TD} style={{ fontWeight: 600, color: d.typeColor }}>
+                          {d.type}
+                        </td>
+                        <td className={`${TD} text-pms-muted`}>{d.desc}</td>
+                        <td className={TD} style={{ fontWeight: 600, color: d.typeColor }}>
+                          {d.amount}
+                        </td>
+                        <td className={TD}>{d.by}</td>
+                        <td className={TD}>
+                          <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: s.bg, color: s.color }}>
+                            {s.label}
+                          </span>
+                        </td>
+                        <td className={TD}>
+                          {d.status === "pending" && (
+                            <div className="flex gap-2">
+                              <span className="cursor-pointer font-semibold text-pms-success" onClick={() => setDailyStatus(d.id, "approved")}>
+                                Duyệt
+                              </span>
+                              <span className="cursor-pointer font-semibold text-pms-danger" onClick={() => setDailyStatus(d.id, "rejected")}>
+                                Từ chối
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </>
       )}
 
-      {showAdd && <AddExpenseModal onClose={() => setShowAdd(false)} />}
+      {showAdd && <AddExpenseModal onClose={() => setShowAdd(false)} onCreate={handleCreateExpense} />}
     </div>
   );
 }

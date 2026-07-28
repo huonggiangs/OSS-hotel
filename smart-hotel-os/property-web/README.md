@@ -27,19 +27,85 @@ Từ đợt cập nhật này, `property-web` có **2 phần chạy được**:
 - `apps/web/` — Next.js 16 + TypeScript + Tailwind, 28 màn hình PMS pixel-perfect.
 - `apps/api/` — **MỚI**: Express + TypeScript + `pg` (node-postgres thuần, KHÔNG dùng Prisma,
   đúng convention `webadmin/apps/api`), JWT Auth thật, RBAC theo vai trò cấp cơ sở.
-- `database/` — **MỚI**: migration SQL đánh số (`database/migrations/001_init.sql`) + seed
-  demo, chạy bằng `database/migrate.ts` / `database/seed.ts` (migration runner viết tay,
-  không phụ thuộc ORM code-gen — giống hệt `webadmin/database`).
+- `database/` — **MỚI**: migration SQL đánh số (`database/migrations/001_init.sql`,
+  `002_add_username.sql`) + seed demo, chạy bằng `database/migrate.ts` / `database/seed.ts`
+  (migration runner viết tay, không phụ thuộc ORM code-gen — giống hệt `webadmin/database`).
+  Dùng cho chế độ chạy qua Docker/Postgres thật.
 
 **Đã có đăng nhập thật** — vá lỗ hổng "ai mở link cũng vào thẳng được" của các phiên trước.
 Xem chi tiết màn nào đã nối API thật / màn nào còn mock ở `PROGRESS.md`.
 
-## Chạy toàn bộ hệ thống bằng một lệnh (Docker)
+**Chạy được không cần Docker/PostgreSQL**: `apps/api` hỗ trợ chế độ database "embedded"
+(`@electric-sql/pglite`) — tự chạy migration + seed khi khởi động, lưu dữ liệu ra
+`apps/api/.data/`. Xem mục "Chạy thử" ngay bên dưới.
 
-Yêu cầu: đã cài Docker Desktop (bao gồm Docker Compose) và đang chạy.
+## Chạy thử
 
-**Lưu ý Windows**: `&&` chỉ nối lệnh được trong Git Bash/WSL, KHÔNG chạy được trực tiếp
-trong CMD hay PowerShell — dùng cú pháp riêng cho từng loại terminal bên dưới.
+Có 2 cách. **Cách 1 được khuyến nghị** — không cần Docker, không cần cài PostgreSQL, chỉ
+cần Node.js đã có sẵn trên máy. Dùng Cách 2 chỉ khi Docker Desktop của bạn đang chạy tốt.
+
+### Cách 1 (khuyến nghị, KHÔNG cần Docker)
+
+API dùng chế độ database **embedded** (`@electric-sql/pglite` — PostgreSQL biên dịch sang
+WASM, chạy thẳng trong tiến trình Node, lưu dữ liệu ra thư mục file `apps/api/.data/`).
+Không cần cài Docker, không cần cài PostgreSQL, không cần tạo file `.env` thủ công. Lần
+đầu chạy, API tự tạo schema (chạy hết các file trong `database/migrations/`) và tự seed
+dữ liệu demo — chỉ cần `npm run dev` là có ngay dữ liệu để đăng nhập.
+
+Mở **2 cửa sổ terminal riêng** (1 chạy API, 1 chạy Web) — không dùng `&&` trần vì không
+chạy được trực tiếp trong CMD/PowerShell.
+
+**PowerShell — cửa sổ 1 (API, cổng 4100):**
+
+```powershell
+Set-Location D:\hotel\OSS\smart-hotel-os\property-web\apps\api
+npm install
+npm run dev
+```
+
+**PowerShell — cửa sổ 2 (Web, cổng 3100):**
+
+```powershell
+Set-Location D:\hotel\OSS\smart-hotel-os\property-web\apps\web
+npm install
+npm run dev
+```
+
+**CMD (Command Prompt) — cửa sổ 1 (API):**
+
+```bat
+cd /d D:\hotel\OSS\smart-hotel-os\property-web\apps\api
+npm install
+npm run dev
+```
+
+**CMD (Command Prompt) — cửa sổ 2 (Web):**
+
+```bat
+cd /d D:\hotel\OSS\smart-hotel-os\property-web\apps\web
+npm install
+npm run dev
+```
+
+Sau khi cả 2 cửa sổ đều chạy (giữ nguyên, không đóng):
+
+- Web: http://localhost:3100 (khác cổng `webadmin` 3000 — chạy song song được)
+- API: http://localhost:4100 (health check: mở http://localhost:4100/health, phải thấy
+  `{"status":"ok"}`)
+- Đăng nhập demo: xem bảng "Tài khoản demo" bên dưới, mật khẩu chung `Anio2026@`
+
+Có thể thử double-click `property-web\start-dev.bat` để tự động hoá 2 bước trên (tự kiểm
+tra Node, tự `npm install`, tự mở 2 cửa sổ) — **nhưng nếu double-click không mở được cửa
+sổ nào** (thường do phần mềm bảo mật/EDR trên máy chặn chạy script), đừng cố sửa file
+`.bat` — hãy quay lại gõ tay 2 khối lệnh PowerShell/CMD phía trên, đó mới là đường chính.
+
+### Cách 2 (nếu có Docker Desktop đang chạy tốt)
+
+Yêu cầu: đã cài Docker Desktop (bao gồm Docker Compose) và **đã mở Docker Desktop, đợi
+biểu tượng con cá voi ở khay hệ thống hết xoay** (chạy ổn định) trước khi gõ lệnh dưới
+đây — nếu Docker Desktop chưa chạy, `docker compose` sẽ báo đúng lỗi
+`failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine ...
+The system cannot find the file specified`, xem mục "Xử lý sự cố" bên dưới.
 
 **PowerShell** (mở "Windows PowerShell", không phải CMD):
 
@@ -64,95 +130,64 @@ Nếu muốn gõ một dòng duy nhất: PowerShell dùng `;` thay cho `&&`
 (`Set-Location D:\hotel\OSS\smart-hotel-os\property-web; docker compose up --build`);
 CMD dùng `&` (`cd /d D:\hotel\OSS\smart-hotel-os\property-web & docker compose up --build`).
 
-Lần đầu chạy: service `migrate` tự động tạo schema (`database/migrations/001_init.sql`)
-rồi seed dữ liệu demo trước khi `api` khởi động. Sau khi cả 4 service
-(`postgres`, `migrate`, `api`, `web`) lên xong:
+Lần đầu chạy: service `migrate` tự động tạo schema (`database/migrations/001_init.sql`,
+`002_add_username.sql`) rồi seed dữ liệu demo trước khi `api` khởi động. Sau khi cả 4
+service (`postgres`, `migrate`, `api`, `web`) lên xong:
 
 - Web: http://localhost:3100 (khác cổng `webadmin` 3000 — chạy song song được)
 - API: http://localhost:4100 (health check: `GET /health`; khác cổng `webadmin` 4000)
 - Postgres: cổng 5433 (khác cổng `webadmin` 5432)
-- Đăng nhập demo: xem bảng "Vai trò demo" bên dưới, mật khẩu chung `ChangeMe123!`
+- Đăng nhập demo: xem bảng "Tài khoản demo" bên dưới, mật khẩu chung `Anio2026@`
 
-## Chạy không dùng Docker (phát triển local, Windows)
-
-Cần PostgreSQL 16 chạy sẵn (local hoặc container riêng, cổng bất kỳ — chỉnh `DATABASE_URL`
-cho khớp) và Node.js 20+.
-
-**PowerShell**:
+### Build production / kiểm tra kiểu dữ liệu
 
 ```powershell
-# 1. Tạo schema + seed
-Set-Location D:\hotel\OSS\smart-hotel-os\property-web\database
-npm install
-Copy-Item ..\.env.example .env
-# sửa DATABASE_URL trong .env nếu Postgres không chạy đúng ở localhost:5433
-npm run migrate
-npm run seed
-
-# 2. Chạy API (mở cửa sổ PowerShell khác)
-Set-Location D:\hotel\OSS\smart-hotel-os\property-web\apps\api
-npm install
-Copy-Item ..\..\.env.example .env
-npm run dev                # http://localhost:4100
-
-# 3. Chạy Web (mở cửa sổ PowerShell khác)
-Set-Location D:\hotel\OSS\smart-hotel-os\property-web\apps\web
-npm install
-npm run dev                # http://localhost:3100
-```
-
-**CMD (Command Prompt)** — thay `Set-Location` bằng `cd /d`, thay `Copy-Item` bằng `copy`,
-giữ nguyên các lệnh `npm`:
-
-```bat
-cd /d D:\hotel\OSS\smart-hotel-os\property-web\database
-npm install
-copy ..\.env.example .env
-npm run migrate
-npm run seed
-```
-
-```bat
-cd /d D:\hotel\OSS\smart-hotel-os\property-web\apps\api
-npm install
-copy ..\..\.env.example .env
-npm run dev
-```
-
-```bat
-cd /d D:\hotel\OSS\smart-hotel-os\property-web\apps\web
-npm install
-npm run dev
+npm run build
+npm run start
+npm run typecheck   # chạy trong apps/api hoặc apps/web — không phát sinh file
 ```
 
 Truy cập `/` sẽ tự chuyển tới `/dashboard`, nhưng vì đã có đăng nhập thật, nếu chưa có
 JWT hợp lệ sẽ redirect ngay sang `/login`.
 
-Build production:
+### Xử lý sự cố
+
+**a) `docker compose up` báo lỗi `failed to connect to the docker API at
+npipe:////./pipe/dockerDesktopLinuxEngine ... The system cannot find the file specified`**
+→ Docker Desktop chưa chạy (daemon chưa lên). Mở ứng dụng Docker Desktop, đợi biểu tượng
+con cá voi ở khay hệ thống hết xoay rồi thử lại. Nếu vẫn lỗi hoặc máy bạn không bật được
+Docker Desktop, dùng thẳng **Cách 1 (không cần Docker)** ở trên — đây là lý do cách đó
+được thêm vào.
+
+**b) Trang `/login` báo "Đăng nhập thất bại. Vui lòng thử lại"** → API (cổng 4100) chưa
+chạy hoặc chưa kết nối được database. Kiểm tra bằng cách mở trình duyệt tới
+http://localhost:4100/health — nếu không tải được trang này (connection refused), quay lại
+chạy `npm run dev` trong `apps/api` (Cách 1) và đọc log lỗi in ra ngay trong cửa sổ đó.
+
+**c) PowerShell báo không cho chạy script (`... cannot be loaded because running scripts
+is disabled on this system`)** → chạy lệnh sau 1 lần (mở PowerShell, không cần quyền
+Admin) rồi thử lại:
 
 ```powershell
-npm run build
-npm run start
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-Kiểm tra kiểu dữ liệu (không phát sinh file) ở cả `apps/api` và `apps/web`:
+## Tài khoản demo (mật khẩu chung: `Anio2026@`)
 
-```powershell
-npm run typecheck
-```
-
-## Vai trò demo cấp cơ sở (mật khẩu chung: `ChangeMe123!`)
-
-| Email | Vai trò |
+| Tên đăng nhập | Vai trò |
 |---|---|
-| owner@anio-riverside.local | OWNER |
-| manager@anio-riverside.local | MANAGER |
-| reception@anio-riverside.local | RECEPTIONIST |
-| housekeeping@anio-riverside.local | HOUSEKEEPING |
+| owner | OWNER |
+| manager | MANAGER |
+| reception | RECEPTIONIST |
+| housekeeping | HOUSEKEEPING |
 
 Đây là bảng `property_users` — người dùng **cấp cơ sở** (lễ tân/quản lý/buồng phòng),
 KHÁC HOÀN TOÀN với bảng `users` bên `webadmin` (nhân sự nội bộ công ty). Hai hệ thống
 không dùng chung database, không JOIN chéo được — đúng `ARCHITECTURE_OVERVIEW.md`.
+
+Đăng nhập chấp nhận cả tên đăng nhập ngắn ở trên LẪN email đầy đủ dạng cũ
+(`manager@anio-riverside.local`...) để tương thích ngược — xem
+`database/migrations/002_add_username.sql`.
 
 Phân quyền chi tiết theo route: mã hoá thành `requireRole(...)` ở từng file trong
 `apps/api/src/routes/`, đối chiếu `../docs/PERMISSION_MATRIX.md` (có điều chỉnh tên vai trò
@@ -163,26 +198,30 @@ tối thiểu, xem `PROGRESS.md` mục quyết định).
 ```text
 property-web/
 ├── apps/
-│   ├── api/                 # MỚI — Express + TypeScript, SQL thuần qua node-postgres
+│   ├── api/                 # Express + TypeScript, SQL thuần qua node-postgres
+│   │   ├── .data/             # (không commit) dữ liệu PGlite khi chạy DB_MODE=embedded
 │   │   └── src/
 │   │       ├── routes/       # auth, room-types, rooms, customers, bookings, payments, expenses, devices, dashboard
 │   │       ├── repositories/ # 1 file / bảng, không ORM
 │   │       ├── middleware/   # requireAuth, requireRole, audit log, error handler
+│   │       ├── lib/          # db.ts (adapter pg.Pool/PGlite), embeddedBootstrap.ts (tự migrate+seed)
 │   │       └── types/        # domain.ts — kiểu TS viết tay khớp schema SQL
 │   └── web/                  # Next.js (App Router) + Tailwind
 │       └── src/
 │           ├── app/
-│           │   ├── login/    # MỚI — trang đăng nhập
+│           │   ├── login/    # Trang đăng nhập (tên đăng nhập ngắn, không cần "@")
 │           │   └── (pms)/    # Layout dùng chung, bọc RequireAuth (redirect /login nếu chưa đăng nhập)
 │           ├── components/   # layout/, dashboard/, booking/, rooms/, price/, ui/, auth/, icons.tsx
-│           └── lib/           # mock-data.ts (còn dùng cho màn chưa nối API), api-client.ts, auth.tsx (MỚI)
-├── database/                 # MỚI — giống hệt convention webadmin/database
+│           └── lib/           # mock-data.ts (còn dùng cho màn chưa nối API), api-client.ts, auth.tsx
+├── database/                 # Giống hệt convention webadmin/database — dùng cho chế độ Docker/Postgres
 │   ├── migrations/001_init.sql
+│   ├── migrations/002_add_username.sql
 │   ├── migrate.ts
 │   ├── seed.ts
 │   └── package.json
-├── docker-compose.yml         # MỚI — web 3100 / api 4100 / postgres 5433
-├── .env.example                # MỚI
+├── docker-compose.yml         # web 3100 / api 4100 / postgres 5433 (Cách 2)
+├── start-dev.bat               # Tiện ích khởi động 1 cú double-click (Cách 1) — .bat, xem mục "Chạy thử"
+├── .env.example
 ├── .gitignore
 └── README.md                    # file này
 ```

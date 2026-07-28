@@ -1,13 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { taxes } from "@/lib/mock-data";
+import { useSettings } from "@/lib/useSettings";
 import { AddTaxModal } from "@/components/tax/AddTaxModal";
 
-// Trang "Thuế & phí" (mở từ panel Cài đặt) — pixel-perfect theo khối `isTax` (dòng
-// 1772-1807 bản gốc): bảng danh sách thuế/phí + modal Thêm.
+interface TaxItem {
+  name: string;
+  rate: string;
+  applyTo: string;
+}
+interface TaxData {
+  items: TaxItem[];
+}
+const FALLBACK: TaxData = { items: [] };
+
+// Trang "Thuế & phí" (mở từ panel Cài đặt) — ĐÃ NỐI API THẬT: property_settings
+// nhóm "tax". Modal Thêm giữ tĩnh (đúng bản gốc, không có form thật).
 export default function TaxPage() {
   const [showAdd, setShowAdd] = useState(false);
+  const { data, loading, error } = useSettings<TaxData>("tax", FALLBACK);
 
   return (
     <div>
@@ -22,26 +33,30 @@ export default function TaxPage() {
             + Thêm
           </div>
         </div>
-        <table className="w-full border-collapse text-[13px]">
-          <thead>
-            <tr>
-              {["Tên", "Mức thu", "Áp dụng cho"].map((h) => (
-                <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {taxes.map((t) => (
-              <tr key={t.name}>
-                <td className="border-b border-pms-divider px-2 py-3 font-semibold">{t.name}</td>
-                <td className="border-b border-pms-divider px-2 py-3">{t.rate}</td>
-                <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{t.applyTo}</td>
+        {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
+        {error && <div className="text-[13px] text-red-500">{error}</div>}
+        {!loading && (
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr>
+                {["Tên", "Mức thu", "Áp dụng cho"].map((h) => (
+                  <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.items.map((t) => (
+                <tr key={t.name}>
+                  <td className="border-b border-pms-divider px-2 py-3 font-semibold">{t.name}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{t.rate}</td>
+                  <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{t.applyTo}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {showAdd && <AddTaxModal onClose={() => setShowAdd(false)} />}

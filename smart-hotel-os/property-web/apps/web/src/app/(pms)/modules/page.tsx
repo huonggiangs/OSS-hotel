@@ -1,17 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { advancedModulesSeed } from "@/lib/mock-data";
+import { useSettings } from "@/lib/useSettings";
 
-// Trang "Module nâng cao" — pixel-perfect theo khối `isModules` (dòng 2262-2281 bản
-// gốc): lưới 4 cột thẻ module, mỗi thẻ có công tắc bật/tắt thật (đúng hành vi
-// `advancedModules.toggle` bản gốc).
+// Trang "Module nâng cao" — ĐÃ NỐI API THẬT: property_settings nhóm
+// "modules". Bật/tắt module giờ lưu thật qua PUT (thay vì chỉ setState cục
+// bộ như bản mock trước đây).
+interface ModuleItem {
+  key: string;
+  name: string;
+  icon: string;
+  bg: string;
+  price?: string;
+  free?: boolean;
+  on: boolean;
+}
+interface ModulesData {
+  items: ModuleItem[];
+}
+const FALLBACK: ModulesData = { items: [] };
+
 export default function ModulesPage() {
-  const [modules, setModules] = useState(advancedModulesSeed);
+  const { data, loading, save } = useSettings<ModulesData>("modules", FALLBACK);
 
-  function toggle(key: string) {
-    setModules((prev) => prev.map((m) => (m.key === key ? { ...m, on: !m.on } : m)));
+  async function toggle(key: string) {
+    await save({ items: data.items.map((m) => (m.key === key ? { ...m, on: !m.on } : m)) });
   }
+
+  if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
 
   return (
     <div>
@@ -19,7 +34,7 @@ export default function ModulesPage() {
       <p className="mb-[22px] text-[13px] text-pms-muted">Bật/tắt các module mở rộng cho cơ sở của bạn</p>
 
       <div className="grid grid-cols-4 gap-4">
-        {modules.map((m) => (
+        {data.items.map((m) => (
           <div key={m.key} className="rounded-xl bg-white px-[18px] pb-3.5 pt-[18px] shadow-card">
             <div className="mb-2.5 flex justify-end">
               <div

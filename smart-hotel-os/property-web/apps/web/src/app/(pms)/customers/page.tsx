@@ -1,24 +1,90 @@
 "use client";
 
-import { useState } from "react";
-import { customersSeed, customerSegmentColors, type CustomerRow } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { customerSegmentColors, type CustomerRow } from "@/lib/mock-data";
 import { CustomerDetailModal } from "@/components/customers/CustomerDetailModal";
+import { api, isApiError } from "@/lib/api-client";
 
-// Trang "Khách hàng" — pixel-perfect theo khối `isCustomers` (dòng 2031-2109 bản gốc):
-// bảng danh sách khách hàng (bấm 1 dòng để xem chi tiết) + modal chi tiết cho phép đổi
-// phân khúc (segment) tại chỗ — đồng bộ ngược lại bảng danh sách, đúng hành vi
-// `customerSegmentOverrides` bản gốc.
+// Trang "Khách hàng" — ĐÃ NỐI API THẬT: GET /api/v1/customers (bảng customers
+// có sẵn). Đổi phân khúc trong modal chi tiết giờ gọi thật
+// PATCH /api/v1/customers/:id (thay vì chỉ setState cục bộ như bản mock cũ).
+// Các số liệu tổng hợp (số lần đặt/đặt lại/CSKH/tổng chi tiêu/giao dịch/dịch
+// vụ đã dùng) CHƯA có bảng thống kê tương ứng trong MVP này — hiển thị "—"
+// thay vì số liệu trang trí giả, xem PROGRESS.md.
+interface ApiCustomer {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  segment: string;
+  note: string | null;
+}
+
+function mapCustomer(c: ApiCustomer): CustomerRow {
+  return {
+    key: c.id,
+    name: c.full_name,
+    phone: c.phone ?? "—",
+    email: c.email ?? "—",
+    bookings: 0,
+    rebookings: 0,
+    careAfterStay: 0,
+    spent: "—",
+    segment: (c.segment as CustomerRow["segment"]) || "Mới",
+    note: c.note ?? "",
+    preferences: "Chưa có dữ liệu tổng hợp.",
+    servicesUsed: [],
+    transactions: [],
+  };
+}
+
 export default function CustomersPage() {
-  const [segments, setSegments] = useState<Record<string, CustomerRow["segment"]>>({});
+  const [customers, setCustomers] = useState<CustomerRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  const customers = customersSeed.map((c) => ({ ...c, segment: segments[c.key] || c.segment }));
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get<{ items: ApiCustomer[] }>("/api/v1/customers");
+      setCustomers(res.items.map(mapCustomer));
+    } catch (err) {
+      setError(isApiError(err) ? err.message : "Không tải được danh sách khách hàng.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const selected = customers.find((c) => c.key === selectedKey) || null;
+
+  async function handleChangeSegment(segment: CustomerRow["segment"]) {
+    if (!selected) return;
+    setCustomers((prev) => prev.map((c) => (c.key === selected.key ? { ...c, segment } : c)));
+    try {
+      await api.patch(`/api/v1/customers/${selected.key}`, { segment });
+    } catch {
+      load();
+    }
+  }
+
+  if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
+  if (error)
+    return (
+      <div className="rounded-xl bg-white p-6 text-[13px] text-pms-danger shadow-card">
+        {error} <span className="cursor-pointer font-semibold text-pms-primary" onClick={load}>Thử lại</span>
+      </div>
+    );
 
   return (
     <div>
       <h1 className="mb-1 text-[22px] font-bold">Khách hàng</h1>
-      <p className="mb-[22px] text-[13px] text-pms-muted">1.603 khách hàng đã lưu trú</p>
+      <p className="mb-[22px] text-[13px] text-pms-muted">{customers.length} khách hàng đã lưu trú</p>
 
       <div className="rounded-xl bg-white p-6 shadow-card">
         <table className="w-full border-collapse text-[13px]">
@@ -35,16 +101,16 @@ export default function CustomersPage() {
           </thead>
           <tbody>
             {customers.map((c) => {
-              const segColor = customerSegmentColors[c.segment];
+              const segColor = customerSegmentColors[c.segment] ?? customerSegmentColors["Mới"];
               return (
                 <tr key={c.key} className="cursor-pointer" onClick={() => setSelectedKey(c.key)}>
                   <td className="border-b border-pms-divider px-2 py-3 font-semibold text-pms-primary">{c.name}</td>
                   <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{c.phone}</td>
                   <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{c.email}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{c.bookings}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{c.rebookings}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{c.careAfterStay}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">{c.spent}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">—</td>
+                  <td className="border-b border-pms-divider px-2 py-3">—</td>
+                  <td className="border-b border-pms-divider px-2 py-3">—</td>
+                  <td className="border-b border-pms-divider px-2 py-3">—</td>
                   <td className="border-b border-pms-divider px-2 py-3">
                     <span
                       className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
@@ -64,11 +130,7 @@ export default function CustomersPage() {
       </div>
 
       {selected && (
-        <CustomerDetailModal
-          customer={selected}
-          onClose={() => setSelectedKey(null)}
-          onChangeSegment={(segment) => setSegments((prev) => ({ ...prev, [selected.key]: segment }))}
-        />
+        <CustomerDetailModal customer={selected} onClose={() => setSelectedKey(null)} onChangeSegment={handleChangeSegment} />
       )}
     </div>
   );

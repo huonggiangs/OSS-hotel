@@ -2,7 +2,7 @@
   "name": "@webadmin/api",
   "version": "0.1.0",
   "private": true,
-  "description": "HQ Console API — quản trị đối tác, nhà cung cấp, khách hàng 360, thiết bị phần cứng, hoa hồng. SQL thuần qua node-postgres, không dùng ORM code-gen.",
+  "description": "HQ Console API \u2014 qu\u1ea3n tr\u1ecb \u0111\u1ed1i t\u00e1c, nh\u00e0 cung c\u1ea5p, kh\u00e1ch h\u00e0ng 360, thi\u1ebft b\u1ecb ph\u1ea7n c\u1ee9ng, hoa h\u1ed3ng. SQL thu\u1ea7n qua node-postgres, kh\u00f4ng d\u00f9ng ORM code-gen.",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.2.17",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

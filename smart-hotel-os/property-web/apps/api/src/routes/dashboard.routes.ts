@@ -22,3 +22,12 @@ dashboardRouter.get(
     res.json({ items });
   })
 );
+
+// Kế toán đêm (/night-audit) — KPI đối soát cuối ngày.
+dashboardRouter.get(
+  "/night-audit",
+  asyncHandler(async (req, res) => {
+    const summary = await dashboardRepo.nightAudit(req.user!.propertyId);
+    res.json(summary);
+  })
+);

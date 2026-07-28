@@ -1,13 +1,17 @@
-# property-web — chạy toàn bộ hệ thống bằng một lệnh:
+# property-web — chạy toàn bộ hệ thống bằng một lệnh (CẦN Docker Desktop đang chạy):
 #
 #   docker compose up --build
+#
+# KHÔNG bật được Docker Desktop? Không cần dùng file này — xem README.md mục
+# "Chạy thử — Cách 1 (khuyến nghị, không cần Docker)": `npm run dev` trong
+# apps/api sẽ tự dùng chế độ database embedded (PGlite), không cần Postgres/Docker.
 #
 # Cổng khác với webadmin (web 3000/api 4000/postgres 5432) để chạy SONG SONG được
 # trên cùng máy: web 3100, api 4100, postgres 5433.
 #
 # Lần đầu chạy: service "migrate" tự động tạo schema + seed dữ liệu demo trước khi
 # "api" khởi động. Sau khi tất cả lên, mở http://localhost:3100 và đăng nhập bằng
-# manager@anio-riverside.local / ChangeMe123!
+# manager / Anio2026@
 #
 # Copy .env.example thành .env và đổi JWT_SECRET trước khi dùng thật.
 

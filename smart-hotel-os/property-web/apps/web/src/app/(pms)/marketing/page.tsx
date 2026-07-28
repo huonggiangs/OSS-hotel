@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { campaignsSeed, type CampaignRow } from "@/lib/mock-data";
+import { type CampaignRow } from "@/lib/mock-data";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { AddCampaignModal } from "@/components/marketing/AddCampaignModal";
+import { useSettings } from "@/lib/useSettings";
+import { useState } from "react";
 
-// Trang "Marketing" — pixel-perfect theo khối `isMarketing` (dòng 1978-1992 bản gốc):
-// bảng chiến dịch email/SMS + modal "Tạo chiến dịch mới" (form thật, prepend vào bảng
-// khi tạo — đúng hành vi `addCampaign` bản gốc).
+// Trang "Marketing" — ĐÃ NỐI API THẬT: danh sách chiến dịch lưu trong
+// property_settings nhóm "marketing" (chưa có bảng nghiệp vụ campaigns riêng
+// — CRM/Marketing service thật thuộc smart-hotel-os/services/crm-service,
+// property-web chỉ lưu cấu hình/khai báo chiến dịch cấp cơ sở, xem
+// PROGRESS.md). Tạo chiến dịch mới giờ ghi thật xuống DB qua PUT (không chỉ
+// setState cục bộ như bản mock trước đây).
+interface MarketingData {
+  campaigns: CampaignRow[];
+}
+const FALLBACK: MarketingData = { campaigns: [] };
+
 export default function MarketingPage() {
-  const [campaigns, setCampaigns] = useState<CampaignRow[]>(campaignsSeed);
+  const { data, loading, save } = useSettings<MarketingData>("marketing", FALLBACK);
   const [showAdd, setShowAdd] = useState(false);
 
   return (
@@ -27,41 +36,44 @@ export default function MarketingPage() {
             + Tạo chiến dịch
           </div>
         </div>
-        <table className="w-full border-collapse text-[13px]">
-          <thead>
-            <tr>
-              {["Chiến dịch", "Kênh", "Bắt đầu", "Kết thúc", "Đã gửi", "Tỷ lệ mở", "Trạng thái"].map((h) => (
-                <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {campaigns.map((c, i) => (
-              <tr key={c.name + i}>
-                <td className="border-b border-pms-divider px-2 py-3 font-semibold">{c.name}</td>
-                <td className="border-b border-pms-divider px-2 py-3">{c.channel}</td>
-                <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{c.start}</td>
-                <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{c.end}</td>
-                <td className="border-b border-pms-divider px-2 py-3">{c.sent}</td>
-                <td className="border-b border-pms-divider px-2 py-3">{c.opened}</td>
-                <td className="border-b border-pms-divider px-2 py-3">
-                  <StatusPill bg={c.bg} fg={c.fg}>
-                    {c.status}
-                  </StatusPill>
-                </td>
+        {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
+        {!loading && (
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr>
+                {["Chiến dịch", "Kênh", "Bắt đầu", "Kết thúc", "Đã gửi", "Tỷ lệ mở", "Trạng thái"].map((h) => (
+                  <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.campaigns.map((c, i) => (
+                <tr key={c.name + i}>
+                  <td className="border-b border-pms-divider px-2 py-3 font-semibold">{c.name}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{c.channel}</td>
+                  <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{c.start}</td>
+                  <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{c.end}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{c.sent}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{c.opened}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">
+                    <StatusPill bg={c.bg} fg={c.fg}>
+                      {c.status}
+                    </StatusPill>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {showAdd && (
         <AddCampaignModal
           onClose={() => setShowAdd(false)}
           onCreate={(row) => {
-            setCampaigns((prev) => [row, ...prev]);
+            save({ campaigns: [row, ...data.campaigns] });
             setShowAdd(false);
           }}
         />

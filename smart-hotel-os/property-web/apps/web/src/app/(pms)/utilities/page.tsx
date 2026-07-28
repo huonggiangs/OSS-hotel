@@ -1,16 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { utilityLinksSeed } from "@/lib/mock-data";
 import { MapsConfigModal } from "@/components/utilities/MapsConfigModal";
 import { HotelConfigModal } from "@/components/utilities/HotelConfigModal";
+import { useSettings } from "@/lib/useSettings";
 
-// Trang "Tiện ích" — pixel-perfect theo khối `isUtilities` (dòng 2246-2260 bản gốc):
-// 2 thẻ liên kết Google Maps/Google Hotel, mỗi thẻ mở modal cấu hình riêng.
+// Trang "Tiện ích" — ĐÃ NỐI API THẬT: property_settings nhóm "utilities".
+// 2 công tắc trong modal Google Hotel (đồng bộ tình trạng phòng/khuyến mãi)
+// giờ lưu thật qua PUT (thay vì chỉ setState cục bộ).
+interface UtilityLink {
+  key: "maps" | "hotel";
+  name: string;
+  desc: string;
+  linked: boolean;
+}
+interface UtilitiesData {
+  links: UtilityLink[];
+  syncAvail: boolean;
+  syncPromo: boolean;
+}
+const FALLBACK: UtilitiesData = { links: [], syncAvail: true, syncPromo: false };
+
 export default function UtilitiesPage() {
+  const { data, loading, save } = useSettings<UtilitiesData>("utilities", FALLBACK);
   const [openConfig, setOpenConfig] = useState<"maps" | "hotel" | null>(null);
-  const [syncAvail, setSyncAvail] = useState(true);
-  const [syncPromo, setSyncPromo] = useState(false);
+
+  if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
 
   return (
     <div>
@@ -20,7 +35,7 @@ export default function UtilitiesPage() {
       </p>
 
       <div className="flex flex-col gap-3.5">
-        {utilityLinksSeed.map((u) => (
+        {data.links.map((u) => (
           <div key={u.key} className="flex items-center justify-between gap-4 rounded-xl bg-white p-5 shadow-card">
             <div>
               <div className="mb-1 flex items-center gap-2">
@@ -47,10 +62,10 @@ export default function UtilitiesPage() {
       {openConfig === "maps" && <MapsConfigModal onClose={() => setOpenConfig(null)} />}
       {openConfig === "hotel" && (
         <HotelConfigModal
-          syncAvail={syncAvail}
-          syncPromo={syncPromo}
-          onToggleAvail={() => setSyncAvail((v) => !v)}
-          onTogglePromo={() => setSyncPromo((v) => !v)}
+          syncAvail={data.syncAvail}
+          syncPromo={data.syncPromo}
+          onToggleAvail={() => save({ ...data, syncAvail: !data.syncAvail })}
+          onTogglePromo={() => save({ ...data, syncPromo: !data.syncPromo })}
           onClose={() => setOpenConfig(null)}
         />
       )}

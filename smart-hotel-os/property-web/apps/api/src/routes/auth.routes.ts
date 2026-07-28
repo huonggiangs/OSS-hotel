@@ -9,8 +9,11 @@ import { writeAuditLog } from "../middleware/audit";
 
 export const authRouter = Router();
 
+// "username" chấp nhận cả tên đăng nhập ngắn (owner/manager/reception/
+// housekeeping) LẪN email đầy đủ (tương thích ngược) — KHÔNG dùng z.string().email()
+// vì sẽ từ chối tên đăng nhập ngắn không có ký tự "@".
 const loginSchema = z.object({
-  email: z.string().email(),
+  username: z.string().min(1),
   password: z.string().min(1),
 });
 
@@ -20,8 +23,8 @@ authRouter.post(
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
 
-    const { email, password } = parsed.data;
-    const user = await propertyUsersRepo.findByEmail(email);
+    const { username, password } = parsed.data;
+    const user = await propertyUsersRepo.findByUsernameOrEmail(username);
     if (!user || user.status !== "ACTIVE") throw Errors.invalidCredentials();
 
     const ok = await bcrypt.compare(password, user.password_hash);
@@ -45,6 +48,7 @@ authRouter.post(
       access_token: token,
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         full_name: user.full_name,
         role: user.role,
@@ -63,6 +67,7 @@ authRouter.get(
     if (!user) throw Errors.notFound("người dùng");
     res.json({
       id: user.id,
+      username: user.username,
       email: user.email,
       full_name: user.full_name,
       role: user.role,

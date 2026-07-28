@@ -1,35 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { ownServicesSeed, partnerServicesList, type OwnServiceRow } from "@/lib/mock-data";
+import type { OwnServiceRow, PartnerServiceRow } from "@/lib/mock-data";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { EditServiceModal, type EditServiceForm } from "@/components/services/EditServiceModal";
 import { AddPartnerModal } from "@/components/services/AddPartnerModal";
+import { useSettings } from "@/lib/useSettings";
 
 const TH = "border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted";
 const TD = "border-b border-pms-divider px-2 py-3";
 
-// Trang "Dịch vụ" — pixel-perfect theo khối `isServices` (dòng 2111-2213 bản gốc):
-// bảng "Gói dịch vụ của cơ sở" (menu ⋯ Sửa/Xoá từng dòng, modal Sửa dịch vụ) + bảng
-// "Đối tác xung quanh" (modal Thêm đối tác).
+// Trang "Dịch vụ" — ĐÃ NỐI API THẬT: cả 2 bảng (gói dịch vụ của cơ sở + đối
+// tác xung quanh) lưu trong property_settings nhóm "services" (own + partners
+// — chưa có bảng nghiệp vụ riêng, xem PROGRESS.md). Sửa/Xoá dịch vụ giờ ghi
+// thật xuống DB qua PUT (thay vì chỉ setState cục bộ như bản mock trước đây).
+interface ServicesData {
+  own: OwnServiceRow[];
+  partners: PartnerServiceRow[];
+}
+const FALLBACK: ServicesData = { own: [], partners: [] };
+
 export default function ServicesPage() {
-  const [deletedIds, setDeletedIds] = useState<number[]>([]);
-  const [edits, setEdits] = useState<Record<number, EditServiceForm>>({});
+  const { data, loading, save } = useSettings<ServicesData>("services", FALLBACK);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showAddPartner, setShowAddPartner] = useState(false);
 
-  const ownServices = ownServicesSeed
-    .filter((s) => !deletedIds.includes(s.id))
+  const ownServices = data.own
     .map((s) => {
-      const edit = edits[s.id];
-      const merged = edit ? { ...s, ...edit } : s;
-      const statusLabel = edit?.statusLabel ?? (s.linked ? "Đã xuất bản" : "Chưa xuất bản");
-      return { ...merged, statusLabel, fg: statusLabel === "Đã xuất bản" ? "#00C853" : "#CC2F42" };
+      const statusLabel = (s as OwnServiceRow & { statusLabel?: string }).statusLabel ?? (s.linked ? "Đã xuất bản" : "Chưa xuất bản");
+      return { ...s, statusLabel, fg: statusLabel === "Đã xuất bản" ? "#00C853" : "#CC2F42" };
     })
     .map((s, i) => ({ ...s, stt: i + 1 }));
 
   const editingService = ownServices.find((s) => s.id === editingId) || null;
+
+  async function handleDelete(id: number) {
+    await save({ ...data, own: data.own.filter((s) => s.id !== id) });
+    setOpenMenuId(null);
+  }
+
+  async function handleSaveEdit(form: EditServiceForm) {
+    if (editingId === null) return;
+    await save({
+      ...data,
+      own: data.own.map((s) => (s.id === editingId ? { ...s, ...form, linked: form.statusLabel === "Đã xuất bản" } : s)),
+    });
+    setEditingId(null);
+  }
+
+  if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
 
   return (
     <div>
@@ -42,12 +62,6 @@ export default function ServicesPage() {
           <div className="flex items-center gap-2.5">
             <div className="flex min-w-[200px] items-center gap-2 rounded-lg border border-pms-border px-3 py-2 text-[13px] text-pms-muted-2">
               Tìm kiếm <span className="ml-auto text-pms-muted">🔍</span>
-            </div>
-            <div
-              className="cursor-pointer whitespace-nowrap rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
-              onClick={() => setOpenMenuId(null)}
-            >
-              + Thêm
             </div>
           </div>
         </div>
@@ -98,13 +112,7 @@ export default function ServicesPage() {
                       >
                         Sửa dịch vụ
                       </div>
-                      <div
-                        className="cursor-pointer px-3.5 py-2.5 text-[12.5px] text-pms-danger"
-                        onClick={() => {
-                          setDeletedIds((prev) => [...prev, s.id]);
-                          setOpenMenuId(null);
-                        }}
-                      >
+                      <div className="cursor-pointer px-3.5 py-2.5 text-[12.5px] text-pms-danger" onClick={() => handleDelete(s.id)}>
                         Xoá
                       </div>
                     </div>
@@ -115,15 +123,7 @@ export default function ServicesPage() {
           </tbody>
         </table>
         <div className="mt-3.5 flex items-center justify-between">
-          <span className="text-[12px] text-pms-muted">Hiển thị 6/{ownServices.length} cơ sở</span>
-          <div className="flex items-center gap-1.5">
-            <span className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-pms-border text-pms-muted">‹</span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-pms-primary text-[12.5px] font-semibold text-white">1</span>
-            <span className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-pms-border text-[12.5px]">2</span>
-            <span className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-pms-border text-[12.5px]">3</span>
-            <span className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-pms-border text-pms-muted">›</span>
-            <span className="ml-1.5 text-[12px] text-pms-muted">3 trang ⌄</span>
-          </div>
+          <span className="text-[12px] text-pms-muted">Hiển thị {ownServices.length}/{ownServices.length} dịch vụ</span>
         </div>
       </div>
 
@@ -148,7 +148,7 @@ export default function ServicesPage() {
             </tr>
           </thead>
           <tbody>
-            {partnerServicesList.map((s) => (
+            {data.partners.map((s) => (
               <tr key={s.name}>
                 <td className={`${TD} font-semibold`}>{s.name}</td>
                 <td className={TD}>{s.category}</td>
@@ -169,10 +169,7 @@ export default function ServicesPage() {
         <EditServiceModal
           service={editingService as OwnServiceRow & { statusLabel: string }}
           onClose={() => setEditingId(null)}
-          onSave={(form) => {
-            setEdits((prev) => ({ ...prev, [editingService.id]: form }));
-            setEditingId(null);
-          }}
+          onSave={handleSaveEdit}
         />
       )}
       {showAddPartner && <AddPartnerModal onClose={() => setShowAddPartner(false)} />}

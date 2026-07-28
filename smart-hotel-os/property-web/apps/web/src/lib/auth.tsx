@@ -12,6 +12,7 @@ export type Role = "OWNER" | "MANAGER" | "RECEPTIONIST" | "HOUSEKEEPING";
 
 export interface CurrentUser {
   id: string;
+  username: string;
   email: string;
   full_name: string;
   role: Role;
@@ -22,7 +23,7 @@ export interface CurrentUser {
 interface AuthContextValue {
   user: CurrentUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -49,9 +50,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (username: string, password: string) => {
       const result = await api.post<{ access_token: string; user: CurrentUser }>("/api/v1/auth/login", {
-        email,
+        username,
         password,
       });
       setToken(result.access_token);

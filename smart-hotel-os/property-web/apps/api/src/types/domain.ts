@@ -31,6 +31,7 @@ export interface PropertyUser {
   id: string;
   property_id: string;
   tenant_id: string;
+  username: string;
   email: string;
   password_hash: string;
   full_name: string;

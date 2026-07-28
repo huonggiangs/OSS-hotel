@@ -12,7 +12,7 @@ import { useAuth, isApiError } from "@/lib/auth";
 // phần còn lại của app.
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -22,7 +22,7 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(username, password);
     } catch (err) {
       setError(isApiError(err) ? err.message : "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {
@@ -48,14 +48,14 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-pms-text">Email</label>
+            <label className="mb-1.5 block text-[12px] font-medium text-pms-text">Tên đăng nhập</label>
             <input
-              type="email"
+              type="text"
               required
               autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="manager@anio-riverside.local"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="manager"
               className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px] outline-none focus:border-pms-primary"
             />
           </div>
@@ -83,14 +83,14 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 rounded-lg bg-pms-divider px-3.5 py-3 text-[11.5px] text-pms-muted">
-          <b className="mb-1 block text-pms-text">Tài khoản demo (mật khẩu chung: ChangeMe123!)</b>
-          owner@anio-riverside.local · OWNER
+          <b className="mb-1 block text-pms-text">Tài khoản demo (mật khẩu chung: Anio2026@)</b>
+          owner · OWNER
           <br />
-          manager@anio-riverside.local · MANAGER
+          manager · MANAGER
           <br />
-          reception@anio-riverside.local · RECEPTIONIST
+          reception · RECEPTIONIST
           <br />
-          housekeeping@anio-riverside.local · HOUSEKEEPING
+          housekeeping · HOUSEKEEPING
         </div>
       </div>
     </div>

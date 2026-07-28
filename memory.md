@@ -2,7 +2,9 @@
 
 File này tồn tại để **phiên làm việc (Cowork session) sau có thể tiếp tục ngay** mà không phải đọc lại toàn bộ lịch sử chat. Luôn đọc file này đầu tiên khi bắt đầu một phiên mới trên dự án `D:\hotel\OSS`, và **cập nhật lại file này ở cuối mỗi phiên** (mục "Đã xong" / "Đang làm" / "Chưa làm" + ngày).
 
-Cập nhật lần cuối: **2026-07-27 22:56** (phiên 4: Auth+API/DB thật cho `property-web`, 4 service backend `smart-hotel-os/services/` (Channel Manager/AI Pricing/IoT/CRM), webadmin thêm User/Role UI + Release Console + Purchase Orders — chạy 3 nhánh song song bằng subagent)
+Cập nhật lần cuối: **2026-07-28 07:54** (phiên 5: nối NỐT 24/24 màn hình property-web vào API thật (28/28 xong), property-web + webadmin chạy được KHÔNG CẦN DOCKER (PGlite nhúng), đổi tài khoản demo property-web sang username ngắn + `Anio2026@`, vẽ sơ đồ DB + phân tích offline-first)
+
+Trước đó: **2026-07-27 22:56** (phiên 4: Auth+API/DB thật cho `property-web`, 4 service backend `smart-hotel-os/services/` (Channel Manager/AI Pricing/IoT/CRM), webadmin thêm User/Role UI + Release Console + Purchase Orders — chạy 3 nhánh song song bằng subagent)
 
 ## 1. Tổng quan dự án
 
@@ -65,6 +67,24 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 - **Purchase Orders**: migration `003_purchase_orders.sql` — `purchase_orders`+`purchase_order_items`, workflow DRAFT→ORDERED→RECEIVED/CANCELLED, khi RECEIVED tự sinh `hardware_assets` cho dòng có gắn asset_type. Trang `/purchase-orders` (danh sách + chi tiết).
 - Build: `tsc --noEmit` sạch (api+web), `next build` đủ 14 route, migration 001→003 test nối tiếp OK. Chi tiết: `webadmin/PROGRESS.md` (mới tạo).
 
+### [PHIÊN 5 — 2026-07-28] Chạy được KHÔNG CẦN DOCKER + nối nốt 24 màn hình
+**Bối cảnh: người dùng KHÔNG bật được Docker Desktop** (lỗi `npipe:////./pipe/dockerDesktopLinuxEngine ... system cannot find the file specified` = daemon chưa chạy), nên cả `webadmin` (3000/4000) lẫn `property-web` API (4100) đều không lên được → trang login báo "Đăng nhập thất bại". Đã sửa triệt để:
+- **Cả `property-web/apps/api` VÀ `webadmin/apps/api` giờ có chế độ DB nhúng** dùng `@electric-sql/pglite` (PostgreSQL WASM, lưu file `.data/`, KHÔNG cần cài Postgres, KHÔNG cần Docker). File `src/lib/db.ts` là adapter chọn giữa PGlite nhúng (mặc định khi không có `DATABASE_URL`) và `pg.Pool` thật — **giữ nguyên interface `pool.query()` nên không phải sửa file repository nào**. `src/lib/embeddedBootstrap.ts` tự chạy migration + seed lần đầu khởi động (idempotent).
+- Bản webadmin có xử lý thêm `pool.connect()` (transaction thủ công) vì webadmin dùng transaction thật, property-web thì không — đã test `BEGIN/COMMIT/ROLLBACK/FOR UPDATE` chạy đúng trên PGlite.
+- `JWT_SECRET` có default an toàn cho dev (vẫn chặn cứng khi `NODE_ENV=production`) → `npm run dev` chạy được ngay, không cần tạo `.env` thủ công.
+- **Đã kiểm chứng THẬT bằng curl** (không chỉ build sạch): property-web login `manager`/`Anio2026@` trả JWT 200 + `/auth/me` + `/rooms` (32 phòng); webadmin login `admin@hq-console.local`/`ChangeMe123!` trả JWT 200 + `/users` + `/releases` + `/purchase-orders` (xác nhận migration 002/003 chạy đúng ở chế độ nhúng). Khởi động lại lần 2 không seed trùng → persistence OK.
+- `start-dev.bat` ở cả 2 thư mục (tiện ích phụ). **CẢNH BÁO: người dùng báo double-click `.bat` KHÔNG mở được cửa sổ trên máy họ** (nghi phần mềm bảo mật chặn) → đường chính là gõ tay lệnh trong README.
+- README của cả 2 đã viết lại: cách KHÔNG-Docker lên đầu, Docker xuống thứ 2, thêm mục "Xử lý sự cố" 3 lỗi thực tế người dùng gặp.
+
+**Đổi tài khoản demo property-web theo yêu cầu người dùng**: bỏ đuôi `@anio-riverside.local`, dùng username ngắn `owner`/`manager`/`reception`/`housekeeping`, mật khẩu chung đổi từ `ChangeMe123!` → **`Anio2026@`**. Thêm migration `002_add_username.sql` (cột `username` UNIQUE), route login đổi field `email` → `username` nhưng vẫn tra `username = $1 OR email = $1` (tương thích ngược, email cũ vẫn đăng nhập được). **Lưu ý: `webadmin` GIỮ NGUYÊN `admin@hq-console.local`/`ChangeMe123!`** — hai hệ thống khác nhau, đừng nhầm.
+
+**Nối NỐT 24/24 màn hình property-web vào API thật → 28/28 màn hình dùng dữ liệu thật**:
+- Thêm migration `003_property_settings.sql`: **MỘT bảng `property_settings` key-value** (`property_id`, `tenant_id`, `group_key`, `data jsonb`) phục vụ 21 nhóm cấu hình, thay vì tạo ~18 bảng riêng cho các màn Cài đặt — gọn, dễ mở rộng. API `GET/PUT /api/v1/settings/:group`.
+- `/branches` dùng lại bảng `properties`; `/users` dùng lại `property_users` (+ `GET/POST /users`, `PATCH /users/:id` đổi role/khoá-mở).
+- Đã curl test thật: 21 nhóm settings GET/PUT, `/branches`, `/users` CRUD, và RBAC (RECEPTIONIST gọi `/users` → 403; RECEPTIONIST PUT settings → 403 nhưng GET 200; MANAGER POST `/branches` OWNER-only → 403; khoá tài khoản → login 401 đúng).
+- **Còn mock có chủ đích** (thiếu bảng nguồn, để phase sau): nhật ký hoạt động tài khoản (trang Bảo vệ), vài khối phụ ở Dashboard (thu/chi theo thời gian, gói phổ biến, hoạt động/khách mới, tab Gantt).
+- **Quyết định kiến trúc**: `/channel` và `/sync` CHỈ lưu cấu hình cấp cơ sở trong DB property-web, KHÔNG gọi chéo sang `channel-manager-service` (giữ đúng ranh giới `ARCHITECTURE_OVERVIEW.md`) — đồng bộ OTA thật là bước sau.
+
 ### Hạ tầng version control
 - **Git repo cục bộ đã khởi tạo tại `D:\hotel\OSS`** (2026-07-27), branch `main`, có `.gitignore` (loại trừ node_modules/.next/dist/.env), đã có 1 commit ban đầu (107 file, "Initial commit"). **CHƯA kết nối remote GitHub** — bạn sẽ tự tạo repo + push, xem hướng dẫn ở mục 3.
 
@@ -86,7 +106,7 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 ## 4. Chưa làm (rõ ràng, chưa bắt đầu)
 
 - **[ĐÃ XONG 2026-07-27, phiên 3]** ~~`smart-hotel-os/property-web/` — các màn hình UI chưa implement~~ — toàn bộ 28 màn hình (`Hotel PMS.dc.html`) đã pixel-perfect, không còn `is...` nào trỏ `/stub/[key]`.
-- **[ĐÃ XONG MỘT PHẦN 2026-07-27, phiên 4]** ~~API/DB thật cho `property-web`~~ — đã có API/DB thật, nhưng **chỉ 4/28 màn hình đã nối** (Đăng nhập, Dashboard, Rooms, Booking). **Còn lại 24 màn hình vẫn dùng `mock-data.ts`** — việc tiếp theo rõ ràng: nối nốt Price/Payment/Expenses/Night Audit/Marketing/Customers/Services/Utilities/Modules + toàn bộ 16 màn Cài đặt vào API thật (tự thêm bảng/endpoint khi cần, theo đúng convention đã có trong `property-web/apps/api/`).
+- **[ĐÃ XONG 2026-07-28, phiên 5]** ~~API/DB thật cho `property-web`~~ — **28/28 màn hình đã nối API thật** (xem mục phiên 5). Chỉ còn vài khối phụ dùng mock có chủ đích (nhật ký hoạt động tài khoản, biểu đồ thu/chi theo thời gian, gói phổ biến, hoạt động/khách mới, tab Gantt) vì thiếu bảng nguồn — cần thêm bảng `revenue_daily`/`activity_log` nếu muốn hoàn thiện.
 - **[ĐÃ XONG MỘT PHẦN 2026-07-27, phiên 4]** ~~Code thật cho phần backend `smart-hotel-os`~~ — đã có code thật cho Channel Manager/AI Pricing/IoT/CRM (`smart-hotel-os/services/`) NHƯNG: (a) PMS Core hiện chỉ tồn tại dưới dạng API trong `property-web/apps/api/` (chưa tách thành service riêng theo đúng `services/pms-service/` như kiến trúc gốc dự kiến — quyết định thực dụng, ghi rõ trong `property-web/PROGRESS.md`), (b) 4 service mới chưa nối với nhau/với PMS Core (dùng seed riêng), (c) chưa có credential OTA/SMS/Zalo thật, chưa có MQTT broker thật — xem `smart-hotel-os/services/PROGRESS.md`.
 - Code thật cho `kiosk-management` — mới chỉ có `kiosk.md` (spec gốc, không phải do Cowork tạo).
 - `apps/property-windows` (PMS Windows Desktop App) — mới có tài liệu (`smart-hotel-os/docs/MODULE_PMS_WINDOWS_CLIENT.md`), **chưa có code**.
@@ -94,6 +114,8 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 - **[ĐÃ XONG 2026-07-27, phiên 4]** ~~`webadmin`: quản lý user/role qua UI, Release Console tổng hợp, module mua hàng/tồn kho chi tiết (`purchase_orders`)~~ — xem mục 2. Còn lại: MFA/VPN cho production.
 - CI/CD, blue-green/canary deployment (RULES.md mục 14) — chưa làm cho bất kỳ repo nào.
 - **Auth API-to-API giữa các service** (webadmin ↔ property-web ↔ 4 service mới) — hiện mỗi hệ thống có JWT/user riêng, chưa có cơ chế service-to-service auth (API key/OAuth2 client credentials như `PARTNER_API_STANDARDS.md` mô tả cho đối tác ngoài).
+- **⚠ EDGE NODE / OFFLINE-FIRST — CHƯA CÓ CODE, đây là khoảng trống lớn nhất về kiến trúc** (phát hiện rõ khi vẽ sơ đồ DB ở phiên 5). Hiện `property-web` gọi thẳng API cloud → **mất Internet là quầy lễ tân đứng hình**, trái với yêu cầu offline-first trong `RULES.md` + `CLAUDE.md` mục 7. Cần: `apps/edge-node/` (dịch vụ chạy tại khách sạn) + DB cục bộ (cache booking hôm nay/mai, trạng thái phòng) + bảng `outbox` (xếp hàng thao tác khi offline) + cơ chế đẩy hàng đợi theo thứ tự khi có mạng lại + giải quyết xung đột do Cloud quyết định. Thiết kế đã có sẵn ở `smart-hotel-os/docs/SYSTEM_ARCHITECTURE.md` mục 4, chỉ chưa code.
+- **⚠ Dữ liệu thiết bị đang TRÙNG ở 3 nơi, chưa có quy ước chủ sở hữu** (phát hiện phiên 5): `property-web.devices` (gán thiết bị vào phòng), `iot-service.devices` (lệnh + heartbeat), `webadmin.hardware_assets` (tài sản/bảo hành, có enum `IOT_CONTROLLER`/`KIOSK`... nhưng KHÔNG có `DOOR_LOCK`, `POWER_SWITCH`, `ELECTRIC_METER`, `EDGE_NODE`). Cần thống nhất: webadmin = vòng đời tài sản (mua/bảo hành/thanh lý), iot-service = trạng thái vận hành realtime, property-web = ánh xạ thiết bị ↔ phòng; liên kết bằng `device_id_external` (cột đã có sẵn trong `hardware_assets`). Nên bổ sung các loại thiết bị còn thiếu vào enum `HardwareAssetType`.
 
 ### Vụ "PowerShell không chạy được" (2026-07-27, phiên 4)
 Người dùng báo chạy lệnh PowerShell không được, cả 3 cổng 3000/4000/3100 đều "connection refused" (đúng — chưa có server nào đang chạy). Đã thử dùng computer-use tạo file `D:\hotel\OSS\_start-property-web.bat` để tự động chạy giúp nhưng **double-click/"Open" không mở được Command Prompt** dù đã xin quyền — nghi có phần mềm bảo mật (Windows Defender/EDR) trên máy người dùng chặn chạy script, hoặc có hộp thoại SmartScreen hệ thống ẩn mà computer-use không thấy được (elevated dialog). Đã hướng dẫn người dùng tự gõ lệnh thủ công (gồm `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` để sửa lỗi phổ biến nhất). **Chưa xác nhận được người dùng đã chạy thành công** — phiên sau nếu người dùng báo lỗi cụ thể, ưu tiên đọc đúng nội dung lỗi trước khi đoán.

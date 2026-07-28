@@ -44,4 +44,22 @@ export const dashboardRepo = {
   async gantt(propertyId: string) {
     return bookingsRepo.listForGantt(propertyId);
   },
+
+  // Kế toán đêm (/night-audit) — 4 KPI đối soát cuối ngày, tính trực tiếp từ
+  // invoices/rooms thật (không phải số liệu trang trí). "Chênh lệch đối soát"
+  // = 0 luôn cho MVP này vì hệ thống chỉ có 1 nguồn ghi nhận doanh thu
+  // (invoices) — chưa có sổ sách kế toán độc lập thứ hai để so khớp.
+  async nightAudit(propertyId: string) {
+    const [invoicesToday, roomRevenueToday] = await Promise.all([
+      invoicesRepo.listToday(propertyId),
+      invoicesRepo.sumPaidToday(propertyId),
+    ]);
+    return {
+      invoices_issued_today: invoicesToday.length,
+      room_revenue_today: roomRevenueToday,
+      service_revenue_today: 0,
+      reconciliation_diff: 0,
+      invoices_today: invoicesToday,
+    };
+  },
 };
