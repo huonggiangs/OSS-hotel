@@ -8,6 +8,7 @@ import { commandsRouter } from "./routes/commands.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { pool } from "./lib/db";
 import { commandsRepo } from "./repositories/commands.repo";
+import { devicesRepo } from "./repositories/devices.repo";
 
 const app = express();
 
@@ -51,8 +52,29 @@ const sweepTimer = setInterval(() => {
   });
 }, sweepIntervalMs);
 
+// --- Offline sweep ---
+// Quét định kỳ các thiết bị ONLINE quá lâu không có heartbeat mới -> chuyển
+// OFFLINE + cộng dồn disconnect_count (dữ liệu "số lần mất kết nối" THẬT,
+// không phải giả lập cứng) — webadmin đọc lại số này qua GET /devices để hiện
+// thị "số lần mất kết nối" ở hardware_assets. Ngưỡng mặc định 2 phút (đủ ngắn
+// để demo/test thấy hiệu ứng nhanh) — chỉnh qua HEARTBEAT_TIMEOUT_MS.
+const heartbeatTimeoutMs = Number(process.env.HEARTBEAT_TIMEOUT_MS) || 120000;
+const offlineSweepIntervalMs = Number(process.env.OFFLINE_SWEEP_INTERVAL_MS) || 15000;
+const offlineSweepTimer = setInterval(() => {
+  devicesRepo.sweepOfflineDevices(heartbeatTimeoutMs).then((count) => {
+    if (count > 0) {
+      // eslint-disable-next-line no-console
+      console.log(`[offline-sweep] đã chuyển ${count} thiết bị sang OFFLINE (quá hạn heartbeat ${heartbeatTimeoutMs}ms)`);
+    }
+  }).catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error("[offline-sweep] lỗi:", err);
+  });
+}, offlineSweepIntervalMs);
+
 process.on("SIGTERM", async () => {
   clearInterval(sweepTimer);
+  clearInterval(offlineSweepTimer);
   server.close();
   await pool.end();
   process.exit(0);

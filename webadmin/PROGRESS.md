@@ -1,5 +1,29 @@
 # Progress — webadmin (HQ Console, bản chạy được)
 
+## 2026-07-29 — Verify chạy thật module giám sát thiết bị (phiên trước bị treo do hết dung lượng đĩa sandbox, CHƯA verify được) — tìm & sửa 3 lỗi thật
+
+Phiên trước (2026-07-28) đã viết xong code module giám sát thiết bị (asset monitoring — xem mục dưới) nhưng sandbox hết dung lượng đĩa giữa chừng nên CHƯA chạy thử được. Phiên này verify từ đầu trên sandbox sạch, dùng chế độ DB nhúng (PGlite), phát hiện và sửa **3 lỗi thật**:
+
+1. **Seed demo insert thiếu `asset_code`** (cả `apps/api/src/lib/embeddedBootstrap.ts` lẫn `database/seed.ts`) — migration 004 đặt `asset_code` NOT NULL nhưng câu INSERT seed cũ (từ trước migration 004) không có cột này → API crash ngay lúc khởi động lần đầu (seed thất bại). Đã sửa: thêm `asset_code`/`activated_at`/`connection_status` vào cả 2 nơi.
+2. **Trùng `asset_code`** — bản sửa đầu tiên của lỗi #1 gán CỨNG `'AST-000001'` cho dòng seed thay vì gọi `nextval('hardware_assets_asset_code_seq')`, nên request tạo tài sản ĐẦU TIÊN qua API (gọi `nextval()` lần đầu, trả về 1) bị lỗi trùng khoá với dòng seed. Đã sửa: seed cũng dùng `nextval(...)` giống hệt repo, đảm bảo không bao giờ trùng dù chạy seed bao nhiêu lần.
+3. **Cảnh báo (`asset_alerts`) không bao giờ được sinh ra khi `iot-service` chưa chạy** — `evaluateAssetAlerts()` (tính cảnh báo sắp hết bảo hành/offline lâu/mất kết nối nhiều) nằm BÊN TRONG nhánh `try` gọi `fetch` sang iot-service trong `iotSync.ts`; nếu iot-service không chạy được (rất thường gặp ở dev/demo — service này thường không bật cùng lúc), hàm return sớm ở catch, không bao giờ chạy tới `evaluateAssetAlerts()`. Cảnh báo bảo hành (`WARRANTY_EXPIRING`) là dữ liệu NỘI BỘ webadmin, không nên phụ thuộc iot-service. Đã sửa: tách `evaluateAssetAlerts()` ra chạy LUÔN sau khi cố gắng đồng bộ, bất kể `iotServiceReachable` đúng/sai.
+
+**Đã xác nhận chạy thật bằng `curl`** (chế độ embedded, DB sạch từ đầu):
+- Server khởi động sạch, migrate 001→004 + seed thành công, không còn crash.
+- `POST /auth/login` → 200, JWT hợp lệ.
+- `POST /hardware-assets` tạo KIOSK mới có `propertyId`/`propertyName` → 200, `asset_code` tự sinh đúng (`AST-000002`, không trùng với seed `AST-000001`).
+- `POST /hardware-assets` tạo máy in nhiệt với `parentAssetId` = Kiosk vừa tạo → 200, liên kết cha-con đúng.
+- `POST /hardware-assets` **KHÔNG** có `propertyId`/`propertyName` → 422 đúng như thiết kế (bắt buộc gán cơ sở).
+- `GET /hardware-assets/:id` trả đúng `child_assets` chứa máy in nhiệt vừa gán.
+- `POST /hardware-assets/sync-connection-status` khi **iot-service KHÔNG chạy** → trả `iotServiceReachable:false` nhưng **`alertsCreated:1`** (đúng sau khi sửa lỗi #3).
+- `GET /hardware-assets/alerts` sau đó trả đúng 1 cảnh báo `WARRANTY_EXPIRING` với nội dung tiếng Việt đúng số ngày còn lại.
+- `npx tsc --noEmit` sạch cho `apps/api` (đã test lại sau tất cả các sửa trên).
+
+**Dọn dẹp phát hiện thêm**: tìm thấy thư mục `.data/` (28MB) và `.next/` rác còn sót lại NGAY TRÊN Ổ ĐĨA THẬT của người dùng (`D:\hotel\OSS\webadmin\apps\api\.data`, `D:\hotel\OSS\webadmin\apps\web\.next`, `D:\hotel\OSS\smart-hotel-os\property-web\apps\web\.next`) — tàn dư từ phiên bị treo do hết dung lượng đĩa sandbox trước đó. Đã xoá toàn bộ (đều đã có trong `.gitignore`, không phải mất code, chỉ là cache/runtime state cũ có thể ở trạng thái dở dang gây lỗi khó hiểu nếu không dọn).
+
+**Chưa verify được** (do môi trường sandbox lần này gặp vấn đề I/O chậm bất thường khi copy `node_modules` lớn từ mount `D:\hotel\OSS`, không phải lỗi code): `next build`/`tsc --noEmit` cho `apps/web` với UI mới (`hardware-assets/[id]`) — KHÔNG có thay đổi code nào ở `apps/web` trong lần sửa lỗi này (chỉ sửa 3 file phía `apps/api`+`database`), và lần build gần nhất TRƯỚC đó (phiên viết code ban đầu) đã xác nhận `next build` thành công 15 route bao gồm `/hardware-assets/[id]` — rủi ro thấp nhưng nên build lại xác nhận ở phiên sau nếu nghi ngờ.
+
+
 File này ghi tiến độ chi tiết của riêng `webadmin/` (mã nguồn chạy được). Tóm tắt tổng ba hệ thống nằm ở `../memory.md`; đặc tả nguồn nằm ở `../hq-console/docs/` + `../hq-console/PROGRESS.md`.
 
 ## 2026-07-27 — Bổ sung 3 phần còn thiếu: quản lý user/role UI, Release Console, Purchase Orders
@@ -164,6 +188,151 @@ Thực hiện tại `/tmp/webadmin-work` (copy toàn bộ source trừ `node_mod
     dụng)` cho cả 3 migration, `Đã có dữ liệu — bỏ qua seed`; đăng nhập lại thành công;
     dữ liệu đã ghi ở lần 1 (đơn mua hàng đã RECEIVED, bản phát hành 1.3.0) vẫn còn nguyên
     — **xác nhận persistence + không seed trùng**.
+
+## 2026-07-28 — Hardware Assets thành trung tâm giám sát thiết bị (asset monitoring)
+
+Theo yêu cầu gốc trong `CLAUDE.md` (PMS + IoT) và yêu cầu cụ thể của người dùng: `hardware_assets`
+trước phiên này chỉ là danh mục tĩnh (serial/nhà cung cấp/bảo hành). Phiên này biến nó thành SỔ GỐC
+(master registry) của mọi thiết bị công ty, liên kết LOGIC (không chung DB, không FK xuyên hệ thống —
+đúng `ARCHITECTURE_OVERVIEW.md`) với `iot-service` (trạng thái vận hành thật) và `property-web`
+(ánh xạ thiết bị↔phòng) qua **mã thiết bị chung `asset_code`** (dạng `AST-XXXXXX`, sinh tự động ở
+đây, webadmin là nơi sinh mã).
+
+### 1. Migration `database/migrations/004_asset_monitoring.sql`
+
+- Mở rộng enum `HardwareAssetType` thêm `DOOR_LOCK`, `POWER_SWITCH`, `ELECTRIC_METER`, `EDGE_NODE`
+  bằng `ALTER TYPE ... ADD VALUE` (4 câu lệnh riêng). **Quyết định kỹ thuật quan trọng, đọc kỹ**:
+  bản đầu tiên của migration này dùng cách "tạo enum mới → `ALTER COLUMN TYPE` cast 2 cột (đổi cả
+  `hardware_assets.asset_type` lẫn `purchase_order_items.asset_type`) → `DROP TYPE` cũ →
+  `ALTER TYPE ... RENAME`" vì tin rằng `ADD VALUE` không chạy được trong transaction block — khi
+  chạy thật (xem mục Kiểm chứng bên dưới), cách này làm **PGlite crash thật sự** (`RuntimeError:
+  Aborted()` ở tầng WASM, không phải lỗi SQL bình thường). Đã sửa lại dùng `ALTER TYPE ... ADD
+  VALUE` đơn giản — hợp lệ trong transaction block từ PostgreSQL 12 trở đi MIỄN LÀ giá trị mới
+  không được dùng (INSERT/CAST) trong CÙNG transaction đó, và migration này chỉ thêm giá trị,
+  không insert bản ghi nào dùng ngay 4 giá trị mới nên an toàn. Đọc chú thích chi tiết ngay trong
+  file migration.
+- Cột mới trên `hardware_assets`: `asset_code` (UNIQUE NOT NULL, backfill cho dữ liệu demo cũ qua
+  `SEQUENCE hardware_assets_asset_code_seq` + `nextval()` — sinh atomic, KHÔNG dùng hàm PL/pgSQL để
+  đơn giản/tương thích PGlite), `activated_at`, `connection_status` (ENUM ONLINE/OFFLINE/UNKNOWN,
+  mặc định UNKNOWN — CHỈ đồng bộ từ iot-service, không nhập tay được qua PATCH thường), `disconnect_count`,
+  `last_seen_at`, `last_connection_check_at`, `supporting_partner_id` (FK → `partners`, khác
+  `supplier_id`), `connectivity_provider`/`subscription_fee`/`subscription_cycle` (xem mục "Navtask"
+  bên dưới), `connected_server`, `property_id`/`property_name` (tham chiếu LỎNG sang property-web,
+  KHÔNG FK thật, KHÔNG đặt `NOT NULL` ở DB để không phá dữ liệu demo cũ — bắt buộc ở TẦNG VALIDATE
+  Zod khi tạo mới, xem mục 3), `parent_asset_id` (tự tham chiếu, cho phép NULL — thiết bị phụ trợ
+  gắn vào thiết bị chính, vd máy in nhiệt/máy quét gắn vào Kiosk).
+- Bảng mới `asset_alerts` (`alert_type` ENUM `WARRANTY_EXPIRING`/`OFFLINE_TOO_LONG`/
+  `HIGH_DISCONNECT_RATE`, `severity`, `resolved_at`) + index partial cho truy vấn "chưa resolve".
+
+### 2. Đồng bộ với iot-service + lấy danh sách cơ sở từ property-web
+
+- `apps/api/src/lib/iotSync.ts`: `syncConnectionStatusFromIot()` gọi **`GET /api/v1/devices` có
+  sẵn** của iot-service (đã đọc code, KHÔNG bịa endpoint), khớp theo `asset_code`, cập nhật
+  `connection_status`/`disconnect_count`/`last_seen_at`/`connected_server` vào `hardware_assets`
+  tương ứng. KHÔNG throw khi iot-service không chạy được (best-effort, trả `iotServiceReachable:
+  false`). Cùng file có `evaluateAssetAlerts()` — quét toàn bộ `hardware_assets`, sinh/tự-resolve
+  `asset_alerts` theo 3 quy tắc (bảo hành còn ≤30 ngày, offline liên tục >24h, `disconnect_count`
+  vượt ngưỡng 5 — **giới hạn đã biết**: ngưỡng này là số CỘNG DỒN TOÀN THỜI GIAN vì iot-service
+  không lưu timestamp từng lần mất kết nối riêng lẻ, nên "trong 7 ngày" chỉ là XẤP XỈ bằng ngưỡng
+  tuyệt đối, không phải cửa sổ trượt đúng nghĩa — muốn đúng cần thêm bảng log sự kiện disconnect có
+  timestamp ở iot-service).
+- Job chạy nền: `apps/api/src/index.ts` gọi `syncConnectionStatusFromIot()` bằng `setInterval`
+  (mặc định 30s, tắt bằng `DISABLE_IOT_SYNC_JOB=1`) + endpoint thủ công
+  `POST /api/v1/hardware-assets/sync-connection-status` (nút "Đồng bộ trạng thái ngay" trên UI).
+- `apps/api/src/lib/propertyWebClient.ts`: gọi `GET /api/v1/branches` của property-web (endpoint có
+  sẵn, không phải route mới) qua header `X-Internal-Service-Key` (env `INTERNAL_SERVICE_KEY`, mặc
+  định dev `dev-internal-service-key-change-me` — **PHẢI đổi khi lên production**, đây là MVP tạm
+  thời thay OAuth2 client credentials đúng chuẩn `hq-console/docs/PARTNER_API_STANDARDS.md`).
+  **KHÔNG throw khi property-web không chạy được** — trả `null`, route
+  `GET /api/v1/hardware-assets/property-options` trả `source: "fallback"` và UI tự chuyển sang ô
+  nhập tay tên cơ sở (đã code trong `hardware-assets/page.tsx`, không crash).
+
+### 3. API + UI
+
+- `hardware-assets.routes.ts` mở rộng `POST`/`PATCH` với toàn bộ field mới, validate
+  `propertyId`/`propertyName` **bắt buộc** ở Zod schema khi tạo mới (`createSchema` khác
+  `updateSchema`). Thêm `GET /alerts` (tổng hợp toàn bộ chưa resolve), `GET /:id/alerts`,
+  `GET /property-options`, `POST /sync-connection-status`. `GET /:id` trả kèm `child_assets`
+  (danh sách thiết bị phụ trợ qua `parent_asset_id`).
+- Trang `/hardware-assets` (mở rộng): khối "Cảnh báo thiết bị" đầu trang, bộ lọc theo cơ sở +
+  trạng thái kết nối, cột mã thiết bị (`asset_code`, link sang trang chi tiết), chấm màu trạng thái
+  kết nối (`components/ConnectionDot.tsx` — xanh/đỏ/xám, luôn kèm chữ), form tạo mới đầy đủ field,
+  dropdown cơ sở từ property-web hoặc input nhập tay khi fallback, dropdown "gắn vào thiết bị chính"
+  cho thiết bị phụ trợ.
+- Trang chi tiết `/hardware-assets/[id]` (MỚI): đầy đủ toàn bộ field (kết nối/vận hành, bảo hành/hỗ
+  trợ, thuê bao dịch vụ kết nối, vị trí), danh sách thiết bị phụ trợ gắn vào, khối cảnh báo riêng,
+  nút "Đồng bộ trạng thái ngay".
+
+### 4. Về "Navtask" và `connectivity_provider`
+
+Người dùng nhắc "Navtask" trong yêu cầu nhưng tên này không xuất hiện ở bất kỳ đâu khác trong dự án
+— không rõ là tên 1 dịch vụ SaaS cụ thể hay tên nội bộ. Xử lý theo đúng chỉ đạo của người điều phối:
+**KHÔNG hardcode** "Navtask" ở tầng dữ liệu/logic — làm trường `connectivity_provider` (TEXT tự do)
++ `subscription_fee` (số tiền) + `subscription_cycle` (MONTHLY/YEARLY) hoàn toàn linh hoạt. "Navtask"
+chỉ xuất hiện làm **giá trị mặc định gợi ý trong form tạo mới ở UI** (`page.tsx`, state
+`connectivityProvider = useState("Navtask")`) vì đó là tên người dùng đang dùng thật — người dùng có
+thể xoá/đổi tự do, không có ràng buộc gì ở backend buộc phải dùng đúng tên này.
+
+### 5. iot-service (thay đổi phối hợp)
+
+- `db/migrations/002_asset_code.sql`: thêm `asset_code` (UNIQUE cho phép nhiều NULL) và
+  `disconnect_count` (đếm cộng dồn) vào bảng `devices`.
+- `disconnect_count` được tính THẬT (không giả lập cứng): thêm `devicesRepo.sweepOfflineDevices()` +
+  job `setInterval` trong `index.ts` (mặc định 15s, ngưỡng heartbeat timeout 120s qua
+  `HEARTBEAT_TIMEOUT_MS`) — quét thiết bị `ONLINE` quá lâu không heartbeat mới, chuyển `OFFLINE` +
+  `disconnect_count += 1`. Trước phiên này iot-service KHÔNG có cơ chế nào tự chuyển thiết bị sang
+  OFFLINE (chỉ có heartbeat báo ONLINE).
+- Route mới: `POST /devices/:id/pair` (ghép nối asset_code với 1 device đã tồn tại),
+  `GET /devices/by-asset-code/:code`, `assetCode` optional trong `POST /devices` (tạo + ghép nối
+  luôn 1 bước). `GET /devices` trả thêm field `server` (từ env `SERVICE_INSTANCE_NAME`, mặc định
+  `iot-service-dev`) — webadmin dùng giá trị này làm `connected_server`. Đã cập nhật
+  `smart-hotel-os/services/PROGRESS.md` phần iot-service với chi tiết đầy đủ hơn.
+
+### 6. property-web (ngoại lệ được cho phép, đúng chỉ đạo)
+
+- Migration MỚI `database/migrations/004_asset_code.sql`: thêm cột `asset_code` (UNIQUE cho phép
+  nhiều NULL) vào bảng `devices` — KHÔNG sửa 001/002/003.
+- `apps/api/src/middleware/internalAuth.ts` (MỚI): `requireAuthOrInternalKey` — chấp nhận header
+  `X-Internal-Service-Key` khớp `INTERNAL_SERVICE_KEY` HOẶC JWT thật (`requireAuth`), CHỈ áp dụng
+  cho `GET /api/v1/branches` (đã sửa `branches.routes.ts` để tách middleware theo route thay vì
+  `.use(requireAuth)` chung cho cả router — `POST /branches` vẫn bắt buộc JWT + role `OWNER` như cũ,
+  không có ngoại lệ). Thêm `propertiesRepo.listAll()` — lời gọi nội bộ từ webadmin cần thấy TOÀN BỘ
+  cơ sở của MỌI tenant (khác `listByTenant()` chỉ phục vụ 1 property_user).
+- **Đây là thay đổi ngoài phạm vi "chỉ 1 migration" đã được người điều phối CHO PHÉP RÕ RÀNG** ở
+  mục 2 của yêu cầu gốc ("nếu property-web HIỆN CHƯA có middleware chấp nhận key này... bạn thêm 1
+  middleware tối giản") — ghi rõ ở đây để tránh hiểu nhầm là vi phạm quy tắc "không đụng
+  property-web".
+
+### 7. Kiểm chứng — TÌNH TRẠNG THẬT, ĐỌC KỸ (không tô hồng)
+
+**Đã xác nhận (build tĩnh, chạy thật trước khi gặp sự cố hạ tầng):**
+- `npx tsc -p tsconfig.json --noEmit` sạch cho `webadmin/apps/api`, `smart-hotel-os/services/iot-service`,
+  `smart-hotel-os/property-web/apps/api` (cả 3 sau khi sửa đủ field/route/middleware mới).
+- `npx tsc --noEmit` sạch + **`npx next build` thành công** cho `webadmin/apps/web`, đủ 15 route
+  tĩnh/động bao gồm `/hardware-assets` và `/hardware-assets/[id]` (route mới).
+- **Phát hiện + sửa 1 bug thật khi thử chạy server thật ở chế độ embedded**: migration 004 bản đầu
+  (cách "tạo enum mới → cast cột → drop → rename") làm PGlite crash (`RuntimeError: Aborted()`,
+  WASM abort) — đã sửa sang `ALTER TYPE ... ADD VALUE` đơn giản hơn (xem mục 1), có giải thích kỹ
+  thuật đầy đủ vì sao cách này an toàn trong transaction ở PostgreSQL ≥12.
+
+**CHƯA xác nhận được — sự cố hạ tầng sandbox (disk full, không phải lỗi trong code):** ngay sau khi
+sửa migration 004, môi trường sandbox dùng để chạy thử hết dung lượng đĩa
+(`no space left on device`) và bash tool bị treo hoàn toàn (6 lần thử liên tiếp thất bại, được yêu
+cầu dừng không thử lại) — KHÔNG kịp:
+- Xác nhận migration 004 (bản đã sửa) thực sự chạy được trên PGlite (chỉ mới suy luận kỹ thuật, CHƯA
+  chạy lại để xác nhận hết crash).
+- Chạy đồng thời `webadmin` + `iot-service` + `property-web` thật và `curl` luồng end-to-end: tạo
+  hardware_asset KIOSK → tạo device iot-service cùng `asset_code` → gọi job đồng bộ → xác nhận
+  `connection_status` cập nhật đúng.
+- `curl` test sinh cảnh báo tự động (set `warranty_until` gần hạn → xác nhận `asset_alerts` sinh ra).
+- `curl` test gán thiết bị phụ (`parent_asset_id`) → xác nhận cấu trúc cha-con trong response.
+
+**→ Việc BẮT BUỘC còn lại cho phiên sau (ưu tiên cao nhất, làm TRƯỚC khi coi module này là xong):**
+chạy lại đúng quy trình kiểm chứng thật đã mô tả ở trên (`/tmp`, 3 service chạy song song, curl đủ 3
+luồng) để xác nhận migration đã sửa không còn crash và toàn bộ luồng đồng bộ + cảnh báo + cha-con
+hoạt động đúng như thiết kế. Code đã qua `tsc --noEmit` sạch và `next build` thành công nên rủi ro
+lỗi cú pháp/kiểu thấp, nhưng **hành vi runtime của chính migration 004 (phần rủi ro nhất) và luồng
+tích hợp 3 hệ thống CHƯA được xác nhận chạy đúng bằng curl thật**.
 
 ### Giới hạn còn lại
 

@@ -17,8 +17,16 @@ export type HardwareAssetType =
   | "IP_CAMERA"
   | "THERMAL_PRINTER"
   | "IOT_CONTROLLER"
-  | "OTHER";
+  | "OTHER"
+  | "DOOR_LOCK"
+  | "POWER_SWITCH"
+  | "ELECTRIC_METER"
+  | "EDGE_NODE";
 export type HardwareAssetStatus = "IN_STOCK" | "DEPLOYED" | "UNDER_WARRANTY_CLAIM" | "RETIRED";
+export type ConnectionStatus = "ONLINE" | "OFFLINE" | "UNKNOWN";
+export type SubscriptionCycle = "MONTHLY" | "YEARLY";
+export type AssetAlertType = "WARRANTY_EXPIRING" | "OFFLINE_TOO_LONG" | "HIGH_DISCONNECT_RATE";
+export type AssetAlertSeverity = "INFO" | "WARNING" | "CRITICAL";
 export type WarrantyClaimStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "REJECTED";
 export type ProductScope = "KIOSK" | "SMART_HOTEL_OS" | "BOTH";
 export type CommissionStatus = "CALCULATED" | "PENDING_APPROVAL" | "APPROVED" | "PAID" | "REJECTED";
@@ -112,8 +120,33 @@ export interface HardwareAsset {
   status: HardwareAssetStatus;
   customer_id: string | null;
   device_id_external: string | null;
+  // ---- Migration 004: giám sát thiết bị ----
+  asset_code: string;
+  activated_at: Date | null;
+  connection_status: ConnectionStatus;
+  disconnect_count: number;
+  last_seen_at: Date | null;
+  last_connection_check_at: Date | null;
+  supporting_partner_id: string | null;
+  connectivity_provider: string | null;
+  subscription_fee: string | null;
+  subscription_cycle: SubscriptionCycle | null;
+  connected_server: string | null;
+  property_id: string | null;
+  property_name: string | null;
+  parent_asset_id: string | null;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface AssetAlert {
+  id: string;
+  asset_id: string;
+  alert_type: AssetAlertType;
+  message: string;
+  severity: AssetAlertSeverity;
+  created_at: Date;
+  resolved_at: Date | null;
 }
 
 export interface WarrantyClaim {

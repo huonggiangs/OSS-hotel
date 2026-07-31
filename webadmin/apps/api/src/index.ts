@@ -18,6 +18,7 @@ import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { pool, DB_MODE, embeddedDb } from "./lib/db";
 import { bootstrapEmbeddedDb } from "./lib/embeddedBootstrap";
+import { syncConnectionStatusFromIot } from "./lib/iotSync";
 
 const app = express();
 
@@ -71,6 +72,32 @@ start().catch((err) => {
   console.error("Không khởi động được API:", err);
   process.exit(1);
 });
+
+// --- Đồng bộ trạng thái kết nối thiết bị từ iot-service ---
+// Chạy nền định kỳ trong CÙNG process (đủ đơn giản cho quy mô demo/MVP hiện
+// tại, giống cách "timeout sweep" của iot-service đã làm) — KHÔNG throw/crash
+// process khi iot-service chưa chạy (syncConnectionStatusFromIot tự bắt lỗi
+// mạng, trả về iotServiceReachable=false). Có thể tắt bằng
+// DISABLE_IOT_SYNC_JOB=1 (vd. khi test không cần job nền can thiệp).
+if (process.env.DISABLE_IOT_SYNC_JOB !== "1") {
+  const syncIntervalMs = Number(process.env.IOT_SYNC_INTERVAL_MS) || 30000;
+  const syncTimer = setInterval(() => {
+    syncConnectionStatusFromIot()
+      .then((result) => {
+        if (result.iotServiceReachable) {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[iot-sync] đã khớp ${result.matchedAssets}/${result.fetchedDevices} thiết bị, sinh ${result.alertsCreated} cảnh báo mới.`
+          );
+        }
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error("[iot-sync] lỗi không mong muốn:", err);
+      });
+  }, syncIntervalMs);
+  syncTimer.unref?.();
+}
 
 process.on("SIGTERM", async () => {
   await pool.end();

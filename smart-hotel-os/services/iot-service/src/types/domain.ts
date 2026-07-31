@@ -20,6 +20,9 @@ export interface Device {
   status: DeviceStatus;
   power_state: PowerState;
   last_heartbeat_at: string | null;
+  // ---- Migration 002: mã thiết bị chung (liên kết logic sang webadmin.hardware_assets) ----
+  asset_code: string | null;
+  disconnect_count: number;
   created_at: string;
   updated_at: string;
 }

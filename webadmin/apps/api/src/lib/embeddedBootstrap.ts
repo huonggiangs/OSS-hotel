@@ -97,9 +97,13 @@ async function seedDemoData(db: PGlite): Promise<void> {
     [customerId, "Khách sạn Hoa Sen (demo)", "12 Trần Phú, Hà Nội", "Lê Thị B", partnerId]
   );
 
+  // asset_code PHẢI sinh qua nextval() của cùng sequence mà hardwareAssets.repo.ts
+  // dùng khi tạo tài sản qua API — nếu gán cứng 'AST-000001' ở đây, sequence vẫn ở
+  // giá trị chưa dùng và request tạo tài sản ĐẦU TIÊN qua API sẽ nhận đúng
+  // 'AST-000001' và bị lỗi trùng khoá (unique constraint) với dòng seed này.
   await db.query(
-    `INSERT INTO hardware_assets (id, asset_type, brand, model, serial_number, supplier_id, customer_id, purchase_cost, status)
-     VALUES ($1, 'KIOSK', 'FocusBox', 'FB-K1', 'KIOSK-DEMO-0001', $2, $3, 35000000, 'DEPLOYED')
+    `INSERT INTO hardware_assets (id, asset_type, brand, model, serial_number, supplier_id, customer_id, purchase_cost, status, asset_code, activated_at, connection_status)
+     VALUES ($1, 'KIOSK', 'FocusBox', 'FB-K1', 'KIOSK-DEMO-0001', $2, $3, 35000000, 'DEPLOYED', 'AST-' || LPAD(nextval('hardware_assets_asset_code_seq')::text, 6, '0'), now(), 'UNKNOWN')
      ON CONFLICT (serial_number) DO NOTHING`,
     [randomUUID(), supplierId, customerId]
   );

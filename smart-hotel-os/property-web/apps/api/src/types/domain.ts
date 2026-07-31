@@ -141,6 +141,8 @@ export interface Device {
   external_id: string | null;
   status: DeviceStatus;
   power_on: boolean;
+  // Migration 004: mã thiết bị chung, liên kết logic sang webadmin.hardware_assets.asset_code.
+  asset_code: string | null;
   created_at: Date;
   updated_at: Date;
 }

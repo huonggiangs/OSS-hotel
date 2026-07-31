@@ -168,3 +168,54 @@ Kết quả cụ thể:
   vào `tsc --noEmit` sạch lỗi + script demo/simulate chạy thật (assert bằng
   `node:assert/strict`) + test thủ công bằng `curl`, đủ để chứng minh logic
   đúng nhưng chưa có test suite chạy tự động trong CI.
+
+## 2026-07-28 — iot-service: mã thiết bị chung (asset_code) + đếm mất kết nối thật
+
+Bối cảnh: `webadmin.hardware_assets` (vòng đời tài sản), `iot-service.devices` (trạng thái vận
+hành), `property-web.devices` (ánh xạ thiết bị↔phòng) trước đây là 3 nơi lưu thiết bị hoàn toàn
+tách rời, không có cách nào biết "thiết bị #X trong webadmin" chính là "device #Y trong iot-service"
+(ghi trong `memory.md` mục "⚠ Dữ liệu thiết bị đang TRÙNG ở 3 nơi"). Phiên này thêm liên kết LOGIC
+qua mã thiết bị chung `asset_code` (webadmin sinh ra, iot-service + property-web chỉ LƯU LẠI khi
+được "ghép nối"/pair) — KHÔNG chung DB, KHÔNG FK xuyên hệ thống, đúng `ARCHITECTURE_OVERVIEW.md`.
+Xem đầy đủ thiết kế + kiểm chứng phía webadmin ở `../../webadmin/PROGRESS.md` mục "Hardware Assets
+thành trung tâm giám sát thiết bị" (bao gồm CẢ phần tình trạng kiểm chứng thật — sự cố hạ tầng
+sandbox khiến chưa chạy được curl end-to-end, đọc kỹ mục đó trước khi coi tính năng này là hoàn tất).
+
+### Thay đổi trong `iot-service`
+
+- `db/migrations/002_asset_code.sql` (KHÔNG sửa `001_init.sql`): thêm cột `devices.asset_code`
+  (TEXT, UNIQUE PARTIAL INDEX cho phép nhiều NULL — hầu hết thiết bị mô phỏng trong demo/dev chưa
+  cần ghép nối ngay) và `devices.disconnect_count` (INTEGER NOT NULL DEFAULT 0, cộng dồn).
+- `disconnect_count` được tính THẬT chứ không giả lập cứng: `src/repositories/devices.repo.ts` có
+  thêm `sweepOfflineDevices(timeoutMs)` — quét `devices` đang `ONLINE` nhưng quá lâu không có
+  heartbeat mới (`last_heartbeat_at < now() - timeoutMs`), chuyển `OFFLINE` + `disconnect_count += 1`
+  trong 1 câu `UPDATE ... RETURNING`. Trước phiên này, iot-service KHÔNG có cơ chế nào tự chuyển
+  thiết bị sang `OFFLINE` (chỉ có `POST /:id/heartbeat` báo `ONLINE`) — thiếu sót này giờ đã có, chạy
+  bằng `setInterval` trong `src/index.ts` (mặc định quét mỗi 15s, ngưỡng timeout 120s), cùng mô hình
+  với "timeout sweep" đã có sẵn cho `device_commands`. Chỉnh qua env `HEARTBEAT_TIMEOUT_MS` /
+  `OFFLINE_SWEEP_INTERVAL_MS`.
+- Route mới trong `src/routes/devices.routes.ts`:
+  - `POST /devices/:id/pair` (body `{ assetCode }`) — ghép nối 1 device đã tồn tại với mã thiết bị
+    do webadmin sinh ra; 409 nếu `assetCode` đã ghép với device khác.
+  - `GET /devices/by-asset-code/:code` — tra cứu ngược, đặt route TRƯỚC `/:id` để không bị nuốt path.
+  - `POST /devices` (tạo mới) nhận thêm field tuỳ chọn `assetCode` — ghép nối ngay lúc tạo, khỏi cần
+    gọi thêm request `/pair` riêng.
+  - `GET /devices` (đã có sẵn, KHÔNG đổi field cũ) trả thêm `server` ở top-level response (từ env
+    `SERVICE_INSTANCE_NAME`, mặc định `iot-service-dev`) — webadmin dùng giá trị này làm
+    `connected_server` khi đồng bộ. Vì `asset_code`/`disconnect_count` giờ là cột thật trong bảng
+    `devices`, `SELECT *` sẵn có của `devicesRepo.list()` đã tự trả về 2 field này — KHÔNG cần sửa
+    gì thêm ở tầng repo cho việc đọc.
+- `src/types/domain.ts`: thêm `asset_code`/`disconnect_count` vào interface `Device`.
+
+### Build & kiểm chứng
+
+- `npx tsc -p tsconfig.json --noEmit` → **sạch lỗi** (đã xác nhận thật trước khi gặp sự cố hạ tầng
+  sandbox, xem chi tiết ở `webadmin/PROGRESS.md`).
+- **CHƯA kịp chạy thật cùng webadmin để `curl` xác nhận luồng ghép nối → đồng bộ → cập nhật
+  `connection_status`** — môi trường sandbox hết dung lượng đĩa giữa chừng (`no space left on
+  device`), bash tool treo hoàn toàn, không kịp khởi động `iot-service` (dự định dùng
+  `@electric-sql/pglite-socket` như cách đã kiểm chứng lúc build service này ở phiên trước, vì
+  `iot-service` chưa có chế độ embedded tích hợp sẵn trong server như webadmin/property-web —
+  **CỐ Ý KHÔNG thêm chế độ embedded vào `iot-service` trong phiên này** để giảm diện thay đổi, chỉ
+  test qua pglite-socket tạm thời khi cần). Đây là việc BẮT BUỘC phải làm ở phiên sau trước khi coi
+  tính năng liên kết `asset_code` là đã kiểm chứng đầy đủ.

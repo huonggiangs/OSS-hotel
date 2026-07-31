@@ -2,7 +2,21 @@
 
 File này tồn tại để **phiên làm việc (Cowork session) sau có thể tiếp tục ngay** mà không phải đọc lại toàn bộ lịch sử chat. Luôn đọc file này đầu tiên khi bắt đầu một phiên mới trên dự án `D:\hotel\OSS`, và **cập nhật lại file này ở cuối mỗi phiên** (mục "Đã xong" / "Đang làm" / "Chưa làm" + ngày).
 
-Cập nhật lần cuối: **2026-07-28 07:54** (phiên 5: nối NỐT 24/24 màn hình property-web vào API thật (28/28 xong), property-web + webadmin chạy được KHÔNG CẦN DOCKER (PGlite nhúng), đổi tài khoản demo property-web sang username ngắn + `Anio2026@`, vẽ sơ đồ DB + phân tích offline-first)
+Cập nhật lần cuối: **2026-07-29 (phiên 7)** — verify xong module giám sát thiết bị webadmin (tìm & sửa 3 lỗi thật), dọn rác `.data`/`.next` tồn đọng trên ổ đĩa thật, tạo `start-all.ps1` (chạy 1 lệnh PowerShell là lên đủ 4 dịch vụ, không cần Docker)
+
+## ⚠ QUAN TRỌNG NHẤT — đọc mục này TRƯỚC KHI làm gì ở phiên tiếp theo
+
+1. **Sự cố "sandbox hết dung lượng đĩa" ở phiên 6 (2026-07-28) đã qua** — phiên 7 chạy trên sandbox mới hoàn toàn sạch (`df -h` xác nhận 3.9G trống), không cần người dùng cấp quyền gì thêm, đây thuần tuý là hạ tầng tạm thời được cấp lại khi mở phiên chat mới.
+2. **`webadmin` module giám sát thiết bị (asset monitoring) — ĐÃ VERIFY CHẠY THẬT, tìm và sửa 3 lỗi thật** trong lúc test (không phải chỉ đọc code): (a) seed thiếu `asset_code` gây crash lúc khởi động lần đầu, (b) seed gán cứng mã trùng với mã do API tự sinh, (c) cảnh báo bảo hành không bao giờ được tính nếu `iot-service` chưa chạy (lỗi logic, đã tách ra chạy độc lập). Chi tiết đầy đủ + bằng chứng curl: `webadmin/PROGRESS.md` mục "2026-07-29".
+3. **Phát hiện quan trọng**: `D:\hotel\OSS` (ổ đĩa thật của người dùng) có tồn đọng thư mục rác `.data/`, `.next/`, và CẢ `node_modules/` (đã cài sẵn!) từ các phiên trước — **`node_modules` đã có sẵn trên máy người dùng cho cả 4 app** (`webadmin/apps/api`, `webadmin/apps/web`, `property-web/apps/api`, `property-web/apps/web`), nghĩa là người dùng CÓ THỂ chạy `npm run dev` ngay, không bắt buộc phải `npm install` trước (dù chạy lại cũng vô hại, chỉ mất vài giây kiểm tra "up to date"). Đã xoá các thư mục `.data`/`.next` rác (không phải mất code, chỉ là cache/state cũ có thể ở trạng thái dở dang gây lỗi khó hiểu).
+4. **Đã tạo `D:\hotel\OSS\start-all.ps1`** — đúng yêu cầu người dùng "chỉ cần chạy 1 đoạn code PowerShell là tất cả các web đều chạy bình thường". Chạy bằng:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File "D:\hotel\OSS\start-all.ps1"
+   ```
+   Mở 4 cửa sổ PowerShell riêng (webadmin api/web, property-web api/web), mỗi cửa sổ tự `npm install` nếu thiếu rồi `npm run dev`. Dùng `-ExecutionPolicy Bypass` CHỈ cho lần chạy này (không đổi cài đặt máy vĩnh viễn, không cần quyền admin) — né đúng lỗi "chạy script bị chặn" người dùng gặp trước đó mà KHÔNG cần họ tự đổi `Set-ExecutionPolicy` thủ công. **File .bat cũ (`_start-property-web.bat`, double-click không chạy được) đã bị xoá, thay bằng script này.**
+5. **Edge Node — vẫn CHƯA có code**, việc tiếp theo ngay sau khi đọc xong mục này, xem mục 4 "Chưa làm" bên dưới.
+
+Cập nhật lần cuối (phiên hoàn chỉnh gần nhất trước đó): **2026-07-28 07:54** (phiên 5: nối NỐT 24/24 màn hình property-web vào API thật (28/28 xong), property-web + webadmin chạy được KHÔNG CẦN DOCKER (PGlite nhúng), đổi tài khoản demo property-web sang username ngắn + `Anio2026@`, vẽ sơ đồ DB + phân tích offline-first)
 
 Trước đó: **2026-07-27 22:56** (phiên 4: Auth+API/DB thật cho `property-web`, 4 service backend `smart-hotel-os/services/` (Channel Manager/AI Pricing/IoT/CRM), webadmin thêm User/Role UI + Release Console + Purchase Orders — chạy 3 nhánh song song bằng subagent)
 
@@ -85,6 +99,18 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 - **Còn mock có chủ đích** (thiếu bảng nguồn, để phase sau): nhật ký hoạt động tài khoản (trang Bảo vệ), vài khối phụ ở Dashboard (thu/chi theo thời gian, gói phổ biến, hoạt động/khách mới, tab Gantt).
 - **Quyết định kiến trúc**: `/channel` và `/sync` CHỈ lưu cấu hình cấp cơ sở trong DB property-web, KHÔNG gọi chéo sang `channel-manager-service` (giữ đúng ranh giới `ARCHITECTURE_OVERVIEW.md`) — đồng bộ OTA thật là bước sau.
 
+### [PHIÊN 6 — 2026-07-28, DỞ DANG] webadmin: module giám sát thiết bị (asset monitoring) — CODE XONG, CHƯA VERIFY CHẠY THẬT
+Theo yêu cầu người dùng: Hardware Assets cần hiển thị trạng thái kết nối, ngày kích hoạt, số lần mất kết nối, đối tác hỗ trợ/bảo hành, phí thuê bao dịch vụ kết nối, server đang kết nối, khách hàng dùng, thiết bị con gắn vào Kiosk (máy in nhiệt/quét hộ chiếu/QR), bắt buộc gán vào cơ sở — và phân vai rõ: **webadmin = vòng đời tài sản + cảnh báo, iot-service = trạng thái vận hành thật, property-web = ánh xạ thiết bị↔phòng**, liên kết bằng **mã thiết bị chung `asset_code`** (dạng `AST-XXXXXX`, sinh tại webadmin — webadmin là "sổ gốc").
+- `webadmin/database/migrations/004_asset_monitoring.sql`: mở rộng enum `HardwareAssetType` (+`DOOR_LOCK`/`POWER_SWITCH`/`ELECTRIC_METER`/`EDGE_NODE`), thêm cột `asset_code`/`activated_at`/`connection_status`/`disconnect_count`/`last_seen_at`/`supporting_partner_id`/`connectivity_provider`/`subscription_fee`/`subscription_cycle`/`connected_server`/`property_id`/`property_name`/`parent_asset_id` vào `hardware_assets`, bảng mới `asset_alerts`.
+- `webadmin/apps/api/src/lib/iotSync.ts` (đồng bộ connection_status/disconnect_count từ iot-service qua `asset_code` + sinh cảnh báo tự động: sắp hết bảo hành 30 ngày / offline >24h / mất kết nối nhiều trong 7 ngày) + `propertyWebClient.ts` (lấy danh sách cơ sở thật từ property-web `GET /branches`, có fallback an toàn nếu không kết nối được).
+- Trang `/hardware-assets` mở rộng (badge kết nối, lọc theo cơ sở/trạng thái, khối cảnh báo) + trang chi tiết MỚI `/hardware-assets/[id]` (đầy đủ field, danh sách thiết bị con, nút đồng bộ thủ công).
+- `iot-service`: migration `002_asset_code.sql` (cột `asset_code`), `sweepOfflineDevices()` (đếm mất kết nối thật qua timeout heartbeat), route `/pair`, `/by-asset-code/:code`.
+- `property-web`: migration `004_asset_code.sql` (cột `asset_code` cho bảng `devices`) + middleware `requireAuthOrInternalKey` cho riêng `GET /branches` (cho phép webadmin gọi vào bằng header `X-Internal-Service-Key` thay JWT — **CƠ CHẾ TẠM THỜI CHO DEV, production phải đổi sang OAuth2 client credentials theo `hq-console/docs/PARTNER_API_STANDARDS.md`**).
+- **Về "Navtask"**: không hardcode tên này — làm trường tự do `connectivity_provider` (gợi ý "Navtask" làm placeholder vì đó là tên người dùng nhắc tới) + `subscription_fee` + `subscription_cycle`, đổi tên/nhà cung cấp lúc nào cũng được.
+- **⚠ CHƯA VERIFY CHẠY THẬT** (xem mục "QUAN TRỌNG NHẤT" đầu file) — `tsc --noEmit` đã sạch cho cả 3 backend và `next build` webadmin/web đã thành công TRƯỚC KHI phát hiện lỗi migration, nhưng bộ curl test end-to-end (bắt buộc theo quy trình dự án) CHƯA chạy được vì sandbox hết dung lượng đĩa ngay sau khi sửa lỗi migration. **KHÔNG coi module này production-ready cho tới khi verify xong.**
+- Chi tiết đầy đủ: `webadmin/PROGRESS.md`, `smart-hotel-os/services/PROGRESS.md`.
+- **CHƯA commit git** (bash sandbox wedged, không chạy được `git add`/`git commit`) — code vẫn nằm an toàn trên `D:\hotel\OSS` (mount Windows thật), nhưng phiên sau phải nhớ commit sau khi verify xong.
+
 ### Hạ tầng version control
 - **Git repo cục bộ đã khởi tạo tại `D:\hotel\OSS`** (2026-07-27), branch `main`, có `.gitignore` (loại trừ node_modules/.next/dist/.env), đã có 1 commit ban đầu (107 file, "Initial commit"). **CHƯA kết nối remote GitHub** — bạn sẽ tự tạo repo + push, xem hướng dẫn ở mục 3.
 
@@ -104,6 +130,9 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
    (CMD: `cd /d D:\hotel\OSS` rồi hai lệnh git giữ nguyên). Lần đầu push GitHub sẽ hỏi đăng nhập/token — dùng Git Credential Manager (thường có sẵn nếu cài Git for Windows) hoặc Personal Access Token thay mật khẩu. Từ phiên sau, nếu `git remote -v` đã thấy `origin`, chỉ cần `git add -A; git commit -m "..."; git push` sau mỗi lần có thay đổi lớn.
 
 ## 4. Chưa làm (rõ ràng, chưa bắt đầu)
+
+- **[ƯU TIÊN SỐ 1 phiên sau]** Verify chạy thật module giám sát thiết bị webadmin (phiên 6) — xem mục "⚠ QUAN TRỌNG NHẤT" đầu file. Dọn `/tmp` trước khi bắt đầu.
+- **[ƯU TIÊN SỐ 2 phiên sau]** Build Edge Node (`smart-hotel-os/apps/edge-node/`) — chưa bắt đầu code. Ý tưởng đã thống nhất với người dùng: fork code `property-web/apps/api` (đã có sẵn chế độ DB nhúng offline-capable), thêm outbox + sync 2 chiều với Cloud khi có mạng, chạy trên phần cứng nhỏ luôn bật tại cơ sở (Raspberry Pi/mini PC), lắng nghe `0.0.0.0` để bất kỳ máy tính/điện thoại nào trong mạng LAN cũng vào dùng được ngay (trỏ `property-web/apps/web` có sẵn vào IP Edge Node qua `NEXT_PUBLIC_API_URL`) — máy lễ tân hỏng thì đổi thiết bị khác lập tức vì toàn bộ dữ liệu/logic nằm trên Edge Node, không nằm trên máy khách. Điều khiển thiết bị IoT cục bộ (khoá cửa/công tắc/công tơ) khi mất mạng.
 
 - **[ĐÃ XONG 2026-07-27, phiên 3]** ~~`smart-hotel-os/property-web/` — các màn hình UI chưa implement~~ — toàn bộ 28 màn hình (`Hotel PMS.dc.html`) đã pixel-perfect, không còn `is...` nào trỏ `/stub/[key]`.
 - **[ĐÃ XONG 2026-07-28, phiên 5]** ~~API/DB thật cho `property-web`~~ — **28/28 màn hình đã nối API thật** (xem mục phiên 5). Chỉ còn vài khối phụ dùng mock có chủ đích (nhật ký hoạt động tài khoản, biểu đồ thu/chi theo thời gian, gói phổ biến, hoạt động/khách mới, tab Gantt) vì thiếu bảng nguồn — cần thêm bảng `revenue_daily`/`activity_log` nếu muốn hoàn thiện.

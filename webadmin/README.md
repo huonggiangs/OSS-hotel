@@ -20,9 +20,9 @@ Không có gì ở `../hq-console/`, `../smart-hotel-os/`, `../kiosk.md` bị ch
 sang WASM, chạy thẳng trong tiến trình Node, lưu dữ liệu ra thư mục file `apps/api/.data/`).
 Đây là chế độ **mặc định** (tự bật khi không có biến môi trường `DATABASE_URL`) — không cần
 cài Docker, không cần cài PostgreSQL, **không cần tạo file `.env` thủ công**. Lần đầu chạy,
-API tự tạo schema (chạy hết 3 file trong `database/migrations/`: `001_init.sql`,
-`002_release_console.sql`, `003_purchase_orders.sql`) và tự seed dữ liệu demo — chỉ cần
-`npm run dev` là có ngay dữ liệu để đăng nhập.
+API tự tạo schema (chạy hết 4 file trong `database/migrations/`: `001_init.sql`,
+`002_release_console.sql`, `003_purchase_orders.sql`, `004_asset_monitoring.sql`) và tự seed
+dữ liệu demo — chỉ cần `npm run dev` là có ngay dữ liệu để đăng nhập.
 
 Dùng cách này nếu Docker Desktop trên máy bạn không bật được (vd. lỗi
 `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine ...
@@ -113,9 +113,26 @@ Nếu muốn gõ một dòng duy nhất: PowerShell dùng `;` thay cho `&&`
 (`cd /d D:\hotel\OSS\webadmin & docker compose up --build`).
 
 Lần đầu chạy: service `migrate` tự động tạo schema (`database/migrations/001_init.sql`,
-`002_release_console.sql`, `003_purchase_orders.sql`) rồi seed dữ liệu demo trước khi
-`api` khởi động (xem thứ tự phụ thuộc trong `docker-compose.yml`). Không cần chạy thêm
-lệnh nào khác.
+`002_release_console.sql`, `003_purchase_orders.sql`, `004_asset_monitoring.sql`) rồi seed
+dữ liệu demo trước khi `api` khởi động (xem thứ tự phụ thuộc trong `docker-compose.yml`).
+Không cần chạy thêm lệnh nào khác.
+
+### Biến môi trường mới — đồng bộ giám sát thiết bị (module Hardware Assets)
+
+Thêm từ phiên nâng cấp Hardware Assets thành trung tâm giám sát thiết bị (xem `PROGRESS.md`),
+tất cả có giá trị mặc định an toàn cho dev — không bắt buộc phải tạo `.env` để chạy thử:
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `IOT_SERVICE_URL` | `http://localhost:4103` | Địa chỉ `smart-hotel-os/services/iot-service` để đồng bộ `connection_status`/`disconnect_count`. |
+| `PROPERTY_WEB_API_URL` | `http://localhost:4100` | Địa chỉ `smart-hotel-os/property-web/apps/api` để lấy danh sách cơ sở (`GET /branches`). |
+| `INTERNAL_SERVICE_KEY` | `dev-internal-service-key-change-me` | Header `X-Internal-Service-Key` gửi kèm khi gọi property-web — PHẢI đặt CÙNG giá trị ở cả 2 phía, **PHẢI đổi khi lên production** (MVP tạm thời, xem `PROGRESS.md`). |
+| `IOT_SYNC_INTERVAL_MS` | `30000` | Chu kỳ chạy job đồng bộ nền (setInterval). |
+| `DISABLE_IOT_SYNC_JOB` | (không đặt) | Đặt `1` để tắt job nền (vd. khi test không muốn job can thiệp). |
+
+Nếu `iot-service`/`property-web` không chạy, webadmin vẫn hoạt động bình thường — job đồng bộ
+chỉ log lỗi, endpoint `property-options` trả về danh sách rỗng kèm `source: "fallback"` để UI
+tự chuyển sang nhập tay tên cơ sở (không crash).
 
 Sau khi cả 4 service (`postgres`, `migrate`, `api`, `web`) lên xong:
 

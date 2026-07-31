@@ -13,6 +13,15 @@ export const propertiesRepo = {
     return rows;
   },
 
+  // Dùng cho lời gọi NỘI BỘ từ webadmin (X-Internal-Service-Key, xem
+  // middleware/internalAuth.ts) — HQ Console cần thấy TOÀN BỘ cơ sở của MỌI
+  // tenant (khách hàng) để làm dropdown "gán vào cơ sở" khi khai báo thiết bị,
+  // khác listByTenant() vốn chỉ phục vụ 1 property_user thuộc đúng 1 tenant.
+  async listAll(): Promise<Property[]> {
+    const { rows } = await pool.query<Property>(`SELECT * FROM properties ORDER BY tenant_id ASC, created_at ASC`);
+    return rows;
+  },
+
   async countRoomsByProperty(propertyId: string): Promise<number> {
     const { rows } = await pool.query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM rooms WHERE property_id = $1`, [
       propertyId,

@@ -53,9 +53,12 @@ async function main() {
     [customerId, "Khách sạn Hoa Sen (demo)", "12 Trần Phú, Hà Nội", "Lê Thị B", partnerId]
   );
 
+  // asset_code sinh qua nextval() của cùng sequence mà hardwareAssets.repo.ts dùng
+  // (xem giải thích chi tiết trong embeddedBootstrap.ts seedDemoData()) — tránh
+  // trùng mã với tài sản đầu tiên tạo qua API sau khi seed.
   await client.query(
-    `INSERT INTO hardware_assets (id, asset_type, brand, model, serial_number, supplier_id, customer_id, purchase_cost, status)
-     VALUES ($1, 'KIOSK', 'FocusBox', 'FB-K1', 'KIOSK-DEMO-0001', $2, $3, 35000000, 'DEPLOYED')
+    `INSERT INTO hardware_assets (id, asset_type, brand, model, serial_number, supplier_id, customer_id, purchase_cost, status, asset_code, activated_at, connection_status)
+     VALUES ($1, 'KIOSK', 'FocusBox', 'FB-K1', 'KIOSK-DEMO-0001', $2, $3, 35000000, 'DEPLOYED', 'AST-' || LPAD(nextval('hardware_assets_asset_code_seq')::text, 6, '0'), now(), 'UNKNOWN')
      ON CONFLICT (serial_number) DO NOTHING`,
     [randomUUID(), supplierId, customerId]
   );
