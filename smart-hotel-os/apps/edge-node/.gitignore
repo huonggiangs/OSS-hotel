@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.env
+# Dữ liệu database embedded (PGlite) — file nhị phân cục bộ, không commit.
+.data/

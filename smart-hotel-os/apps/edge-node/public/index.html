@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Edge Node — Vận hành tại chỗ</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 0 32px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f4f5f7; color: #1a1a1a;
+  }
+  header { background: #111827; color: #fff; padding: 16px 20px; }
+  header h1 { margin: 0; font-size: 18px; }
+  header p { margin: 4px 0 0; font-size: 12px; color: #9ca3af; }
+  #banner { padding: 10px 20px; font-size: 13px; font-weight: 600; text-align: center; }
+  #banner.online { background: #16a34a; color: #fff; }
+  #banner.offline { background: #dc2626; color: #fff; }
+  #login-screen { max-width: 360px; margin: 60px auto; padding: 24px; background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  #login-screen h2 { margin-top: 0; font-size: 16px; }
+  #login-screen input { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+  #login-screen button, .btn { padding: 10px 14px; border: none; border-radius: 8px; background: #2563eb; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+  #login-screen button { width: 100%; margin-top: 8px; }
+  #login-error { color: #dc2626; font-size: 12px; margin-top: 8px; min-height: 16px; }
+  main { max-width: 960px; margin: 16px auto; padding: 0 16px; display: none; }
+  section { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  section h2 { margin: 0 0 12px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .user-chip { font-size: 12px; color: #6b7280; }
+  .logout-link { font-size: 12px; color: #2563eb; cursor: pointer; text-decoration: underline; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #e5e7eb; }
+  th { color: #6b7280; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .badge.OCCUPIED, .badge.CHECKED_IN, .badge.ON { background: #dbeafe; color: #1d4ed8; }
+  .badge.VACANT, .badge.CONFIRMED { background: #dcfce7; color: #15803d; }
+  .badge.DIRTY, .badge.PENDING { background: #fef3c7; color: #92400e; }
+  .badge.MAINTENANCE, .badge.CANCELLED, .badge.OFF { background: #fee2e2; color: #b91c1c; }
+  .badge.CHECKED_OUT { background: #e5e7eb; color: #374151; }
+  .row-actions button { margin-right: 4px; padding: 5px 10px; font-size: 12px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; }
+  .row-actions button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .row-actions button.danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+  .empty { color: #9ca3af; font-size: 13px; padding: 8px 0; }
+  .sync-btn { font-size: 12px; background: #111827; }
+</style>
+</head>
+<body>
+
+<div id="banner" class="offline">Đang kiểm tra kết nối Cloud...</div>
+
+<header>
+  <h1>Edge Node — Vận hành tại chỗ</h1>
+  <p>Giao diện khẩn cấp: dùng khi máy tính chính hỏng hoặc mất Internet. Dữ liệu chạy thẳng trên thiết bị Edge Node trong mạng LAN khách sạn.</p>
+</header>
+
+<div id="login-screen">
+  <h2>Đăng nhập</h2>
+  <input id="login-username" placeholder="Tên đăng nhập (vd. reception)" autocomplete="username" />
+  <input id="login-password" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
+  <button onclick="doLogin()">Đăng nhập</button>
+  <div id="login-error"></div>
+</div>
+
+<main id="app">
+  <div class="top-row">
+    <span class="user-chip" id="user-chip"></span>
+    <span>
+      <button class="btn sync-btn" onclick="triggerSync()">Đồng bộ ngay</button>
+      <span class="logout-link" onclick="doLogout()">Đăng xuất</span>
+    </span>
+  </div>
+
+  <section>
+    <h2>Phòng</h2>
+    <table>
+      <thead><tr><th>Số phòng</th><th>Loại</th><th>Trạng thái</th><th>Điện</th></tr></thead>
+      <tbody id="rooms-body"><tr><td colspan="4" class="empty">Đang tải...</td></tr></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Đặt phòng hôm nay</h2>
+    <table>
+      <thead><tr><th>Mã</th><th>Khách</th><th>Phòng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <tbody id="bookings-body"><tr><td colspan="5" class="empty">Đang tải...</td></tr></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Thiết bị IoT</h2>
+    <table>
+      <thead><tr><th>Tên thiết bị</th><th>Loại</th><th>Trạng thái</th><th>Điện</th><th>Thao tác</th></tr></thead>
+      <tbody id="devices-body"><tr><td colspan="5" class="empty">Đang tải...</td></tr></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+  const API = "";
+  let token = localStorage.getItem("edge_node_token") || null;
+  let currentUser = JSON.parse(localStorage.getItem("edge_node_user") || "null");
+
+  function authHeaders() {
+    return token ? { Authorization: "Bearer " + token, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
+  }
+
+  async function api(path, opts) {
+    const res = await fetch(API + path, { ...opts, headers: { ...authHeaders(), ...(opts && opts.headers) } });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || ("HTTP " + res.status));
+    }
+    return res.json();
+  }
+
+  async function doLogin() {
+    const username = document.getElementById("login-username").value.trim();
+    const password = document.getElementById("login-password").value;
+    const errEl = document.getElementById("login-error");
+    errEl.textContent = "";
+    try {
+      const body = await api("/api/v1/auth/login", { method: "POST", body: JSON.stringify({ username, password }) });
+      token = body.access_token;
+      currentUser = body.user;
+      localStorage.setItem("edge_node_token", token);
+      localStorage.setItem("edge_node_user", JSON.stringify(currentUser));
+      showApp();
+    } catch (e) {
+      errEl.textContent = "Đăng nhập thất bại: " + e.message;
+    }
+  }
+
+  function doLogout() {
+    token = null; currentUser = null;
+    localStorage.removeItem("edge_node_token");
+    localStorage.removeItem("edge_node_user");
+    document.getElementById("app").style.display = "none";
+    document.getElementById("login-screen").style.display = "block";
+  }
+
+  function showApp() {
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    document.getElementById("user-chip").textContent = currentUser ? (currentUser.full_name + " (" + currentUser.role + ")") : "";
+    loadAll();
+  }
+
+  async function refreshHealth() {
+    try {
+      const h = await (await fetch(API + "/health")).json();
+      const banner = document.getElementById("banner");
+      if (h.cloud_reachable) {
+        banner.className = "online";
+        banner.textContent = "Đã đồng bộ lúc " + (h.last_sync_at ? new Date(h.last_sync_at).toLocaleTimeString("vi-VN") : "chưa lần nào") + " — Cloud đang kết nối.";
+      } else {
+        banner.className = "offline";
+        banner.textContent = "Mất kết nối Cloud — đang chạy độc lập tại chỗ, dữ liệu sẽ tự đồng bộ khi có mạng lại. (" + h.pending_outbox_count + " thay đổi đang chờ đồng bộ)";
+      }
+    } catch (e) {
+      const banner = document.getElementById("banner");
+      banner.className = "offline";
+      banner.textContent = "Không kết nối được tới chính Edge Node — kiểm tra lại dịch vụ.";
+    }
+  }
+
+  async function triggerSync() {
+    try { await api("/api/v1/sync/trigger", { method: "POST" }); } catch (e) {}
+    refreshHealth();
+    loadAll();
+  }
+
+  function roomStatusLabel(s) {
+    return { OCCUPIED: "Đang ở", VACANT: "Trống", DIRTY: "Chờ dọn", MAINTENANCE: "Bảo trì" }[s] || s;
+  }
+  function bookingStatusLabel(s) {
+    return { PENDING: "Chờ xác nhận", CONFIRMED: "Đã xác nhận", CHECKED_IN: "Đã nhận phòng", CHECKED_OUT: "Đã trả phòng", CANCELLED: "Đã huỷ" }[s] || s;
+  }
+
+  async function loadRooms() {
+    const body = document.getElementById("rooms-body");
+    try {
+      const data = await api("/api/v1/rooms");
+      if (!data.items.length) { body.innerHTML = '<tr><td colspan="4" class="empty">Chưa có phòng nào.</td></tr>'; return; }
+      body.innerHTML = data.items.map(r => `
+        <tr>
+          <td>${r.number}</td>
+          <td>${r.room_type_name || ""}</td>
+          <td><span class="badge ${r.status}">${roomStatusLabel(r.status)}</span></td>
+          <td><span class="badge ${r.power_on ? "ON" : "OFF"}">${r.power_on ? "Bật" : "Tắt"}</span></td>
+        </tr>`).join("");
+    } catch (e) {
+      body.innerHTML = '<tr><td colspan="4" class="empty">Lỗi tải dữ liệu phòng: ' + e.message + '</td></tr>';
+    }
+  }
+
+  async function loadBookings() {
+    const body = document.getElementById("bookings-body");
+    try {
+      const data = await api("/api/v1/bookings");
+      if (!data.items.length) { body.innerHTML = '<tr><td colspan="5" class="empty">Chưa có đặt phòng nào.</td></tr>'; return; }
+      body.innerHTML = data.items.map(b => `
+        <tr>
+          <td>${b.code}</td>
+          <td>${b.guest_name || "—"}</td>
+          <td>${b.room_number || "—"}</td>
+          <td><span class="badge ${b.status}">${bookingStatusLabel(b.status)}</span></td>
+          <td class="row-actions">
+            ${b.status !== "CHECKED_IN" && b.status !== "CHECKED_OUT" && b.status !== "CANCELLED" ? `<button class="primary" onclick="checkin('${b.id}')">Nhận phòng</button>` : ""}
+            ${b.status === "CHECKED_IN" ? `<button class="danger" onclick="checkout('${b.id}')">Trả phòng</button>` : ""}
+          </td>
+        </tr>`).join("");
+    } catch (e) {
+      body.innerHTML = '<tr><td colspan="5" class="empty">Lỗi tải dữ liệu đặt phòng: ' + e.message + '</td></tr>';
+    }
+  }
+
+  async function loadDevices() {
+    const body = document.getElementById("devices-body");
+    try {
+      const data = await api("/api/v1/devices");
+      if (!data.items.length) { body.innerHTML = '<tr><td colspan="5" class="empty">Chưa có thiết bị nào.</td></tr>'; return; }
+      body.innerHTML = data.items.map(d => `
+        <tr>
+          <td>${d.name}</td>
+          <td>${d.device_type}</td>
+          <td><span class="badge ${d.status === "ONLINE" ? "ON" : "OFF"}">${d.status}</span></td>
+          <td><span class="badge ${d.power_on ? "ON" : "OFF"}">${d.power_on ? "Bật" : "Tắt"}</span></td>
+          <td class="row-actions">
+            <button class="primary" onclick="sendCommand('${d.id}', 'POWER_ON')">Bật</button>
+            <button class="danger" onclick="sendCommand('${d.id}', 'POWER_OFF')">Tắt</button>
+          </td>
+        </tr>`).join("");
+    } catch (e) {
+      body.innerHTML = '<tr><td colspan="5" class="empty">Lỗi tải dữ liệu thiết bị: ' + e.message + '</td></tr>';
+    }
+  }
+
+  async function checkin(id) {
+    try { await api("/api/v1/bookings/" + id + "/checkin", { method: "POST" }); loadAll(); }
+    catch (e) { alert("Nhận phòng thất bại: " + e.message); }
+  }
+  async function checkout(id) {
+    try { await api("/api/v1/bookings/" + id + "/checkout", { method: "POST" }); loadAll(); }
+    catch (e) { alert("Trả phòng thất bại: " + e.message); }
+  }
+
+  // sendCommand — tạo lệnh idempotent rồi TỰ ACK NGAY (mô phỏng thiết bị thật
+  // gọi lên xác nhận — chưa có phần cứng vật lý ở bản demo này, xem README.md).
+  async function sendCommand(deviceId, commandType) {
+    try {
+      const created = await api("/api/v1/devices/" + deviceId + "/commands", {
+        method: "POST",
+        body: JSON.stringify({ commandType }),
+      });
+      const commandId = created.command.id;
+      await api("/api/v1/devices/" + deviceId + "/ack", {
+        method: "POST",
+        body: JSON.stringify({ commandId, result: { success: true } }),
+      });
+      loadAll();
+    } catch (e) {
+      alert("Gửi lệnh thất bại: " + e.message);
+    }
+  }
+
+  function loadAll() {
+    loadRooms();
+    loadBookings();
+    loadDevices();
+  }
+
+  refreshHealth();
+  setInterval(refreshHealth, 10000);
+
+  if (token && currentUser) {
+    showApp();
+  }
+</script>
+
+</body>
+</html>
