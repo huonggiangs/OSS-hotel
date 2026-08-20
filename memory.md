@@ -1,5 +1,17 @@
 # Memory — Smart Hotel Group OSS Project
 
+## Quy ước bàn giao và Git (bắt buộc từ 2026-08-20)
+
+- Trước khi kết thúc **mỗi phiên làm việc hoặc phiên bản**, tạo một file handoff riêng tại gốc `D:\hotel\OSS`, theo tên `handoff1n_YYYYMMDD_HHMMSS.md` (thời gian Asia/Saigon), tóm tắt phạm vi, kiểm thử, thay đổi, lỗi/chặn và bước tiếp theo.
+- Sau khi tạo handoff, commit toàn bộ thay đổi đã được người dùng duyệt và push lên `https://github.com/huonggiangs/OSS-hotel.git` trên nhánh `main`.
+- Không tự sửa mã nguồn/chức năng. Mọi lỗi, điều chỉnh hoặc tối ưu phải trình bày bằng tiếng Việt và chờ người dùng duyệt trước khi thực hiện.
+
+## Phiên 2026-08-20 — Audit dự án (không sửa mã)
+
+- Đã tạo handoff: `handoff1n_20260820_114544.md`.
+- Đã xác minh typecheck cho webadmin/property-web/Edge Node; phát hiện các lỗi ưu tiên về xác thực microservice, bất nhất check-in/phòng/điện, retry outbox Edge Node, lộ SMTP credential, xung đột cổng Docker và phụ thuộc có cảnh báo bảo mật.
+- Chưa sửa lỗi nào; chờ người dùng duyệt phạm vi.
+
 File này tồn tại để **phiên làm việc (Cowork session) sau có thể tiếp tục ngay** mà không phải đọc lại toàn bộ lịch sử chat. Luôn đọc file này đầu tiên khi bắt đầu một phiên mới trên dự án `D:\hotel\OSS`, và **cập nhật lại file này ở cuối mỗi phiên** (mục "Đã xong" / "Đang làm" / "Chưa làm" + ngày).
 
 Cập nhật lần cuối: **2026-07-29 (phiên 7)** — verify xong module giám sát thiết bị webadmin (tìm & sửa 3 lỗi thật), dọn rác `.data`/`.next` tồn đọng trên ổ đĩa thật, tạo `start-all.ps1` (chạy 1 lệnh PowerShell là lên đủ 4 dịch vụ, không cần Docker)
