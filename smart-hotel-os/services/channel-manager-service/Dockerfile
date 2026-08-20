@@ -1,8 +1,8 @@
 # Build + run channel-manager-service độc lập (không phụ thuộc webadmin/property-web).
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 FROM deps AS build
 COPY . .

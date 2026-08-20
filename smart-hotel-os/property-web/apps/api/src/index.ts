@@ -21,6 +21,7 @@ import { requireAuth } from "./middleware/auth";
 import { pool, DB_MODE, embeddedDb } from "./lib/db";
 import { bootstrapEmbeddedDb } from "./lib/embeddedBootstrap";
 import { ensureDefaultSettings } from "./lib/settingsBootstrap";
+import { settingsRepo } from "./repositories/settings.repo";
 
 const app = express();
 
@@ -69,6 +70,7 @@ async function start() {
   // chế độ DB, idempotent (chỉ insert nhóm còn thiếu). Đặt sau bootstrap
   // embedded ở trên để chắc chắn bảng "properties" đã có dữ liệu.
   await ensureDefaultSettings();
+  await settingsRepo.secureLegacyEmailSecrets();
 
   app.listen(PORT, () => {
     // eslint-disable-next-line no-console

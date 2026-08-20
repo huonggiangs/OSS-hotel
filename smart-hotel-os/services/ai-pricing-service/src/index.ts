@@ -6,16 +6,18 @@ import helmet from "helmet";
 import { rulesRouter } from "./routes/rules.routes";
 import { pricingRouter } from "./routes/pricing.routes";
 import { errorHandler } from "./middleware/errorHandler";
+import { requireServiceAuth } from "./middleware/serviceAuth";
 import { pool } from "./lib/db";
 
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? "*" }));
+app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? false }));
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "ai-pricing-service" }));
 
+app.use("/api/v1", requireServiceAuth);
 app.use("/api/v1/pricing/rules", rulesRouter);
 app.use("/api/v1/pricing", pricingRouter);
 

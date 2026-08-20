@@ -15,9 +15,8 @@ export const roomTypesRepo = {
     return rows[0] ?? null;
   },
 
-  // upsertFromCloud — dùng bởi job pull-sync (src/lib/sync.ts): last-write-wins
-  // theo updated_at, KHÔNG ghi outbox_events (dữ liệu đi TỪ Cloud xuống, không
-  // phải mutation cục bộ cần đẩy ngược lên).
+  // Cloud là nguồn sự thật: chỉ gọi khi sync đã xử lý outbox liên quan, nên
+  // luôn ghi đè bản sao Edge, không so sánh timestamp của máy Edge.
   async upsertFromCloud(rt: RoomType): Promise<void> {
     await pool.query(
       `INSERT INTO room_types (id, property_id, tenant_id, name, base_price, capacity, beds_big, beds_small, area_m2, status, created_at, updated_at)
@@ -25,8 +24,7 @@ export const roomTypesRepo = {
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name, base_price = EXCLUDED.base_price, capacity = EXCLUDED.capacity,
          beds_big = EXCLUDED.beds_big, beds_small = EXCLUDED.beds_small, area_m2 = EXCLUDED.area_m2,
-         status = EXCLUDED.status, updated_at = EXCLUDED.updated_at
-       WHERE EXCLUDED.updated_at > room_types.updated_at`,
+         status = EXCLUDED.status, updated_at = EXCLUDED.updated_at`,
       [
         rt.id,
         rt.property_id,

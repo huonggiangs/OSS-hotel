@@ -21,7 +21,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     ports:
-      - "5433:5432" # cổng 5433 để không đụng Postgres 5432 của webadmin nếu chạy song song
+      - "5434:5432" # 5432=webadmin, 5433=property-web, 5434=4 microservice
     volumes:
       - smart_hotel_services_postgres_data:/var/lib/postgresql/data
       - ./infra/postgres-init.sql:/docker-entrypoint-initdb.d/001-init-databases.sql:ro
@@ -58,6 +58,7 @@ services:
     environment:
       DATABASE_URL: "postgresql://channel_manager:channel_manager@postgres:5432/channel_manager"
       PORT: "4101"
+      SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
       - "4101:4101"
 
@@ -88,6 +89,7 @@ services:
     environment:
       DATABASE_URL: "postgresql://ai_pricing:ai_pricing@postgres:5432/ai_pricing"
       PORT: "4102"
+      SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
       - "4102:4102"
 
@@ -118,6 +120,7 @@ services:
     environment:
       DATABASE_URL: "postgresql://iot_service:iot_service@postgres:5432/iot_service"
       PORT: "4103"
+      SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
       - "4103:4103"
 
@@ -148,6 +151,7 @@ services:
     environment:
       DATABASE_URL: "postgresql://crm_service:crm_service@postgres:5432/crm_service"
       PORT: "4104"
+      SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
       - "4104:4104"
 

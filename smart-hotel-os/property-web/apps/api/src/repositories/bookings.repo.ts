@@ -1,4 +1,5 @@
-import { pool } from "../lib/db";
+import { pool, type DbPool } from "../lib/db";
+import { Errors } from "../utils/errors";
 import type { Booking, BookingChannel, BookingStatus } from "../types/domain";
 
 export interface BookingInput {
@@ -49,8 +50,8 @@ export const bookingsRepo = {
     return rows[0] ?? null;
   },
 
-  async nextCode(propertyId: string): Promise<string> {
-    const { rows } = await pool.query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM bookings WHERE property_id = $1`, [
+  async nextCode(db: DbPool, propertyId: string): Promise<string> {
+    const { rows } = await db.query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM bookings WHERE property_id = $1`, [
       propertyId,
     ]);
     const seq = Number(rows[0]?.count ?? 0) + 1;
@@ -58,9 +59,10 @@ export const bookingsRepo = {
   },
 
   async create(propertyId: string, tenantId: string, createdBy: string | undefined, input: BookingInput): Promise<Booking> {
-    const code = await this.nextCode(propertyId);
-    const { rows } = await pool.query<Booking>(
-      `INSERT INTO bookings
+    return pool.transaction(async (tx) => {
+      const code = await this.nextCode(tx, propertyId);
+      const { rows } = await tx.query<Booking>(
+        `INSERT INTO bookings
         (id, property_id, tenant_id, code, customer_id, room_id, channel, status, checkin_date, checkout_date, total_price, deposit, notes, created_by)
        VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING *`,
@@ -79,8 +81,9 @@ export const bookingsRepo = {
         input.notes ?? null,
         createdBy ?? null,
       ]
-    );
-    return rows[0];
+      );
+      return rows[0];
+    });
   },
 
   async update(propertyId: string, id: string, input: Partial<BookingInput>): Promise<Booking | null> {
@@ -111,6 +114,61 @@ export const bookingsRepo = {
       params
     );
     return rows[0] ?? null;
+  },
+
+  async checkin(propertyId: string, id: string): Promise<Booking> {
+    return pool.transaction(async (tx) => {
+      const { rows: bookingRows } = await tx.query<Booking>(`SELECT * FROM bookings WHERE property_id = $1 AND id = $2`, [propertyId, id]);
+      const existing = bookingRows[0];
+      if (!existing) throw Errors.notFound("hợp đồng");
+      if (existing.status === "CHECKED_IN") return existing;
+      if (existing.status === "CHECKED_OUT" || existing.status === "CANCELLED") {
+        throw Errors.conflict(`Không thể nhận phòng khi hợp đồng đang ${existing.status}.`);
+      }
+      if (!existing.room_id) throw Errors.conflict("Cần gán phòng trước khi nhận phòng.");
+
+      const { rows: roomRows } = await tx.query<{ id: string; status: string }>(
+        `SELECT id, status FROM rooms WHERE property_id = $1 AND id = $2`,
+        [propertyId, existing.room_id]
+      );
+      const room = roomRows[0];
+      if (!room) throw Errors.conflict("Phòng được gán không thuộc cơ sở hiện tại.");
+      if (room.status !== "VACANT") throw Errors.conflict(`Phòng không sẵn sàng để nhận khách (trạng thái: ${room.status}).`);
+
+      const { rows } = await tx.query<Booking>(
+        `UPDATE bookings SET status = 'CHECKED_IN', updated_at = now() WHERE property_id = $1 AND id = $2 RETURNING *`,
+        [propertyId, id]
+      );
+      await tx.query(`UPDATE rooms SET status = 'OCCUPIED', power_on = true, updated_at = now() WHERE property_id = $1 AND id = $2`, [
+        propertyId,
+        existing.room_id,
+      ]);
+      await tx.query(`UPDATE devices SET power_on = true, updated_at = now() WHERE property_id = $1 AND room_id = $2`, [propertyId, existing.room_id]);
+      return rows[0];
+    });
+  },
+
+  async checkout(propertyId: string, id: string): Promise<Booking> {
+    return pool.transaction(async (tx) => {
+      const { rows: bookingRows } = await tx.query<Booking>(`SELECT * FROM bookings WHERE property_id = $1 AND id = $2`, [propertyId, id]);
+      const existing = bookingRows[0];
+      if (!existing) throw Errors.notFound("hợp đồng");
+      if (existing.status === "CHECKED_OUT") return existing;
+      if (existing.status !== "CHECKED_IN") throw Errors.conflict(`Chỉ có thể trả phòng khi hợp đồng đang CHECKED_IN (hiện tại: ${existing.status}).`);
+
+      const { rows } = await tx.query<Booking>(
+        `UPDATE bookings SET status = 'CHECKED_OUT', updated_at = now() WHERE property_id = $1 AND id = $2 RETURNING *`,
+        [propertyId, id]
+      );
+      if (existing.room_id) {
+        await tx.query(`UPDATE rooms SET status = 'DIRTY', power_on = false, updated_at = now() WHERE property_id = $1 AND id = $2`, [
+          propertyId,
+          existing.room_id,
+        ]);
+        await tx.query(`UPDATE devices SET power_on = false, updated_at = now() WHERE property_id = $1 AND room_id = $2`, [propertyId, existing.room_id]);
+      }
+      return rows[0];
+    });
   },
 
   async countTotal(propertyId: string): Promise<number> {

@@ -195,7 +195,7 @@ async function pushOutboxEvent(entityType: string, eventType: string, payload: a
 }
 
 async function pushPendingOutbox(): Promise<{ pushed: number; failed: number }> {
-  const pending = await outboxRepo.listPending(50);
+  const pending = await outboxRepo.listRetryable(50);
   let pushed = 0;
   let failed = 0;
   for (const event of pending) {
@@ -211,7 +211,8 @@ async function pushPendingOutbox(): Promise<{ pushed: number; failed: number }> 
   return { pushed, failed };
 }
 
-// ---- PULL: kéo dữ liệu mới nhất từ Cloud, upsert cục bộ last-write-wins ----
+// ---- PULL: Cloud là nguồn sự thật. Không dùng đồng hồ Edge để từ chối bản
+// ghi Cloud, vì clock drift ở Edge sẽ phá vỡ nguyên tắc single source of truth.
 async function pullFromCloud(): Promise<{ roomTypes: number; rooms: number; bookings: number; users: number }> {
   const counts = { roomTypes: 0, rooms: 0, bookings: 0, users: 0 };
 

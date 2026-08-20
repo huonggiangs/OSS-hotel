@@ -1,4 +1,5 @@
 import { pool } from "../lib/db";
+import { secureEmailSettings } from "../lib/settingsSecrets";
 
 // Repo chung cho bảng property_settings (key-value theo nhóm) — dùng cho toàn
 // bộ các màn hình Cài đặt dạng form cấu hình (xem lý do kiến trúc ở đầu file
@@ -24,5 +25,27 @@ export const settingsRepo = {
       [propertyId, tenantId, groupKey, JSON.stringify(data)]
     );
     return rows[0].data;
+  },
+
+  async secureLegacyEmailSecrets(): Promise<void> {
+    const { rows } = await pool.query<{ property_id: string; tenant_id: string; data: unknown }>(
+      `SELECT property_id, tenant_id, data FROM property_settings WHERE group_key = 'email'`
+    );
+    for (const row of rows) {
+      const secured = secureEmailSettings(row.data);
+      if (JSON.stringify(secured) !== JSON.stringify(row.data)) {
+        await this.upsert(row.property_id, row.tenant_id, "email", secured);
+      }
+    }
+    await pool.query(
+      `UPDATE audit_log
+       SET before_data = CASE
+             WHEN before_data #>> '{fields,password}' IS NOT NULL THEN jsonb_set(before_data, '{fields,password}', '"[REDACTED]"'::jsonb, true)
+             ELSE before_data END,
+           after_data = CASE
+             WHEN after_data #>> '{fields,password}' IS NOT NULL THEN jsonb_set(after_data, '{fields,password}', '"[REDACTED]"'::jsonb, true)
+             ELSE after_data END
+       WHERE entity_type = 'property_settings'`
+    );
   },
 };

@@ -8,16 +8,18 @@ import { inventoryRouter } from "./routes/inventory.routes";
 import { priceRouter } from "./routes/price.routes";
 import { webhooksRouter } from "./routes/webhooks.routes";
 import { errorHandler } from "./middleware/errorHandler";
+import { requireServiceAuth } from "./middleware/serviceAuth";
 import { pool } from "./lib/db";
 
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? "*" }));
+app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? false }));
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "channel-manager-service" }));
 
+app.use("/api/v1", requireServiceAuth);
 app.use("/api/v1/connections", connectionsRouter);
 app.use("/api/v1/inventory", inventoryRouter);
 app.use("/api/v1/price", priceRouter);

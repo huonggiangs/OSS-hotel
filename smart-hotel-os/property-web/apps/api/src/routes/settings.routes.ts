@@ -6,6 +6,7 @@ import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import { writeAuditLog } from "../middleware/audit";
 import { settingsRepo } from "../repositories/settings.repo";
+import { redactEmailSettings, secureEmailSettings } from "../lib/settingsSecrets";
 
 export const settingsRouter = Router();
 settingsRouter.use(requireAuth);
@@ -43,8 +44,9 @@ settingsRouter.get(
   asyncHandler(async (req, res) => {
     const group = req.params.group;
     if (!VALID_GROUPS.has(group)) throw Errors.notFound("nhóm cấu hình");
+    if (group === "email" && !["OWNER", "MANAGER"].includes(req.user!.role)) throw Errors.forbidden();
     const data = await settingsRepo.get(req.user!.propertyId, group);
-    res.json({ group, data: data ?? {} });
+    res.json({ group, data: group === "email" ? redactEmailSettings(data) : data ?? {} });
   })
 );
 
@@ -59,8 +61,11 @@ settingsRouter.put(
     if (!VALID_GROUPS.has(group)) throw Errors.notFound("nhóm cấu hình");
     const parsed = putSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
-    const data = await settingsRepo.upsert(req.user!.propertyId, req.user!.tenantId, group, parsed.data.data);
-    await writeAuditLog({ req, action: "UPDATE_SETTINGS", entityType: "property_settings", entityId: group, afterData: data });
-    res.json({ group, data });
+    const previous = group === "email" ? await settingsRepo.get(req.user!.propertyId, group) : undefined;
+    const storedData = group === "email" ? secureEmailSettings(parsed.data.data, previous) : parsed.data.data;
+    const data = await settingsRepo.upsert(req.user!.propertyId, req.user!.tenantId, group, storedData);
+    const responseData = group === "email" ? redactEmailSettings(data) : data;
+    await writeAuditLog({ req, action: "UPDATE_SETTINGS", entityType: "property_settings", entityId: group, afterData: responseData });
+    res.json({ group, data: responseData });
   })
 );

@@ -6,6 +6,7 @@ import helmet from "helmet";
 import { devicesRouter } from "./routes/devices.routes";
 import { commandsRouter } from "./routes/commands.routes";
 import { errorHandler } from "./middleware/errorHandler";
+import { requireServiceAuth } from "./middleware/serviceAuth";
 import { pool } from "./lib/db";
 import { commandsRepo } from "./repositories/commands.repo";
 import { devicesRepo } from "./repositories/devices.repo";
@@ -13,11 +14,12 @@ import { devicesRepo } from "./repositories/devices.repo";
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? "*" }));
+app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? false }));
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "iot-service" }));
 
+app.use("/api/v1", requireServiceAuth);
 app.use("/api/v1/devices", devicesRouter);
 // commandsRouter cùng tiếp đầu ngữ /devices/:id vì lệnh luôn gắn với 1 thiết bị.
 app.use("/api/v1/devices", commandsRouter);

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
 import { requireAuth } from "../middleware/auth";
+import { requireRole } from "../middleware/rbac";
 import { outboxRepo } from "../repositories/outbox.repo";
 import { checkCloudReachable, getLastSyncAt, getLastSyncSummary, runSyncCycle } from "../lib/sync";
 
@@ -33,5 +34,17 @@ syncRouter.post(
   asyncHandler(async (_req, res) => {
     const summary = await runSyncCycle();
     res.json({ triggered: true, summary });
+  })
+);
+
+// Cho phép quản lý buộc thử lại ngay các event vừa lỗi, thay vì phải chờ
+// exponential backoff. Các event vẫn tự retry ở nền kể cả khi endpoint này
+// không được gọi.
+syncRouter.post(
+  "/retry-failed",
+  requireRole("OWNER", "MANAGER"),
+  asyncHandler(async (_req, res) => {
+    const requeued = await outboxRepo.requeueAllFailed();
+    res.json({ requeued });
   })
 );

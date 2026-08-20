@@ -105,8 +105,7 @@ export const roomsRepo = {
        ON CONFLICT (id) DO UPDATE SET
          room_type_id = EXCLUDED.room_type_id, number = EXCLUDED.number, floor = EXCLUDED.floor,
          zone = EXCLUDED.zone, status = EXCLUDED.status, power_on = EXCLUDED.power_on, note = EXCLUDED.note,
-         updated_at = EXCLUDED.updated_at
-       WHERE EXCLUDED.updated_at > rooms.updated_at`,
+         updated_at = EXCLUDED.updated_at`,
       [
         room.id,
         room.property_id,

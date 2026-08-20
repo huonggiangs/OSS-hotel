@@ -122,6 +122,7 @@ export interface OutboxEvent {
   payload: unknown;
   status: OutboxStatus;
   attempts: number;
+  next_retry_at: Date | null;
   created_at: Date;
   synced_at: Date | null;
   last_error: string | null;

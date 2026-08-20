@@ -1,5 +1,5 @@
-import { Pool } from "pg";
-import { PGlite } from "@electric-sql/pglite";
+import { Pool, PoolClient } from "pg";
+import { PGlite, Transaction as PGliteTransaction } from "@electric-sql/pglite";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 
@@ -28,6 +28,7 @@ export interface QueryResultLike<T = any> {
 
 export interface DbPool {
   query<T = any>(text: string, params?: any[]): Promise<QueryResultLike<T>>;
+  transaction<T>(fn: (tx: DbPool) => Promise<T>): Promise<T>;
 }
 
 export const DB_MODE: "postgres" | "embedded" =
@@ -44,6 +45,18 @@ export let embeddedDb: PGlite | undefined;
 
 let pool: DbPool;
 
+function wrapPglite(queryable: { query<T = any>(text: string, params?: any[]): Promise<any> }): DbPool {
+  return {
+    async query<T = any>(text: string, params: any[] = []): Promise<QueryResultLike<T>> {
+      const result = await queryable.query<T>(text, params);
+      return { rows: result.rows as T[], rowCount: (result as { affectedRows?: number }).affectedRows ?? result.rows.length };
+    },
+    async transaction<T>(fn: (tx: DbPool) => Promise<T>): Promise<T> {
+      return fn(wrapPglite(queryable));
+    },
+  };
+}
+
 if (DB_MODE === "embedded") {
   // PGlite không tự tạo thư mục cha đệ quy — tạo trước để tránh lỗi ENOENT khi
   // chạy lần đầu (vd. apps/api/.data/ chưa tồn tại).
@@ -57,6 +70,9 @@ if (DB_MODE === "embedded") {
       const result = await embeddedDb!.query<T>(text, params);
       return { rows: result.rows as T[], rowCount: (result as { affectedRows?: number }).affectedRows ?? result.rows.length };
     },
+    async transaction<T>(fn: (tx: DbPool) => Promise<T>): Promise<T> {
+      return embeddedDb!.transaction(async (tx: PGliteTransaction) => fn(wrapPglite(tx)));
+    },
   };
 } else {
   const pgPool = new Pool({
@@ -66,7 +82,36 @@ if (DB_MODE === "embedded") {
     // eslint-disable-next-line no-console
     console.error("Lỗi không mong muốn từ PostgreSQL pool:", err);
   });
-  pool = pgPool;
+  pool = {
+    async query<T = any>(text: string, params: any[] = []): Promise<QueryResultLike<T>> {
+      const result = await pgPool.query(text, params);
+      return { rows: result.rows as T[], rowCount: result.rowCount ?? result.rows.length };
+    },
+    async transaction<T>(fn: (tx: DbPool) => Promise<T>): Promise<T> {
+      const client: PoolClient = await pgPool.connect();
+      const tx: DbPool = {
+        async query<U = any>(text: string, params: any[] = []): Promise<QueryResultLike<U>> {
+          const result = await client.query(text, params);
+          return { rows: result.rows as U[], rowCount: result.rowCount ?? result.rows.length };
+        },
+        async transaction<U>(nested: (nestedTx: DbPool) => Promise<U>): Promise<U> {
+          return nested(tx);
+        },
+      };
+      try {
+        await client.query("BEGIN");
+        const result = await fn(tx);
+        await client.query("COMMIT");
+        return result;
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw err;
+      } finally {
+        client.release();
+      }
+    },
+  };
+  (pool as unknown as { end: () => Promise<void> }).end = () => pgPool.end();
 }
 
 export { pool };

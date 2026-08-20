@@ -53,12 +53,15 @@ Yêu cầu: đã cài Docker Desktop (có Docker Compose v2).
 PowerShell:
 ```powershell
 Set-Location D:\hotel\OSS\smart-hotel-os\services
+Copy-Item .env.example .env
+# Mở .env và thay SERVICE_API_KEY bằng chuỗi bí mật riêng, tối thiểu 32 ký tự.
 docker compose up --build
 ```
 
 CMD:
 ```cmd
 cd /d D:\hotel\OSS\smart-hotel-os\services
+copy .env.example .env
 docker compose up --build
 ```
 
@@ -74,6 +77,10 @@ demo trước khi service API khởi động. Sau khi lên hết:
 
 Dừng toàn bộ: `Ctrl+C` rồi `docker compose down` (thêm `-v` nếu muốn xoá luôn dữ liệu Postgres).
 
+`/health` là endpoint công khai để kiểm tra tình trạng. Mọi endpoint nghiệp vụ dưới
+`/api/v1` của cả bốn service bắt buộc có header `X-Service-Api-Key` khớp với
+`SERVICE_API_KEY`; service từ chối khởi động nếu khóa vắng mặt hoặc ngắn hơn 32 ký tự.
+
 ## Chạy TỪNG service riêng lẻ (không Docker, để phát triển)
 
 Mỗi service đọc `Postgres` riêng — cần một Postgres đang chạy cục bộ (có thể
@@ -83,7 +90,7 @@ cài Postgres trực tiếp). Ví dụ với `ai-pricing-service` (PowerShell):
 ```powershell
 Set-Location D:\hotel\OSS\smart-hotel-os\services\ai-pricing-service
 Copy-Item .env.example .env
-npm install
+npm ci
 npm run migrate
 npm run seed
 npm run dev
@@ -93,7 +100,7 @@ CMD tương đương:
 ```cmd
 cd /d D:\hotel\OSS\smart-hotel-os\services\ai-pricing-service
 copy .env.example .env
-npm install
+npm ci
 npm run migrate
 npm run seed
 npm run dev

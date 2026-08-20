@@ -10,17 +10,38 @@ import { bookingsRepo } from "../repositories/bookings.repo";
 export const bookingsRouter = Router();
 bookingsRouter.use(requireAuth);
 
-const upsertSchema = z.object({
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày phải theo định dạng YYYY-MM-DD.");
+
+const createSchema = z
+  .object({
   customerId: z.string().optional().nullable(),
   roomId: z.string().optional().nullable(),
   channel: z.enum(["DIRECT", "BOOKING_COM", "AGODA", "AIRBNB", "TRAVELOKA", "OTHER"]).default("DIRECT"),
-  status: z.enum(["PENDING", "CONFIRMED", "CHECKED_IN", "CHECKED_OUT", "CANCELLED"]).default("PENDING"),
-  checkinDate: z.string().min(1),
-  checkoutDate: z.string().min(1),
+  status: z.enum(["PENDING", "CONFIRMED"]).default("PENDING"),
+  checkinDate: dateSchema,
+  checkoutDate: dateSchema,
   totalPrice: z.number().min(0).default(0),
   deposit: z.number().min(0).default(0),
   notes: z.string().optional(),
-});
+  })
+  .superRefine((input, ctx) => {
+    if (input.checkoutDate <= input.checkinDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["checkoutDate"], message: "Ngày trả phòng phải sau ngày nhận phòng." });
+    }
+  });
+
+const updateSchema = z
+  .object({
+    customerId: z.string().optional().nullable(),
+    roomId: z.string().optional().nullable(),
+    channel: z.enum(["DIRECT", "BOOKING_COM", "AGODA", "AIRBNB", "TRAVELOKA", "OTHER"]).optional(),
+    checkinDate: dateSchema.optional(),
+    checkoutDate: dateSchema.optional(),
+    totalPrice: z.number().min(0).optional(),
+    deposit: z.number().min(0).optional(),
+    notes: z.string().optional(),
+  })
+  .strict();
 
 bookingsRouter.get(
   "/",
@@ -43,7 +64,7 @@ bookingsRouter.post(
   "/",
   requireRole("OWNER", "MANAGER", "RECEPTIONIST"),
   asyncHandler(async (req, res) => {
-    const parsed = upsertSchema.safeParse(req.body);
+    const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
     const booking = await bookingsRepo.create(req.user!.propertyId, req.user!.tenantId, req.user!.id, parsed.data);
     await writeAuditLog({ req, action: "CREATE_BOOKING", entityType: "booking", entityId: booking.id, afterData: booking });
@@ -57,8 +78,11 @@ bookingsRouter.patch(
   asyncHandler(async (req, res) => {
     const existing = await bookingsRepo.findById(req.user!.propertyId, req.params.id);
     if (!existing) throw Errors.notFound("hợp đồng");
-    const parsed = upsertSchema.partial().safeParse(req.body);
+    const parsed = updateSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    const checkinDate = parsed.data.checkinDate ?? existing.checkin_date;
+    const checkoutDate = parsed.data.checkoutDate ?? existing.checkout_date;
+    if (checkoutDate <= checkinDate) throw Errors.validation({ checkoutDate: "Ngày trả phòng phải sau ngày nhận phòng." });
     const booking = await bookingsRepo.update(req.user!.propertyId, req.params.id, parsed.data);
     await writeAuditLog({
       req,
@@ -68,6 +92,26 @@ bookingsRouter.patch(
       beforeData: existing,
       afterData: booking,
     });
+    res.json(booking);
+  })
+);
+
+bookingsRouter.post(
+  "/:id/checkin",
+  requireRole("OWNER", "MANAGER", "RECEPTIONIST"),
+  asyncHandler(async (req, res) => {
+    const booking = await bookingsRepo.checkin(req.user!.propertyId, req.params.id);
+    await writeAuditLog({ req, action: "CHECKIN_BOOKING", entityType: "booking", entityId: booking.id, afterData: { status: booking.status } });
+    res.json(booking);
+  })
+);
+
+bookingsRouter.post(
+  "/:id/checkout",
+  requireRole("OWNER", "MANAGER", "RECEPTIONIST"),
+  asyncHandler(async (req, res) => {
+    const booking = await bookingsRepo.checkout(req.user!.propertyId, req.params.id);
+    await writeAuditLog({ req, action: "CHECKOUT_BOOKING", entityType: "booking", entityId: booking.id, afterData: { status: booking.status } });
     res.json(booking);
   })
 );

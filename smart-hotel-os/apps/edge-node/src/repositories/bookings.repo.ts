@@ -229,8 +229,7 @@ export const bookingsRepo = {
          guest_name = EXCLUDED.guest_name, guest_phone = EXCLUDED.guest_phone, room_id = EXCLUDED.room_id,
          channel = EXCLUDED.channel, status = EXCLUDED.status, checkin_date = EXCLUDED.checkin_date,
          checkout_date = EXCLUDED.checkout_date, total_price = EXCLUDED.total_price, deposit = EXCLUDED.deposit,
-         notes = EXCLUDED.notes, updated_at = EXCLUDED.updated_at
-       WHERE EXCLUDED.updated_at > bookings.updated_at`,
+         notes = EXCLUDED.notes, updated_at = EXCLUDED.updated_at`,
       [
         booking.id,
         booking.property_id,

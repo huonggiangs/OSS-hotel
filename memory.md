@@ -6,6 +6,13 @@
 - Sau khi tạo handoff, commit toàn bộ thay đổi đã được người dùng duyệt và push lên `https://github.com/huonggiangs/OSS-hotel.git` trên nhánh `main`.
 - Không tự sửa mã nguồn/chức năng. Mọi lỗi, điều chỉnh hoặc tối ưu phải trình bày bằng tiếng Việt và chờ người dùng duyệt trước khi thực hiện.
 
+## Phiên 2026-08-20 — Kiểm tra môi trường test và sửa lỗi đã được duyệt
+
+- Đã sửa các lỗi P0/P1/P2 người dùng duyệt: bắt buộc API key cho bốn microservice; luồng check-in/check-out PMS cập nhật đồng bộ booking/phòng/điện/thiết bị; mã hóa bí mật SMTP khi lưu và ẩn khỏi API/audit; Edge tự retry outbox với backoff và nhận Cloud là nguồn trạng thái; đổi cổng Postgres của `services/` sang 5434; thêm lockfile + `npm ci` cho bốn service.
+- Đã cập nhật Next.js lên 16.3.1, `sharp` 0.35.3 và `nanoid` 3.3.18 cho hai web; `npm audit --omit=dev` không còn cảnh báo mức cao ở webadmin, property-web, hoặc ba package backend chính.
+- Đã kiểm tra typecheck cho toàn bộ 9 package; build Production của Property Web thành công. Các kiểm thử API PGlite xác minh check-in/out, chặn ngày/patch trạng thái sai, bảo mật SMTP, retry Edge và middleware API key.
+- Đang chạy môi trường test cục bộ: webadmin `http://localhost:3000`, Property Web `http://localhost:3100`, Edge `http://localhost:4200`. Docker Desktop không chạy nên chưa thể E2E bốn microservice với PostgreSQL; cần khởi động Docker Desktop trước khi chạy `services/docker-compose.yml`.
+
 ## Phiên 2026-08-20 — Audit dự án (không sửa mã)
 
 - Đã tạo handoff: `handoff1n_20260820_114544.md`.
@@ -14,7 +21,7 @@
 
 File này tồn tại để **phiên làm việc (Cowork session) sau có thể tiếp tục ngay** mà không phải đọc lại toàn bộ lịch sử chat. Luôn đọc file này đầu tiên khi bắt đầu một phiên mới trên dự án `D:\hotel\OSS`, và **cập nhật lại file này ở cuối mỗi phiên** (mục "Đã xong" / "Đang làm" / "Chưa làm" + ngày).
 
-Cập nhật lần cuối: **2026-07-29 (phiên 7)** — verify xong module giám sát thiết bị webadmin (tìm & sửa 3 lỗi thật), dọn rác `.data`/`.next` tồn đọng trên ổ đĩa thật, tạo `start-all.ps1` (chạy 1 lệnh PowerShell là lên đủ 4 dịch vụ, không cần Docker)
+Cập nhật lần cuối: **2026-08-20 16:54 (phiên kiểm tra môi trường)** — đã sửa nhóm lỗi P0/P1/P2 được duyệt, audit dependency sạch và tạo `handoff1n_20260820_165433.md`; xem mục phiên 2026-08-20 ở đầu file.
 
 ## ⚠ QUAN TRỌNG NHẤT — đọc mục này TRƯỚC KHI làm gì ở phiên tiếp theo
 
@@ -56,7 +63,7 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 
 ### Code chạy được — `webadmin/` (HQ Console MVP)
 - **API**: Express + TypeScript + `pg` (node-postgres thuần, KHÔNG dùng Prisma — lý do: sandbox build chặn CDN tải engine Prisma, xem `hq-console/DECISIONS.md` ADR-006). Auth JWT + RBAC, module Partners/Suppliers/Customers(360)/Hardware Assets(+warranty)/Commissions(rules+records+duyệt/thanh toán)/Dashboard/Audit log.
-- **Web**: Next.js 16.2.12 (đã bump từ 14.2.5 vì lỗi bảo mật) + Tailwind. Login + 7 trang quản trị.
+- **Web**: Next.js 16.3.1 (đã bump từ 14.2.5 vì lỗi bảo mật) + Tailwind. Login + 7 trang quản trị.
 - **Database**: SQL thuần trong `database/migrations/001_init.sql`, migration runner viết tay (`database/migrate.ts`), seed demo (`database/seed.ts`). Đã build & test: `tsc` sạch lỗi, `next build` thành công, migration chạy được trên Postgres thật (test bằng `@electric-sql/pglite`).
 - `docker-compose.yml` — 4 service (postgres, migrate, api, web), chạy 1 lệnh `docker compose up --build`.
 - **README.md đã sửa lại hướng dẫn chạy cho đúng Windows** (PowerShell dùng `;`/`Set-Location`, CMD dùng `cd /d`/`&`, không dùng `&&` trực tiếp) — vì người dùng báo lỗi `&&` không chạy được trên CMD/PowerShell của họ (2026-07-27).
@@ -65,7 +72,7 @@ Quy tắc bắt buộc phải nhớ: `RULES.md` (kiến trúc phân tán, Cloud 
 ### Code chạy được — `smart-hotel-os/property-web/` (PMS Property Web UI, từ bundle thiết kế Claude Design)
 
 - Nguồn: bundle handoff `hotel-pms-software-design-phase-1/` (local, do người dùng export từ claude.ai/design) — file chính `Hotel PMS.dc.html` (3307 dòng) + `support.js` (runtime, chỉ đọc để hiểu semantics, KHÔNG copy) + `BA - Luong nghiep vu PMS.dc.html` (nghiệp vụ) + design tokens `_ds/.../tokens/*.css`. Đã đọc toàn bộ.
-- **Next.js 16.2.12 (App Router) + TypeScript + Tailwind**, cấu trúc `property-web/apps/web/` giống hệt convention `webadmin/apps/web/`. Chạy ở cổng 3100 (song song được với `webadmin` ở cổng 3000).
+- **Next.js 16.3.1 (App Router) + TypeScript + Tailwind**, cấu trúc `property-web/apps/web/` giống hệt convention `webadmin/apps/web/`. Chạy ở cổng 3100 (song song được với `webadmin` ở cổng 3000).
 - Đã implement **pixel-perfect** 5 màn hình ưu tiên: **Dashboard** (Overview 3 cột đầy đủ + Calendar/Gantt có kéo-chọn ngày thật), **Booking** (list + 3 modal + contract template editor có chèn tham số), **Rooms** (4 panel donut lọc + lưới 32 phòng + 3 modal theo trạng thái phòng, có công tắc bật/tắt điện IoT tại chỗ), **Price** (2 bảng loại phòng/phòng + 2 modal thêm mới), **Payment** (cấu hình cổng thanh toán + bảng hoá đơn). Shared layout: Sidebar collapsible + panel Cài đặt + Topbar (cỡ chữ/ngôn ngữ/profile modal).
 - Dữ liệu mẫu tách riêng vào `apps/web/src/lib/mock-data.ts` (chưa có `apps/api`/DB riêng — ưu tiên UI đúng trước, xem `property-web/PROGRESS.md` mục "Điểm mơ hồ/tự quyết định" giải thích rõ).
 - Build sạch: `npm install` + `npx tsc --noEmit` + `next build` (test tại `/tmp`, source thật trong mount không có `node_modules`/`.next`).
@@ -155,7 +162,7 @@ Theo yêu cầu người dùng: Hardware Assets cần hiển thị trạng thái
 - Nối 4 service (Channel Manager/AI Pricing/IoT/CRM) với PMS Core thật của `property-web` (hiện tách rời, seed riêng).
 - **[ĐÃ XONG 2026-07-27, phiên 4]** ~~`webadmin`: quản lý user/role qua UI, Release Console tổng hợp, module mua hàng/tồn kho chi tiết (`purchase_orders`)~~ — xem mục 2. Còn lại: MFA/VPN cho production.
 - CI/CD, blue-green/canary deployment (RULES.md mục 14) — chưa làm cho bất kỳ repo nào.
-- **Auth API-to-API giữa các service** (webadmin ↔ property-web ↔ 4 service mới) — hiện mỗi hệ thống có JWT/user riêng, chưa có cơ chế service-to-service auth (API key/OAuth2 client credentials như `PARTNER_API_STANDARDS.md` mô tả cho đối tác ngoài).
+- **Auth API-to-API giữa các service** — bốn microservice đã bắt buộc `X-Service-Api-Key`; webadmin/property-web chưa gọi trực tiếp các service này. Khi nối tích hợp thật, cần cấp và xoay khóa an toàn hoặc thay bằng OAuth2 client credentials theo `PARTNER_API_STANDARDS.md`.
 - **⚠ EDGE NODE / OFFLINE-FIRST — CHƯA CÓ CODE, đây là khoảng trống lớn nhất về kiến trúc** (phát hiện rõ khi vẽ sơ đồ DB ở phiên 5). Hiện `property-web` gọi thẳng API cloud → **mất Internet là quầy lễ tân đứng hình**, trái với yêu cầu offline-first trong `RULES.md` + `CLAUDE.md` mục 7. Cần: `apps/edge-node/` (dịch vụ chạy tại khách sạn) + DB cục bộ (cache booking hôm nay/mai, trạng thái phòng) + bảng `outbox` (xếp hàng thao tác khi offline) + cơ chế đẩy hàng đợi theo thứ tự khi có mạng lại + giải quyết xung đột do Cloud quyết định. Thiết kế đã có sẵn ở `smart-hotel-os/docs/SYSTEM_ARCHITECTURE.md` mục 4, chỉ chưa code.
 - **⚠ Dữ liệu thiết bị đang TRÙNG ở 3 nơi, chưa có quy ước chủ sở hữu** (phát hiện phiên 5): `property-web.devices` (gán thiết bị vào phòng), `iot-service.devices` (lệnh + heartbeat), `webadmin.hardware_assets` (tài sản/bảo hành, có enum `IOT_CONTROLLER`/`KIOSK`... nhưng KHÔNG có `DOOR_LOCK`, `POWER_SWITCH`, `ELECTRIC_METER`, `EDGE_NODE`). Cần thống nhất: webadmin = vòng đời tài sản (mua/bảo hành/thanh lý), iot-service = trạng thái vận hành realtime, property-web = ánh xạ thiết bị ↔ phòng; liên kết bằng `device_id_external` (cột đã có sẵn trong `hardware_assets`). Nên bổ sung các loại thiết bị còn thiếu vào enum `HardwareAssetType`.
 
@@ -168,8 +175,8 @@ Người dùng báo chạy lệnh PowerShell không được, cả 3 cổng 3000
 - **Sandbox build có tường lửa allowlist** — chặn `binaries.prisma.sh` (403). `registry.npmjs.org` và `github.com` thì gọi được bình thường.
 - **File trong `D:\hotel\OSS` mặc định không xoá/đổi tên được** qua công cụ — nếu cần xoá, gọi `allow_cowork_file_delete` xin phép trước (đã làm 1 lần trong phiên 2026-07-26, hiện đã bật cho cả thư mục OSS trong phiên đó — **có thể phiên mới sẽ bị khoá lại, cần gọi lại nếu gặp lỗi "Operation not permitted"**).
 - Build/test code nặng (npm install nhiều gói) nên làm ở `/tmp` (sandbox, nhanh, xoá được tự do) rồi mới copy source (không copy `node_modules`) sang `D:\hotel\OSS\...` — mount OSS chậm hơn và có giới hạn xoá.
-- Next.js đã bump lên `16.2.12` (từ `14.2.5`) vì lỗi bảo mật đã biết ở 14.2.5 — nếu nâng cấp thêm, nhớ chạy lại `npm audit`.
+- Next.js đã bump lên `16.3.1` (từ `14.2.5`) vì lỗi bảo mật đã biết; `npm audit --omit=dev` đã sạch sau lần cập nhật 2026-08-20.
 - Người dùng dùng Windows, **không phải** macOS/Linux — mọi hướng dẫn dòng lệnh trong README phải có bản PowerShell/CMD riêng, không giả định `bash`/`&&` hoạt động được.
-- **Bảng cổng đang dùng (để tránh xung đột khi chạy song song nhiều service)**: `webadmin` web=3000/api=4000/postgres=5432; `property-web` web=3100/api=4100/postgres=5433; `services/` channel-manager=4101, ai-pricing=4102, iot=4103, crm=4104 (1 postgres chung, 4 database riêng — cổng cụ thể xem `smart-hotel-os/services/docker-compose.yml`).
+- **Bảng cổng đang dùng (để tránh xung đột khi chạy song song nhiều service)**: `webadmin` web=3000/api=4000/postgres=5432; `property-web` web=3100/api=4100/postgres=5433; `services/` Postgres=5434, channel-manager=4101, ai-pricing=4102, iot=4103, crm=4104 (1 Postgres chung, 4 database riêng — cổng cụ thể xem `smart-hotel-os/services/docker-compose.yml`).
 - File `D:\hotel\OSS\_start-property-web.bat` (tạo ở phiên 4, KHÔNG commit vào git) là script thử tự động chạy `property-web` qua computer-use nhưng KHÔNG chạy được trên máy người dùng (double-click không mở được cửa sổ) — có thể xoá nếu người dùng không cần, không phải một phần của sản phẩm.
 - Từ phiên 4: khi cần làm nhiều nhánh việc lớn, độc lập (không đụng chung file) cùng lúc — dùng nhiều subagent chạy SONG SONG (1 message nhiều Agent call) để tiết kiệm thời gian, nhưng dặn từng agent KHÔNG được tự sửa `memory.md` và KHÔNG tự `git commit` (dễ xung đột khi chạy song song) — người điều phối (phiên chính) gộp lại và commit tập trung 1 lần ở cuối, sau khi kiểm tra `git status` không có file đè lên nhau.
