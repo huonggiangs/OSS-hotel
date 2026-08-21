@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+node_modules
+**/node_modules
+.next
+**/.next
+.data
+**/.data
+dist
+**/dist
+*.log
+npm-debug.log*

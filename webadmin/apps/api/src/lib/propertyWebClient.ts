@@ -12,7 +12,9 @@
 // ============================================================================
 
 const PROPERTY_WEB_API_URL = process.env.PROPERTY_WEB_API_URL ?? "http://localhost:4100";
-const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY ?? "dev-internal-service-key-change-me";
+const INTERNAL_SERVICE_KEY =
+  process.env.INTERNAL_SERVICE_KEY ??
+  (process.env.NODE_ENV === "production" ? undefined : "dev-internal-service-key-change-me");
 
 export interface PropertyWebBranch {
   id: string;
@@ -29,6 +31,11 @@ export interface PropertyWebBranch {
  * được về nhập tay tên cơ sở, không bao giờ crash vì phụ thuộc hệ thống ngoài.
  */
 export async function fetchPropertyWebBranches(): Promise<PropertyWebBranch[] | null> {
+  if (!INTERNAL_SERVICE_KEY) {
+    // eslint-disable-next-line no-console
+    console.warn("[propertyWebClient] INTERNAL_SERVICE_KEY chưa cấu hình; bỏ qua lời gọi nội bộ.");
+    return null;
+  }
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);

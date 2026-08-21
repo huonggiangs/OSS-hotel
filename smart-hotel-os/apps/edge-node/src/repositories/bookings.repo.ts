@@ -225,7 +225,7 @@ export const bookingsRepo = {
     await pool.query(
       `INSERT INTO bookings (id, property_id, tenant_id, code, guest_name, guest_phone, room_id, channel, status, checkin_date, checkout_date, total_price, deposit, notes, created_by, created_at, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
-       ON CONFLICT (id) DO UPDATE SET
+       ON CONFLICT (code) DO UPDATE SET
          guest_name = EXCLUDED.guest_name, guest_phone = EXCLUDED.guest_phone, room_id = EXCLUDED.room_id,
          channel = EXCLUDED.channel, status = EXCLUDED.status, checkin_date = EXCLUDED.checkin_date,
          checkout_date = EXCLUDED.checkout_date, total_price = EXCLUDED.total_price, deposit = EXCLUDED.deposit,

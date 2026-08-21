@@ -16,6 +16,7 @@ import { assetAlertsRepo } from "../repositories/assetAlerts.repo";
 import type { HardwareAsset } from "../types/domain";
 
 const IOT_SERVICE_URL = process.env.IOT_SERVICE_URL ?? "http://localhost:4103";
+const IOT_SERVICE_API_KEY = process.env.IOT_SERVICE_API_KEY;
 
 // Ngưỡng sinh cảnh báo — hằng số đơn giản cho MVP, có thể chuyển thành cấu
 // hình theo tenant/khách hàng ở phase sau.
@@ -76,7 +77,10 @@ export async function syncConnectionStatusFromIot(): Promise<SyncResult> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(`${IOT_SERVICE_URL}/api/v1/devices`, { signal: controller.signal });
+    const res = await fetch(`${IOT_SERVICE_URL}/api/v1/devices`, {
+      signal: controller.signal,
+      headers: IOT_SERVICE_API_KEY ? { "X-Service-Api-Key": IOT_SERVICE_API_KEY } : {},
+    });
     clearTimeout(timeout);
     if (!res.ok) {
       iotServiceReachable = false;

@@ -1,0 +1,123 @@
+name: OSS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    name: Typecheck ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: webadmin-api
+            path: webadmin/apps/api
+          - name: webadmin-web
+            path: webadmin/apps/web
+          - name: property-api
+            path: smart-hotel-os/property-web/apps/api
+          - name: property-web
+            path: smart-hotel-os/property-web/apps/web
+          - name: edge-node
+            path: smart-hotel-os/apps/edge-node
+          - name: channel-manager
+            path: smart-hotel-os/services/channel-manager-service
+          - name: ai-pricing
+            path: smart-hotel-os/services/ai-pricing-service
+          - name: iot
+            path: smart-hotel-os/services/iot-service
+          - name: crm
+            path: smart-hotel-os/services/crm-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.path }}/package-lock.json
+      - name: Install locked dependencies
+        working-directory: ${{ matrix.path }}
+        run: npm ci
+      - name: Typecheck
+        working-directory: ${{ matrix.path }}
+        run: npm run typecheck
+
+  frontend-build:
+    name: Production frontend build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - path: webadmin/apps/web
+            api_url: http://localhost:4000
+          - path: smart-hotel-os/property-web/apps/web
+            api_url: http://localhost:4100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.path }}/package-lock.json
+      - working-directory: ${{ matrix.path }}
+        run: npm ci
+      - working-directory: ${{ matrix.path }}
+        env:
+          NEXT_PUBLIC_API_URL: ${{ matrix.api_url }}
+        run: npm run build
+
+  dependency-audit:
+    name: Production dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Audit locked production dependencies
+        shell: bash
+        run: |
+          for path in \
+            webadmin/apps/api \
+            webadmin/apps/web \
+            webadmin/database \
+            smart-hotel-os/property-web/apps/api \
+            smart-hotel-os/property-web/apps/web \
+            smart-hotel-os/property-web/database \
+            smart-hotel-os/apps/edge-node \
+            smart-hotel-os/services/channel-manager-service \
+            smart-hotel-os/services/ai-pricing-service \
+            smart-hotel-os/services/iot-service \
+            smart-hotel-os/services/crm-service; do
+            (cd "$path" && npm ci --ignore-scripts && npm audit --omit=dev)
+          done
+
+  compose-validation:
+    name: Docker Compose validation
+    runs-on: ubuntu-latest
+    env:
+      WEBADMIN_JWT_SECRET: ci-webadmin-secret-32-characters-minimum
+      PROPERTY_JWT_SECRET: ci-property-secret-32-characters-minimum
+      EDGE_JWT_SECRET: ci-edge-secret-32-characters-minimum
+      SETTINGS_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      INTERNAL_SERVICE_KEY: ci-internal-key-32-characters-minimum
+      SERVICE_API_KEY: ci-service-key-32-characters-minimum
+      CLOUD_SYNC_USERNAME: reception
+      CLOUD_SYNC_PASSWORD: test-only-password
+      TENANT_ID: 00000000-0000-0000-0000-00000000d001
+      PROPERTY_ID: 00000000-0000-0000-0000-00000000d101
+      EDGE_NODE_ID: ci-edge-node
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f webadmin/docker-compose.yml config --quiet
+      - run: docker compose -f smart-hotel-os/property-web/docker-compose.yml config --quiet
+      - run: docker compose -f smart-hotel-os/services/docker-compose.yml config --quiet
+      - run: docker compose -f smart-hotel-os/apps/edge-node/docker-compose.yml config --quiet

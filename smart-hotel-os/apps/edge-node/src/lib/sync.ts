@@ -37,8 +37,8 @@ const PROPERTY_ID = process.env.PROPERTY_ID ?? "00000000-0000-0000-0000-00000000
 // bị — xem property-web/apps/api/src/middleware/rbac.ts) thay vì xây riêng cơ
 // chế OAuth2 client-credentials máy-tới-máy (đúng chuẩn dài hạn theo
 // hq-console/docs/PARTNER_API_STANDARDS.md, nhưng vượt phạm vi bản MVP này).
-const CLOUD_SYNC_USERNAME = process.env.CLOUD_SYNC_USERNAME ?? "reception";
-const CLOUD_SYNC_PASSWORD = process.env.CLOUD_SYNC_PASSWORD ?? "Anio2026@";
+const CLOUD_SYNC_USERNAME = process.env.CLOUD_SYNC_USERNAME;
+const CLOUD_SYNC_PASSWORD = process.env.CLOUD_SYNC_PASSWORD;
 
 const FETCH_TIMEOUT_MS = 5000;
 
@@ -84,6 +84,7 @@ export async function checkCloudReachable(): Promise<boolean> {
 
 async function getCloudToken(forceRefresh = false): Promise<string | null> {
   if (cachedToken && !forceRefresh) return cachedToken;
+  if (!CLOUD_SYNC_USERNAME || !CLOUD_SYNC_PASSWORD) return null;
   try {
     const res = await fetchWithTimeout(`${CLOUD_URL}/api/v1/auth/login`, {
       method: "POST",
@@ -215,12 +216,14 @@ async function pushPendingOutbox(): Promise<{ pushed: number; failed: number }> 
 // ghi Cloud, vì clock drift ở Edge sẽ phá vỡ nguyên tắc single source of truth.
 async function pullFromCloud(): Promise<{ roomTypes: number; rooms: number; bookings: number; users: number }> {
   const counts = { roomTypes: 0, rooms: 0, bookings: 0, users: 0 };
+  const localRoomTypeIds = new Map<string, string>();
+  const localRoomIds = new Map<string, string>();
 
   const roomTypesRes = await cloudFetch(`/api/v1/room-types`);
   if (roomTypesRes?.ok) {
     const body = (await roomTypesRes.json()) as { items: RoomType[] };
     for (const rt of body.items) {
-      await roomTypesRepo.upsertFromCloud(rt);
+      localRoomTypeIds.set(rt.id, await roomTypesRepo.upsertFromCloud(rt));
       counts.roomTypes += 1;
     }
   }
@@ -229,7 +232,8 @@ async function pullFromCloud(): Promise<{ roomTypes: number; rooms: number; book
   if (roomsRes?.ok) {
     const body = (await roomsRes.json()) as { items: Room[] };
     for (const room of body.items) {
-      await roomsRepo.upsertFromCloud(room);
+      const localRoomTypeId = localRoomTypeIds.get(room.room_type_id) ?? room.room_type_id;
+      localRoomIds.set(room.id, await roomsRepo.upsertFromCloud({ ...room, room_type_id: localRoomTypeId }));
       counts.rooms += 1;
     }
   }
@@ -238,7 +242,11 @@ async function pullFromCloud(): Promise<{ roomTypes: number; rooms: number; book
   if (bookingsRes?.ok) {
     const body = (await bookingsRes.json()) as { items: (Booking & { guest_name?: string | null })[] };
     for (const b of body.items) {
-      await bookingsRepo.upsertFromCloud({ ...b, guest_phone: b.guest_phone ?? null } as Booking);
+      await bookingsRepo.upsertFromCloud({
+        ...b,
+        room_id: b.room_id ? localRoomIds.get(b.room_id) ?? b.room_id : null,
+        guest_phone: b.guest_phone ?? null,
+      } as Booking);
       counts.bookings += 1;
     }
   }
@@ -274,6 +282,20 @@ export async function runSyncCycle(): Promise<SyncSummary> {
       pushFailed: 0,
       pulled: { roomTypes: 0, rooms: 0, bookings: 0, users: 0 },
       error: `Không kết nối được Cloud tại ${CLOUD_URL}`,
+    };
+    lastSyncSummary = summary;
+    lastSyncError = summary.error ?? null;
+    return summary;
+  }
+
+  if (!CLOUD_SYNC_USERNAME || !CLOUD_SYNC_PASSWORD) {
+    const summary: SyncSummary = {
+      ranAt: new Date().toISOString(),
+      cloudReachable: true,
+      pushed: 0,
+      pushFailed: 0,
+      pulled: { roomTypes: 0, rooms: 0, bookings: 0, users: 0 },
+      error: "Thiếu CLOUD_SYNC_USERNAME hoặc CLOUD_SYNC_PASSWORD; Edge không thể đồng bộ Cloud.",
     };
     lastSyncSummary = summary;
     lastSyncError = summary.error ?? null;

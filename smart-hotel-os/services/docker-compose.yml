@@ -21,7 +21,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     ports:
-      - "5434:5432" # 5432=webadmin, 5433=property-web, 5434=4 microservice
+      - "127.0.0.1:5434:5432" # 5432=webadmin, 5433=property-web, 5434=4 microservice
     volumes:
       - smart_hotel_services_postgres_data:/var/lib/postgresql/data
       - ./infra/postgres-init.sql:/docker-entrypoint-initdb.d/001-init-databases.sql:ro
@@ -50,6 +50,7 @@ services:
       context: ./channel-manager-service
       dockerfile: Dockerfile
     restart: unless-stopped
+    init: true
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,6 +62,17 @@ services:
       SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
       - "4101:4101"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4101/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
 
   # ---------------- ai-pricing-service ----------------
   ai-pricing-migrate:
@@ -81,6 +93,7 @@ services:
       context: ./ai-pricing-service
       dockerfile: Dockerfile
     restart: unless-stopped
+    init: true
     depends_on:
       postgres:
         condition: service_healthy
@@ -92,6 +105,17 @@ services:
       SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
       - "4102:4102"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4102/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
 
   # ---------------- iot-service ----------------
   iot-migrate:
@@ -112,6 +136,7 @@ services:
       context: ./iot-service
       dockerfile: Dockerfile
     restart: unless-stopped
+    init: true
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,6 +148,17 @@ services:
       SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
       - "4103:4103"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4103/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
 
   # ---------------- crm-service ----------------
   crm-migrate:
@@ -143,6 +179,7 @@ services:
       context: ./crm-service
       dockerfile: Dockerfile
     restart: unless-stopped
+    init: true
     depends_on:
       postgres:
         condition: service_healthy
@@ -154,6 +191,17 @@ services:
       SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
       - "4104:4104"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4104/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
 
 volumes:
   smart_hotel_services_postgres_data:

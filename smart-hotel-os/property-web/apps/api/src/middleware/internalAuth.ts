@@ -14,7 +14,9 @@ import { requireAuth } from "./auth";
 // trong property-web/PROGRESS.md và webadmin/PROGRESS.md.
 // ============================================================================
 
-const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY ?? "dev-internal-service-key-change-me";
+const INTERNAL_SERVICE_KEY =
+  process.env.INTERNAL_SERVICE_KEY ??
+  (process.env.NODE_ENV === "production" ? undefined : "dev-internal-service-key-change-me");
 
 /**
  * Nếu request có header X-Internal-Service-Key khớp giá trị cấu hình -> cho
@@ -25,7 +27,7 @@ const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY ?? "dev-internal-s
  */
 export function requireAuthOrInternalKey(req: Request, res: Response, next: NextFunction) {
   const key = req.headers["x-internal-service-key"];
-  if (typeof key === "string" && key.length > 0 && key === INTERNAL_SERVICE_KEY) {
+  if (typeof key === "string" && typeof INTERNAL_SERVICE_KEY === "string" && key.length > 0 && key === INTERNAL_SERVICE_KEY) {
     return next();
   }
   return requireAuth(req, res, next);

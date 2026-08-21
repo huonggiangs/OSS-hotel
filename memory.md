@@ -6,6 +6,15 @@
 - Sau khi tạo handoff, commit toàn bộ thay đổi đã được người dùng duyệt và push lên `https://github.com/huonggiangs/OSS-hotel.git` trên nhánh `main`.
 - Không tự sửa mã nguồn/chức năng. Mọi lỗi, điều chỉnh hoặc tối ưu phải trình bày bằng tiếng Việt và chờ người dùng duyệt trước khi thực hiện.
 
+## Phiên 2026-08-21 — Docker Desktop, DevOps và đồng bộ dữ liệu
+
+- Đã Docker hóa và chạy nền đầy đủ 4 nhóm: Webadmin (3000/4000), Property Web (3100/4100), bốn microservice (4101–4104) và Edge Node (4200). Tất cả có healthcheck, `restart: unless-stopped`, log quay vòng và kiểm tra trạng thái qua `ops/scripts/Get-OssStatus.ps1`; có thể đóng Codex sau khi chạy `Start-Oss.ps1`.
+- Đã tạo `ops/` gồm script khởi tạo secret cục bộ, start/stop/status, tài liệu vận hành và quy ước sở hữu dữ liệu. PostgreSQL chỉ mở `127.0.0.1`; các secret chỉ nằm trong `ops/.env` bị Git bỏ qua. Do Docker Desktop tự ghi đè AutoStart và Windows không cho tạo Scheduled Task, đã tạo mục Startup theo tài khoản tại `C:\Users\16flip\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\OSS-Start-Docker-Desktop.cmd` để mở Docker Desktop sau khi đăng nhập.
+- Đã sửa các lỗi tích hợp thực tế: dùng `host.docker.internal` thay cho `localhost` giữa các container, Webadmin gửi API key cho IoT, seed Property chạy lặp được, Dockerfile Property không còn copy thư mục `public` không tồn tại, entrypoint Channel Manager đúng, healthcheck Next.js đúng bind, và image dùng `npm ci` với lockfile.
+- Đã sửa lỗi đồng bộ Edge/Cloud: ánh xạ room type và room theo khóa nghiệp vụ thay vì UUID khác nhau, dedupe loại phòng; kiểm thử pull sync nhận 32 phòng và 5 booking không lỗi. Edge không còn fallback credential hardcode; thiếu cấu hình sẽ báo lỗi rõ ràng.
+- Đã bổ sung DevOps: CI GitHub Actions (typecheck/build/audit/compose validation), Dependabot hằng tuần, `.dockerignore`, Docker healthcheck/restart/log rotation; tạo `ops/DATA_OWNERSHIP.md` để phân biệt source-of-truth, fixture và các UI mock cần duyệt schema trước khi làm dữ liệu thật.
+- Đã xác minh: compose validation 4 stack, build Docker, typecheck phần thay đổi, đăng nhập Webadmin/Property/Edge, Property từ Webadmin, IoT auth/sync, Edge pull sync và chạy `Start-Oss.ps1` hai lần liên tiếp đều thành công. Tất cả endpoint health hiện HTTP 200.
+
 ## Phiên 2026-08-20 — Kiểm tra môi trường test và sửa lỗi đã được duyệt
 
 - Đã sửa các lỗi P0/P1/P2 người dùng duyệt: bắt buộc API key cho bốn microservice; luồng check-in/check-out PMS cập nhật đồng bộ booking/phòng/điện/thiết bị; mã hóa bí mật SMTP khi lưu và ẩn khỏi API/audit; Edge tự retry outbox với backoff và nhận Cloud là nguồn trạng thái; đổi cổng Postgres của `services/` sang 5434; thêm lockfile + `npm ci` cho bốn service.
@@ -21,7 +30,7 @@
 
 File này tồn tại để **phiên làm việc (Cowork session) sau có thể tiếp tục ngay** mà không phải đọc lại toàn bộ lịch sử chat. Luôn đọc file này đầu tiên khi bắt đầu một phiên mới trên dự án `D:\hotel\OSS`, và **cập nhật lại file này ở cuối mỗi phiên** (mục "Đã xong" / "Đang làm" / "Chưa làm" + ngày).
 
-Cập nhật lần cuối: **2026-08-20 16:54 (phiên kiểm tra môi trường)** — đã sửa nhóm lỗi P0/P1/P2 được duyệt, audit dependency sạch và tạo `handoff1n_20260820_165433.md`; xem mục phiên 2026-08-20 ở đầu file.
+Cập nhật lần cuối: **2026-08-21 23:23 (Docker, DevOps và đồng bộ)** — môi trường Docker chạy nền đã hoạt động, DevOps nền tảng đã bổ sung và tạo handoff phiên này; xem mục phiên 2026-08-21 ở đầu file.
 
 ## ⚠ QUAN TRỌNG NHẤT — đọc mục này TRƯỚC KHI làm gì ở phiên tiếp theo
 

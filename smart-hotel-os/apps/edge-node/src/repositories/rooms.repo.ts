@@ -98,7 +98,14 @@ export const roomsRepo = {
   },
 
   // upsertFromCloud — pull-sync, KHÔNG ghi outbox (xem roomTypes.repo.ts).
-  async upsertFromCloud(room: Room): Promise<void> {
+  async upsertFromCloud(room: Room): Promise<string> {
+    // Cloud và Edge có thể dùng ID khác cho cùng số phòng sau bootstrap. Giữ
+    // ID Edge nếu phòng đã tồn tại để toàn bộ foreign key cục bộ còn hợp lệ.
+    const { rows: existingRows } = await pool.query<{ id: string }>(
+      `SELECT id FROM rooms WHERE property_id = $1 AND number = $2 LIMIT 1`,
+      [room.property_id, room.number]
+    );
+    const localId = existingRows[0]?.id ?? room.id;
     await pool.query(
       `INSERT INTO rooms (id, property_id, tenant_id, room_type_id, number, floor, zone, status, power_on, note, created_at, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
@@ -107,7 +114,7 @@ export const roomsRepo = {
          zone = EXCLUDED.zone, status = EXCLUDED.status, power_on = EXCLUDED.power_on, note = EXCLUDED.note,
          updated_at = EXCLUDED.updated_at`,
       [
-        room.id,
+        localId,
         room.property_id,
         room.tenant_id,
         room.room_type_id,
@@ -121,5 +128,6 @@ export const roomsRepo = {
         room.updated_at,
       ]
     );
+    return localId;
   },
 };

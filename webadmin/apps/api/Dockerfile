@@ -2,9 +2,9 @@ FROM node:20-alpine AS base
 WORKDIR /app
 
 FROM base AS deps
-COPY apps/api/package.json ./apps/api/package.json
+COPY apps/api/package.json apps/api/package-lock.json ./apps/api/
 WORKDIR /app/apps/api
-RUN npm install
+RUN npm ci
 
 FROM deps AS build
 COPY apps/api ./

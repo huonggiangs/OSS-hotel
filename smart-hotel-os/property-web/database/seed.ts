@@ -31,6 +31,16 @@ async function main() {
   const client = new Client({ connectionString: process.env.DATABASE_URL });
   await client.connect();
 
+  // Docker Compose chạy job migrate/seed ở mỗi lần `up`. Seed fixture phải
+  // idempotent: nếu property demo đã tồn tại thì giữ nguyên toàn bộ dữ liệu
+  // người dùng/test đã sửa, không tạo UUID mới rồi va chạm foreign key.
+  const existing = await client.query("SELECT 1 FROM properties WHERE id = $1 LIMIT 1", [PROPERTY_ID]);
+  if (existing.rowCount) {
+    console.log("Seed Property Web đã tồn tại — bỏ qua để giữ dữ liệu hiện có.");
+    await client.end();
+    return;
+  }
+
   // Mật khẩu demo dùng chung — đổi từ "ChangeMe123!" sang "Anio2026@" theo yêu cầu
   // đơn giản hoá đăng nhập (dễ nhớ hơn khi demo/test cục bộ).
   const passwordHash = await bcrypt.hash("Anio2026@", 10);

@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /webadmin/apps/api
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /webadmin/apps/web
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /smart-hotel-os/property-web/apps/api
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /smart-hotel-os/property-web/apps/web
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /smart-hotel-os/apps/edge-node
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /smart-hotel-os/services/channel-manager-service
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /smart-hotel-os/services/ai-pricing-service
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /smart-hotel-os/services/iot-service
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /smart-hotel-os/services/crm-service
+    schedule: { interval: weekly }

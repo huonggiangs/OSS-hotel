@@ -1,0 +1,39 @@
+services:
+  edge-node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "4200"
+      DB_MODE: embedded
+      PGLITE_DATA_DIR: /var/lib/edge-node
+      CLOUD_PROPERTY_API_URL: http://host.docker.internal:4100
+      CLOUD_SYNC_USERNAME: "${CLOUD_SYNC_USERNAME:?CLOUD_SYNC_USERNAME phải được đặt trong ops/.env}"
+      CLOUD_SYNC_PASSWORD: "${CLOUD_SYNC_PASSWORD:?CLOUD_SYNC_PASSWORD phải được đặt trong ops/.env}"
+      TENANT_ID: "${TENANT_ID:?TENANT_ID phải được đặt trong ops/.env}"
+      PROPERTY_ID: "${PROPERTY_ID:?PROPERTY_ID phải được đặt trong ops/.env}"
+      EDGE_NODE_ID: "${EDGE_NODE_ID:?EDGE_NODE_ID phải được đặt trong ops/.env}"
+      JWT_SECRET: "${EDGE_JWT_SECRET:?EDGE_JWT_SECRET phải được đặt trong ops/.env}"
+      WEB_ORIGIN: "${EDGE_WEB_ORIGIN:-*}"
+      SYNC_INTERVAL_MS: "15000"
+    ports:
+      - "4200:4200"
+    volumes:
+      - edge_node_data:/var/lib/edge-node
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4200/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  edge_node_data:
