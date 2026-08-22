@@ -1,12 +1,19 @@
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../utils/asyncHandler";
-import { Errors } from "../utils/errors";
+import { ApiError, Errors } from "../utils/errors";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import { writeAuditLog } from "../middleware/audit";
 import { settingsRepo } from "../repositories/settings.repo";
-import { redactEmailSettings, secureEmailSettings } from "../lib/settingsSecrets";
+import {
+  redactEmailSettings,
+  secureEmailSettings,
+  redactSepayToken,
+  secureSepayToken,
+  redactSyncApiKeys,
+  secureSyncApiKeys,
+} from "../lib/settingsSecrets";
 
 export const settingsRouter = Router();
 settingsRouter.use(requireAuth);
@@ -78,6 +85,45 @@ function redactBasicLogoForAudit(data: unknown): unknown {
   return { ...basic, info: { ...basic.info, logoDataUrl: "[IMAGE_DATA_OMITTED]" } };
 }
 
+// Lấy tỷ giá VND cho 1 mã tiền tệ — gọi từ API thay vì trình duyệt để tránh
+// CORS (giống lý do location.routes.ts gọi ipwho.is từ server). Dùng
+// open.er-api.com (miễn phí, không cần API key). Đặt TRƯỚC route "/:group"
+// bên dưới dù không thật sự cần thiết (path có 2 đoạn nên không khớp
+// "/:group" một đoạn) — để rõ ràng đây là route riêng, không đụng route
+// generic GET/PUT "/:group".
+settingsRouter.get(
+  "/currency/fx-rate",
+  asyncHandler(async (req, res) => {
+    const rawCode = typeof req.query.code === "string" ? req.query.code : "";
+    const code = rawCode.trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(code)) {
+      throw Errors.validation({ code: ["Mã tiền tệ không hợp lệ — cần đúng 3 chữ cái, ví dụ USD."] });
+    }
+    if (code === "VND") {
+      res.json({ code, rateVnd: 1 });
+      return;
+    }
+    let response: Response;
+    try {
+      response = await fetch(`https://open.er-api.com/v6/latest/${code}`, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(8_000),
+      });
+    } catch {
+      throw new ApiError(502, "FX_RATE_UNAVAILABLE", "Không kết nối được dịch vụ tỷ giá ngoại tệ. Vui lòng thử lại sau.");
+    }
+    if (!response.ok) {
+      throw new ApiError(502, "FX_RATE_UNAVAILABLE", "Dịch vụ tỷ giá ngoại tệ hiện không phản hồi.");
+    }
+    const body = (await response.json()) as { result?: string; rates?: Record<string, number> };
+    const rateVnd = body.rates?.VND;
+    if (body.result !== "success" || typeof rateVnd !== "number" || !Number.isFinite(rateVnd) || rateVnd <= 0) {
+      throw new ApiError(502, "FX_RATE_UNAVAILABLE", `Không lấy được tỷ giá VND cho mã tiền tệ "${code}".`);
+    }
+    res.json({ code, rateVnd });
+  })
+);
+
 settingsRouter.get(
   "/:group",
   asyncHandler(async (req, res) => {
@@ -85,7 +131,11 @@ settingsRouter.get(
     if (!VALID_GROUPS.has(group)) throw Errors.notFound("nhóm cấu hình");
     if (group === "email" && !["OWNER", "MANAGER"].includes(req.user!.role)) throw Errors.forbidden();
     const data = await settingsRepo.get(req.user!.propertyId, group);
-    res.json({ group, data: group === "email" ? redactEmailSettings(data) : data ?? {} });
+    let responseData: unknown = data ?? {};
+    if (group === "email") responseData = redactEmailSettings(data);
+    if (group === "payment") responseData = redactSepayToken(data ?? {});
+    if (group === "sync") responseData = redactSyncApiKeys(data ?? {});
+    res.json({ group, data: responseData });
   })
 );
 
@@ -100,13 +150,22 @@ settingsRouter.put(
     if (!VALID_GROUPS.has(group)) throw Errors.notFound("nhóm cấu hình");
     const parsed = putSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
-    const previous = group === "email" ? await settingsRepo.get(req.user!.propertyId, group) : undefined;
+    const previous =
+      group === "email" || group === "payment" || group === "sync"
+        ? await settingsRepo.get(req.user!.propertyId, group)
+        : undefined;
     const basicParsed = group === "basic" ? basicSettingsSchema.safeParse(parsed.data.data) : undefined;
     if (basicParsed && !basicParsed.success) throw Errors.validation(basicParsed.error.flatten());
     const inputData = basicParsed?.data ?? parsed.data.data;
-    const storedData = group === "email" ? secureEmailSettings(inputData, previous) : inputData;
+    let storedData = inputData;
+    if (group === "email") storedData = secureEmailSettings(inputData, previous);
+    if (group === "payment") storedData = secureSepayToken(inputData, previous);
+    if (group === "sync") storedData = secureSyncApiKeys(inputData, previous);
     const data = await settingsRepo.upsert(req.user!.propertyId, req.user!.tenantId, group, storedData);
-    const responseData = group === "email" ? redactEmailSettings(data) : data;
+    let responseData = data;
+    if (group === "email") responseData = redactEmailSettings(data);
+    if (group === "payment") responseData = redactSepayToken(data);
+    if (group === "sync") responseData = redactSyncApiKeys(data);
     const auditData = group === "basic" ? redactBasicLogoForAudit(responseData) : responseData;
     await writeAuditLog({ req, action: "UPDATE_SETTINGS", entityType: "property_settings", entityId: group, afterData: auditData });
     res.json({ group, data: responseData });

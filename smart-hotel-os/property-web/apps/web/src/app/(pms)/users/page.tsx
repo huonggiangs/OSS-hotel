@@ -3,17 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSettings } from "@/lib/useSettings";
 import { api, isApiError } from "@/lib/api-client";
-import { RolePopupModal } from "@/components/users/RolePopupModal";
+import { RolePopupModal, RoleScope, RolesData } from "@/components/users/RolePopupModal";
 
-interface RoleScope {
-  name: string;
-  label: string;
-  scope: string;
-}
-interface RolesData {
-  scopes: RoleScope[];
-}
-const FALLBACK: RolesData = { scopes: [] };
+const FALLBACK: RolesData = { scopes: [], permissionGroups: [] };
 
 type Role = "OWNER" | "MANAGER" | "RECEPTIONIST" | "HOUSEKEEPING";
 interface AccountRow {
@@ -36,8 +28,8 @@ const ROLE_LABEL: Record<Role, string> = { OWNER: "Chủ sở hữu", MANAGER: "
 // thẳng vào bảng property_users. RBAC: cả trang chỉ OWNER/MANAGER xem được
 // (API /users chặn từ middleware requireRole, không riêng nút sửa).
 export default function UsersPage() {
-  const [popup, setPopup] = useState<{ open: boolean; roleName: string | null }>({ open: false, roleName: null });
-  const { data: rolesData, loading: rolesLoading } = useSettings<RolesData>("roles", FALLBACK);
+  const [popup, setPopup] = useState<{ open: boolean; role: RoleScope | null }>({ open: false, role: null });
+  const { data: rolesData, loading: rolesLoading, save: saveRoles } = useSettings<RolesData>("roles", FALLBACK);
 
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [roleCounts, setRoleCounts] = useState<Record<string, number>>({});
@@ -95,7 +87,7 @@ export default function UsersPage() {
           <h3 className="m-0 text-[15px] font-semibold">Danh sách vai trò</h3>
           <div
             className="cursor-pointer rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
-            onClick={() => setPopup({ open: true, roleName: null })}
+            onClick={() => setPopup({ open: true, role: null })}
           >
             + Thêm vai trò
           </div>
@@ -120,7 +112,7 @@ export default function UsersPage() {
                   <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{r.scope}</td>
                   <td
                     className="cursor-pointer border-b border-pms-divider px-2 py-3 font-semibold text-pms-primary"
-                    onClick={() => setPopup({ open: true, roleName: r.label })}
+                    onClick={() => setPopup({ open: true, role: r })}
                   >
                     Sửa quyền
                   </td>
@@ -194,7 +186,16 @@ export default function UsersPage() {
         )}
       </div>
 
-      {popup.open && <RolePopupModal roleName={popup.roleName} onClose={() => setPopup({ open: false, roleName: null })} />}
+      {popup.open && (
+        <RolePopupModal
+          role={popup.role}
+          rolesData={rolesData}
+          onClose={() => setPopup({ open: false, role: null })}
+          onSave={async (next) => {
+            await saveRoles(next);
+          }}
+        />
+      )}
       {showAddAccount && (
         <AddAccountModal
           onClose={() => setShowAddAccount(false)}

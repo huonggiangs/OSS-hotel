@@ -18,6 +18,10 @@ const upsertSchema = z.object({
   bedsSmall: z.number().int().min(0).default(0),
   areaM2: z.number().positive().nullable().optional(),
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+  // Nhãn cách tính giá — UI chỉ cho chọn 1 trong 2 (giữ dạng string tự do ở
+  // tầng API để không phải sửa schema DB nếu sau này thêm lựa chọn khác).
+  pricingMethod: z.enum(["PER_NIGHT", "PER_HOUR"]).default("PER_NIGHT"),
+  discountPercent: z.number().min(0).max(100).default(0),
 });
 
 roomTypesRouter.get(
@@ -58,5 +62,32 @@ roomTypesRouter.patch(
       afterData: roomType,
     });
     res.json(roomType);
+  })
+);
+
+// Xoá loại phòng — chặn nếu còn phòng đang gán loại này (tránh phòng mồ côi/
+// mất giá cơ bản để tính tiền). Client phải xoá hoặc đổi loại các phòng đó
+// trước, thông báo rõ số lượng phòng đang vướng.
+roomTypesRouter.delete(
+  "/:id",
+  requireRole("OWNER", "MANAGER"),
+  asyncHandler(async (req, res) => {
+    const existing = await roomTypesRepo.findById(req.user!.propertyId, req.params.id);
+    if (!existing) throw Errors.notFound("loại phòng");
+    const roomCount = await roomTypesRepo.countRoomsUsing(req.user!.propertyId, req.params.id);
+    if (roomCount > 0) {
+      throw Errors.conflict(
+        `Không thể xoá loại phòng đang có ${roomCount} phòng sử dụng — hãy xoá hoặc đổi loại các phòng đó trước.`
+      );
+    }
+    await roomTypesRepo.remove(req.user!.propertyId, req.params.id);
+    await writeAuditLog({
+      req,
+      action: "DELETE_ROOM_TYPE",
+      entityType: "room_type",
+      entityId: req.params.id,
+      beforeData: existing,
+    });
+    res.status(204).end();
   })
 );

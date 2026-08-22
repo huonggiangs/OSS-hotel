@@ -52,6 +52,9 @@ export interface RoomType {
   beds_small: number;
   area_m2: string | null;
   status: RoomTypeStatus;
+  // Migration 006: "Cách tính giá" (vd. PER_NIGHT/PER_HOUR, tự do) + % giảm giá.
+  pricing_method: string;
+  discount_percent: string; // NUMERIC trả về dạng string
   created_at: Date;
   updated_at: Date;
 }
@@ -67,6 +70,11 @@ export interface Room {
   status: RoomStatus;
   power_on: boolean;
   note: string | null;
+  // Migration 006: mã phòng hệ thống tự sinh (không cho client đặt), token QR
+  // riêng (dùng trong URL công khai /guest/room/:token), bật/tắt đồng bộ OTA.
+  room_code: string;
+  qr_token: string;
+  sync_enabled: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -114,6 +122,9 @@ export interface Invoice {
   amount: string;
   status: InvoiceStatus;
   paid_at: Date | null;
+  // Migration 007: mã tham chiếu giao dịch SePay đã khớp thanh toán hoá đơn này
+  // (null nếu chưa thanh toán qua SePay) — chống khớp trùng 1 giao dịch 2 lần.
+  sepay_ref: string | null;
   created_at: Date;
   updated_at: Date;
 }

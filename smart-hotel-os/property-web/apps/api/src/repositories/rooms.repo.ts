@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { pool } from "../lib/db";
 import type { Room, RoomStatus } from "../types/domain";
 
@@ -40,10 +41,15 @@ export const roomsRepo = {
   },
 
   async create(propertyId: string, tenantId: string, input: RoomInput): Promise<Room> {
+    // room_code/qr_token luôn sinh ở server — KHÔNG nhận giá trị client gửi lên,
+    // vì qr_token cấp quyền đọc thông tin phòng công khai (endpoint /guest/room/:token
+    // không yêu cầu đăng nhập) nên phải không đoán được (UUID ngẫu nhiên đầy đủ).
+    const roomCode = `PHONG-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+    const qrToken = randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "");
     const { rows } = await pool.query<Room>(
       `INSERT INTO rooms
-        (id, property_id, tenant_id, room_type_id, number, floor, zone, status, power_on, note)
-       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9)
+        (id, property_id, tenant_id, room_type_id, number, floor, zone, status, power_on, note, room_code, qr_token)
+       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING *`,
       [
         propertyId,
@@ -55,6 +61,8 @@ export const roomsRepo = {
         input.status ?? "VACANT",
         input.powerOn ?? false,
         input.note ?? null,
+        roomCode,
+        qrToken,
       ]
     );
     return rows[0];
@@ -96,6 +104,30 @@ export const roomsRepo = {
       `UPDATE rooms SET power_on = $1, updated_at = now() WHERE property_id = $2 AND id = $3 RETURNING *`,
       [powerOn, propertyId, id]
     );
+    return rows[0] ?? null;
+  },
+
+  // Bật/tắt cờ "đủ điều kiện đồng bộ OTA" — cùng khuôn mẫu idempotent-set như
+  // setPower() ở trên (set thẳng giá trị, không toggle mù ở tầng DB). CHƯA gọi
+  // API kênh phân phối thật — đó là phạm vi của channel-manager-service.
+  async setSync(propertyId: string, id: string, syncEnabled: boolean): Promise<Room | null> {
+    const { rows } = await pool.query<Room>(
+      `UPDATE rooms SET sync_enabled = $1, updated_at = now() WHERE property_id = $2 AND id = $3 RETURNING *`,
+      [syncEnabled, propertyId, id]
+    );
+    return rows[0] ?? null;
+  },
+
+  // Xoá phòng — route đã kiểm tra trước phòng không ở trạng thái OCCUPIED.
+  async remove(propertyId: string, id: string): Promise<void> {
+    await pool.query(`DELETE FROM rooms WHERE property_id = $1 AND id = $2`, [propertyId, id]);
+  },
+
+  // Tra cứu công khai theo qr_token — dùng cho trang khách quét QR
+  // (/guest/room/:token), KHÔNG có propertyId vì khách chưa đăng nhập, không
+  // biết property nào. qr_token là duy nhất toàn hệ thống nên đủ làm khoá tra.
+  async findByQrToken(token: string): Promise<Room | null> {
+    const { rows } = await pool.query<Room>(`SELECT * FROM rooms WHERE qr_token = $1`, [token]);
     return rows[0] ?? null;
   },
 

@@ -1,5 +1,125 @@
 # Progress — property-web
 
+## 2026-08-22 — 9 màn hình Cài đặt: CRUD thật, sync/QR/SePay/xuất dữ liệu
+
+Yêu cầu người dùng (nguyên văn, đã rà soát code thật trước khi sửa — không suy diễn):
+sửa `/price` (Action Sửa/Xóa loại phòng+phòng, Sync theo phòng, QR Code cho khách),
+`/payment` (khoá kênh chưa có API + thêm SePay thật), `/currency` (CRUD + tự động lấy tỷ
+giá), `/tax` (CRUD + popup thêm), `/time` (mọi trường sửa được), `/printer` (chọn/kết nối
+máy in + CRUD mẫu in), `/sync` (tuỳ chỉnh theo từng kết nối + danh sách thêm mới), `/db`
+(cho phép lưu lại dữ liệu), `/users` (CRUD vai trò), `/assets` (CRUD + xuất file kiểm kê).
+
+Thực hiện bằng 4 nhánh song song (không đụng file chung nhờ phân vùng trước: migration
+006/007 tách riêng, `defaultSettings.ts`/`settingsSecrets.ts`/`settings.routes.ts` mỗi
+nhánh chỉ chạm đúng phần của mình), sau đó gộp trung tâm (`index.ts`, kiểm thử tích hợp
+toàn bộ) — xem chi tiết đầy đủ hơn tại `smart-hotel-os/DECISIONS.md` ADR-009/010/011 cho
+các quyết định phạm vi quan trọng.
+
+### Migration mới
+- `006_room_pricing_sync_qr.sql`: `room_types` thêm `pricing_method`/`discount_percent`;
+  `rooms` thêm `room_code` (hệ thống tự sinh, không nhận từ client), `qr_token` (khoá truy
+  cập công khai), `sync_enabled`. Backfill 32 phòng demo có sẵn.
+- `007_payment_sepay.sql`: `invoices` thêm `sepay_ref` (unique, chống khớp trùng 1 giao
+  dịch 2 lần); bảng mới `sepay_webhook_events` (dedupe + audit trail webhook).
+
+### `/price` — CRUD thật + Sync + QR khách
+- `AddRoomTypeModal`/`AddRoomModal` từ form tĩnh → form thật (POST/PATCH), có chế độ Sửa.
+  Bỏ trường "Tầng và phòng"/"Số lượng phòng" ở modal loại phòng (không khớp schema — phòng
+  tạo riêng lẻ, không phải theo lô).
+- "Sửa"/"Xóa" hoạt động thật cho cả 2 bảng; xoá loại phòng còn phòng gắn vào → 409 rõ ràng
+  bằng tiếng Việt, không cho xoá ngầm.
+- Cột "Sync" là công tắc thật (`PATCH /rooms/:id/sync`) — CHỈ đánh dấu phòng sẵn sàng đồng
+  bộ, KHÔNG tự gọi API OTA thật (xem ADR-010).
+- Cột "QR Code": mở ảnh QR (PNG, sinh server-side qua thư viện `qrcode`) trỏ tới trang công
+  khai mới `/guest/room/[token]` (không cần đăng nhập) — khách quét mã thấy tên cơ sở/loại
+  phòng/giá, và nếu SePay đã bật, có khung "Quét mã để thanh toán trước".
+
+### `/payment` — khoá kênh chưa có API + tích hợp SePay thật
+- Toàn bộ kênh cũ (VNPay/MoMo/ZaloPay/Stripe/thẻ/ví...) **vẫn hiển thị** nhưng bị khoá
+  thao tác + nhãn "Chưa hỗ trợ"/"Chưa cấu hình — cần tích hợp API đối tác" (đúng yêu cầu:
+  không xoá, chỉ tạm khoá vì chưa có API thật).
+- SePay: form cấu hình thật (số TK/tên NH/chủ TK/API Token — Token mã hoá AES-256-GCM,
+  không bao giờ trả về dạng rõ), nút "Đồng bộ giao dịch ngay" (gọi API Giao dịch SePay,
+  khớp hoá đơn PENDING theo số tiền + mã hoá đơn trong nội dung chuyển khoản), webhook
+  nhận real-time `POST /api/v1/payments/sepay/webhook` (idempotent theo `id` giao dịch),
+  hộp thông tin URL webhook để dán vào dashboard SePay. Đã kiểm thử: webhook khớp đúng hoá
+  đơn thành PAID, gọi trùng `id` không xử lý lại; token không bao giờ lộ ra response.
+
+### `/currency`, `/tax` — CRUD thật
+- Bảng tiền tệ: thêm/sửa/xoá dòng, checkbox "Lấy tỷ giá tự động" gọi endpoint mới
+  `GET /api/v1/settings/currency/fx-rate?code=X` (server gọi `open.er-api.com`, không lộ
+  CORS/API key ra trình duyệt). **Đã thử nối từ sandbox nhưng bị chặn bởi allowlist mạng
+  của môi trường thử nghiệm** (không phải lỗi code) — endpoint và logic đã đúng, sẽ hoạt
+  động khi triển khai ở môi trường có Internet đầy đủ; đã kiểm thử đường lỗi (502 rõ ràng)
+  hoạt động đúng khi không gọi được.
+- Bảng thuế/phí: `AddTaxModal` từ tĩnh → form thật (thêm/sửa/xoá), có lựa chọn "Tính vào
+  hoá đơn khách"/"Chỉ hạch toán nội bộ".
+
+### `/time` — mọi trường sửa được
+- `checkinTime`/`checkoutTime` (trước đây chỉ hiển thị, không sửa được dù đã có API) nay
+  là ô nhập thật. Định dạng giờ/múi giờ/giờ qua đêm/làm tròn giờ/thời gian dọn phòng/ngày
+  chốt điện nước/ngày cắt điện/dịch vụ trả trước — tất cả chuyển từ tĩnh sang có state thật
+  + lưu qua 1 nút "Cập nhật" duy nhất.
+- `DatePickerModal` (trước đây luôn hiện cứng "Tháng 7/2026", bấm ngày nào cũng chỉ đóng
+  modal, không gán vào đâu cả) viết lại hoàn toàn: điều hướng tháng thật, chọn ngày gán
+  đúng vào đúng ô (ngày lễ Từ/Đến, ngày chốt điện nước, ngày cắt điện).
+
+### `/printer` — giới hạn trung thực + CRUD mẫu in
+- **Giới hạn kỹ thuật nêu rõ cho người dùng**: trình duyệt web KHÔNG có API để tự phát
+  hiện/liệt kê danh sách máy in đã cài trên máy tính, và không thể âm thầm kết nối thẳng
+  tới driver máy in nhiệt mà không có phần mềm trung gian cài trên máy — đây là giới hạn
+  của mọi ứng dụng web, không riêng hệ thống này. Đã làm đúng mức tối đa khả thi: ô "Máy in
+  mặc định" nhập tên thật (ghi nhớ, không phải kết nối trực tiếp), nút "In thử" mở hộp
+  thoại in thật của hệ điều hành (`window.print()`) — đây là cách web chuẩn để thực sự in
+  ra máy in thật.
+- Mẫu in: CRUD thật (thêm/sửa/xoá), "Xem mẫu" mở rộng xem chi tiết dòng thay vì không làm
+  gì.
+
+### `/sync` — cấu hình theo từng kết nối (không đồng bộ thật, xem ADR-010)
+- Từ danh sách checkbox phẳng → danh sách kết nối riêng từng OTA (mã cơ sở, API key mã hoá,
+  cờ đồng bộ phòng/giá/tồn phòng, trạng thái Hoạt động/Tạm dừng), có form "+ Thêm kênh OTA"
+  thật, Sửa/Tạm dừng/Xoá từng kết nối. Có đoạn giải thích rõ trên trang: đây là CẤU HÌNH,
+  chưa phải đồng bộ thật với Booking/Agoda/Airbnb (cần hợp đồng đối tác + credential thật).
+
+### `/db` — cho phép khách hàng lưu lại dữ liệu
+- Endpoint mới `GET /api/v1/data-export` (chỉ OWNER/MANAGER): xuất toàn bộ dữ liệu cơ sở
+  (phòng, loại phòng, khách hàng, đặt phòng, hoá đơn, chi phí, thiết bị, tài khoản — KHÔNG
+  gồm mật khẩu, đã xác minh 0 lần xuất hiện `password_hash` trong kết quả — và toàn bộ 21
+  nhóm cấu hình) thành 1 file JSON tải về trình duyệt. Cả nút "Sao lưu ngay" và "Xuất dữ
+  liệu" đều gọi hành động thật này (không dựng hạ tầng sao lưu đám mây tự động giả — ngoài
+  phạm vi một ứng dụng web thuần).
+
+### `/users` — CRUD vai trò (xem giới hạn ở ADR-011)
+- `RolePopupModal` từ tĩnh → form thật, gắn đúng vào dữ liệu `roles.permissionGroups` thật
+  (trước đây đọc nhầm từ mảng tĩnh không liên quan trong `mock-data.ts`). Sửa/thêm vai trò
+  lưu thật. Cảnh báo rõ trong modal khi tên vai trò không khớp 1 trong 4 vai trò có phân
+  quyền thật ở tầng API.
+
+### `/assets` — CRUD thật + xuất file kiểm kê
+- `AddAssetModal` từ tĩnh → form thật (thêm/sửa), menu "⋯" có Sửa/Xóa thật, nút "📄 Export"
+  xuất file CSV (có BOM UTF-8 để mở bằng Excel không lỗi font) đúng phục vụ mục đích kiểm
+  kê tài sản. Quyền sửa vẫn giới hạn OWNER/MANAGER (đã có sẵn từ cơ chế settings chung, xem
+  RECEPTIONIST/HOUSEKEEPING chỉ xem được).
+
+### Đã kiểm chứng THẬT (curl end-to-end, không chỉ build sạch)
+- `npx tsc --noEmit` sạch cho cả `apps/api` và `apps/web`; `next build` thành công đủ 32
+  route kể cả `/guest/room/[token]` mới.
+- DB nhúng từ đầu (migration 001→007 chạy tuần tự không lỗi), seed lại đúng.
+- Toàn bộ endpoint mới đã curl-test thật: CRUD loại phòng/phòng (kèm case xoá bị chặn do
+  còn phòng gắn vào), công tắc sync, ảnh QR PNG hợp lệ, trang công khai theo token (200 khi
+  đúng / 404 khi sai), SePay (redact token, webhook khớp + chống trùng), xuất dữ liệu (401
+  khi chưa đăng nhập, không lộ password_hash), sửa vai trò, tỷ giá tự động (đường lỗi khi
+  mạng sandbox chặn).
+
+### Giới hạn còn lại (không che giấu)
+- Tỷ giá tự động cần môi trường có Internet đầy đủ để test hết đường thành công (đã test
+  đường lỗi, code đúng nhưng chưa thấy phản hồi thành công thật do allowlist sandbox).
+- SePay webhook cần URL công khai mới nhận được real-time từ SePay — chạy `localhost` chỉ
+  dùng được nút đồng bộ thủ công.
+- `/sync` chỉ là cấu hình, chưa đồng bộ thật OTA (ADR-010). `/users` roles chỉ là mô tả,
+  chưa phải RBAC động thật (ADR-011). Máy in không thể tự phát hiện danh sách máy in cài
+  trên máy (giới hạn nền tảng web, đã giải thích trong UI).
+
 ## 2026-07-28 (phiên 6) — Nối NỐT 24/24 màn hình còn lại vào API thật
 
 Nhiệm vụ: trước phiên này chỉ 4/28 màn hình (Đăng nhập, Dashboard, Rooms,

@@ -1,15 +1,73 @@
 "use client";
 
-// Modal chọn ngày dùng chung (Ngày lễ, Ngày chốt số điện/nước...) — pixel-perfect theo
-// khối `showDatePicker` (dòng 1335-1353 bản gốc): lưới ngày tĩnh tháng 7/2026, bấm 1
-// ngày bất kỳ sẽ đóng modal (đúng hành vi `closeDatePicker` gán cho mọi ô ngày ở bản gốc).
-export function DatePickerModal({ onClose }: { onClose: () => void }) {
-  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+import { useState } from "react";
+
+// Modal chọn ngày dùng chung (Ngày lễ, Ngày chốt số điện/nước...) — lịch thật:
+// hiển thị đúng tháng/năm hiện tại (hoặc tháng của `value` nếu có), điều hướng
+// tháng trước/sau thật, tính đúng số ngày trong tháng và offset thứ trong
+// tuần bằng Date thuần (không cần thư viện ngoài). Bấm 1 ngày sẽ gọi
+// onSelect(isoDate) rồi đóng modal — khác bản gốc chỉ đóng modal không lưu gì.
+export function DatePickerModal({
+  value,
+  onSelect,
+  onClose,
+}: {
+  value?: string;
+  onSelect: (isoDate: string) => void;
+  onClose: () => void;
+}) {
+  const initial = value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00`) : new Date();
+  const [viewYear, setViewYear] = useState(initial.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initial.getMonth()); // 0-based
+
+  const firstOfMonth = new Date(viewYear, viewMonth, 1);
+  // getDay(): 0=CN,1=T2,...,6=T7 — lưới hiển thị bắt đầu từ T2 nên dịch offset.
+  const startOffset = (firstOfMonth.getDay() + 6) % 7;
+  const totalDays = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells: (number | null)[] = [...Array.from({ length: startOffset }, () => null), ...Array.from({ length: totalDays }, (_, i) => i + 1)];
+
+  function prevMonth() {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+  }
+  function nextMonth() {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+  }
+  function pick(day: number) {
+    const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    onSelect(iso);
+    onClose();
+  }
+
+  const selectedDay =
+    value && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number(value.slice(0, 4)) === viewYear && Number(value.slice(5, 7)) === viewMonth + 1
+      ? Number(value.slice(8, 10))
+      : null;
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[rgba(23,26,31,.45)]" onClick={onClose}>
       <div className="w-[300px] rounded-[14px] bg-white p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3.5 flex items-center justify-between">
-          <b className="text-[14px]">Tháng 7, 2026</b>
+          <div className="flex items-center gap-2">
+            <span className="cursor-pointer select-none px-1 text-[14px] text-pms-muted" onClick={prevMonth} title="Tháng trước">
+              ‹
+            </span>
+            <b className="text-[14px]">
+              Tháng {viewMonth + 1}, {viewYear}
+            </b>
+            <span className="cursor-pointer select-none px-1 text-[14px] text-pms-muted" onClick={nextMonth} title="Tháng sau">
+              ›
+            </span>
+          </div>
           <div className="cursor-pointer text-[16px] text-pms-muted" onClick={onClose}>
             ✕
           </div>
@@ -20,19 +78,20 @@ export function DatePickerModal({ onClose }: { onClose: () => void }) {
           ))}
         </div>
         <div className="grid grid-cols-7 gap-1">
-          {days.map((d) => (
-            <div
-              key={d}
-              className="flex aspect-square cursor-pointer items-center justify-center rounded-md text-[12px] hover:bg-pms-divider"
-              onClick={onClose}
-            >
-              {d}
-            </div>
-          ))}
-        </div>
-        <div className="mt-3.5 flex gap-2.5">
-          <div className="flex-1 rounded-lg border border-pms-border p-[9px] text-center text-[12px]">08:00</div>
-          <div className="flex-1 rounded-lg border border-pms-border p-[9px] text-center text-[12px]">⌄ Giờ</div>
+          {cells.map((d, idx) =>
+            d === null ? (
+              <div key={`empty-${idx}`} />
+            ) : (
+              <div
+                key={d}
+                className="flex aspect-square cursor-pointer items-center justify-center rounded-md text-[12px] hover:bg-pms-divider"
+                style={d === selectedDay ? { background: "#284AB1", color: "#fff", fontWeight: 600 } : undefined}
+                onClick={() => pick(d)}
+              >
+                {d}
+              </div>
+            )
+          )}
         </div>
       </div>
     </div>

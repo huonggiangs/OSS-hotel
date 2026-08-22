@@ -1,5 +1,35 @@
 # Memory — Smart Hotel Group OSS Project
 
+## Phiên 2026-08-22 (buổi 2) — Rà soát + sửa 9 màn hình Cài đặt property-web
+
+Theo yêu cầu chi tiết của người dùng (rà soát `/price`, `/payment`, `/currency`, `/tax`,
+`/time`, `/printer`, `/sync`, `/db`, `/users`, `/assets`), đã đối chiếu trực tiếp với code
+thật (không suy diễn từ tài liệu cũ) rồi sửa đúng những gì được liệt kê. Toàn bộ chi tiết
+kỹ thuật + bằng chứng kiểm thử: `smart-hotel-os/property-web/PROGRESS.md` mục
+"2026-08-22 — 9 màn hình Cài đặt"; quyết định phạm vi quan trọng: `smart-hotel-os/DECISIONS.md`
+ADR-009 (SePay là cổng thanh toán thật duy nhất, các cổng khác tạm khoá UI, không xoá),
+ADR-010 (đồng bộ OTA chỉ là cấu hình, chưa gọi API thật của Booking/Agoda/Airbnb — cần hợp
+đồng đối tác), ADR-011 ("vai trò" ở `/users` là bảng mô tả, KHÔNG phải RBAC động thật — 4
+vai trò `OWNER/MANAGER/RECEPTIONIST/HOUSEKEEPING` vẫn là duy nhất có phân quyền thật ở API).
+
+Thực hiện qua 4 nhánh song song (mỗi nhánh sở hữu file riêng biệt, đã phân vùng trước để
+không đụng nhau: migration 006/007 tách file, `defaultSettings.ts`/`settings.routes.ts`
+mỗi nhánh chỉ sửa đúng phần mình), sau đó tự gộp `index.ts` + kiểm thử tích hợp toàn bộ lại
+từ đầu bằng curl thật (không chỉ tin báo cáo của từng nhánh) — mọi migration 001→007 chạy
+sạch trên DB nhúng mới, `tsc`/`next build` sạch cho cả `apps/api`/`apps/web`.
+
+**Việc mới có ở phiên này** (trước đây chưa tồn tại): sinh mã QR cho từng phòng (thư viện
+`qrcode`, PNG server-side) trỏ tới trang công khai `/guest/room/[token]` không cần đăng
+nhập; tích hợp thanh toán SePay thật (API Token mã hoá, webhook, đồng bộ giao dịch thủ
+công, nhúng ảnh VietQR động) theo đúng tài liệu `docs.sepay.vn` người dùng cung cấp; xuất
+toàn bộ dữ liệu cơ sở ra file JSON tải về (`GET /api/v1/data-export`, không lộ mật khẩu).
+
+**Giới hạn đã nêu rõ, không che giấu**: tỷ giá ngoại tệ tự động code đúng nhưng chưa test
+được đường thành công thật vì mạng sandbox thử nghiệm chặn các API tỷ giá miễn phí (sẽ
+chạy được khi triển khai môi trường có Internet đầy đủ); webhook SePay cần URL công khai
+mới nhận real-time (localhost dùng nút đồng bộ thủ công); máy in không thể tự phát hiện
+danh sách máy in cài trên máy (giới hạn nền tảng trình duyệt, không phải thiếu sót).
+
 ## Quy ước bàn giao và Git (bắt buộc từ 2026-08-20)
 
 - Trước khi kết thúc **mỗi phiên làm việc hoặc phiên bản**, tạo một file handoff riêng tại gốc `D:\hotel\OSS`, theo tên `handoff1n_YYYYMMDD_HHMMSS.md` (thời gian Asia/Saigon), tóm tắt phạm vi, kiểm thử, thay đổi, lỗi/chặn và bước tiếp theo.

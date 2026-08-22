@@ -18,6 +18,9 @@ import { usersRouter } from "./routes/users.routes";
 import { auditLogRouter } from "./routes/auditLog.routes";
 import { propertyImagesRouter } from "./routes/propertyImages.routes";
 import { locationRouter } from "./routes/location.routes";
+import { publicRoomsRouter } from "./routes/publicRooms.routes";
+import { sepayRouter, sepayWebhookRouter, publicSepayRouter } from "./routes/sepayPayments.routes";
+import { dataExportRouter } from "./routes/dataExport.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { pool, DB_MODE, embeddedDb } from "./lib/db";
@@ -46,6 +49,12 @@ app.use("/api/v1/room-types", roomTypesRouter);
 app.use("/api/v1/rooms", roomsRouter);
 app.use("/api/v1/customers", customersRouter);
 app.use("/api/v1/bookings", bookingsRouter);
+// Router SePay (public webhook + API xác thực) phải đăng ký TRƯỚC
+// invoicesRouter — Express khớp route theo THỨ TỰ đăng ký chứ không theo độ
+// cụ thể, nên nếu invoicesRouter (có requireAuth) đăng ký trước thì
+// /api/v1/payments/sepay/webhook sẽ bị chặn 401 trước khi tới được router này.
+app.use("/api/v1/payments/sepay", sepayWebhookRouter);
+app.use("/api/v1/payments/sepay", sepayRouter);
 app.use("/api/v1/payments", invoicesRouter);
 app.use("/api/v1/expenses", expensesRouter);
 app.use("/api/v1/devices", devicesRouter);
@@ -56,6 +65,9 @@ app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/audit-log", auditLogRouter);
 app.use("/api/v1/property-images", propertyImagesRouter);
 app.use("/api/v1/location", locationRouter);
+app.use("/api/v1/public/payments", publicSepayRouter);
+app.use("/api/v1/public", publicRoomsRouter);
+app.use("/api/v1/data-export", dataExportRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error_code: "ROUTE_NOT_FOUND", message: "Không tìm thấy endpoint." });

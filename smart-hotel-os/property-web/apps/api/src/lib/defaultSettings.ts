@@ -453,21 +453,30 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
   "currency": {
     "items": [
       {
+        "id": "cur-vnd",
         "code": "VND",
         "name": "Việt Nam Đồng",
         "rate": "1 (mặc định)",
+        "rateAuto": false,
+        "rateNumeric": 1,
         "isDefault": true
       },
       {
+        "id": "cur-usd",
         "code": "USD",
         "name": "Đô la Mỹ",
         "rate": "1 USD = 25.400 VND",
+        "rateAuto": false,
+        "rateNumeric": 25400,
         "isDefault": false
       },
       {
+        "id": "cur-eur",
         "code": "EUR",
         "name": "Euro",
         "rate": "1 EUR = 27.600 VND",
+        "rateAuto": false,
+        "rateNumeric": 27600,
         "isDefault": false
       }
     ]
@@ -475,27 +484,33 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
   "tax": {
     "items": [
       {
+        "id": "tax-1",
         "name": "Thuế GTGT (VAT)",
         "rate": "8%",
-        "applyTo": "Toàn bộ hoá đơn"
+        "applyTo": "Toàn bộ hoá đơn",
+        "visibleToGuest": true
       },
       {
+        "id": "tax-2",
         "name": "Phí dịch vụ",
         "rate": "5%",
-        "applyTo": "Toàn bộ hoá đơn"
+        "applyTo": "Toàn bộ hoá đơn",
+        "visibleToGuest": true
       },
       {
+        "id": "tax-3",
         "name": "Phí môi trường",
         "rate": "20.000đ/phòng/đêm",
-        "applyTo": "Tiền phòng"
+        "applyTo": "Tiền phòng",
+        "visibleToGuest": true
       }
     ]
   },
   "time": {
     "holidays": [
-      "Giỗ tổ",
-      "Quốc khánh",
-      "Dương lịch"
+      { "id": "hol-1", "name": "Giỗ tổ", "from": "", "to": "" },
+      { "id": "hol-2", "name": "Quốc khánh", "from": "", "to": "" },
+      { "id": "hol-3", "name": "Dương lịch", "from": "", "to": "" }
     ],
     "prepaidServices": [
       "Điện",
@@ -504,68 +519,87 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
       "Vệ Sinh",
       "Thang máy"
     ],
+    "selectedPrepaidServices": [],
     "checkinTime": "14:00",
-    "checkoutTime": "12:00"
+    "checkoutTime": "12:00",
+    "timeFormat": "24h",
+    "timezone": "GMT+7 (Bangkok, Hà Nội, Jakarta)",
+    "overnightFrom": "21:00",
+    "overnightTo": "12:00",
+    "roundingMinutes": 15,
+    "housekeepingMinutes": 15,
+    "billingDayOfMonth": 15,
+    "cutoffDayOfMonth": 5
   },
   "printer": {
     "defaultPrinter": "Epson TM-T82 (Quầy lễ tân)",
     "paperSize": "K80 (80mm)",
     "templates": [
       {
+        "id": "tpl-1",
         "doc": "Hợp đồng lưu trú",
         "template": "Mẫu hợp đồng A4 song ngữ",
         "size": "A4",
         "linked": true
       },
       {
+        "id": "tpl-2",
         "doc": "Hoá đơn thanh toán",
         "template": "Mẫu hoá đơn K80 chuẩn",
         "size": "K80 (80mm)",
         "linked": true
       },
       {
+        "id": "tpl-3",
         "doc": "Hoá đơn GTGT (VAT)",
         "template": "Mẫu hoá đơn điện tử theo Nghị định 123",
         "size": "A5",
         "linked": true
       },
       {
+        "id": "tpl-4",
         "doc": "Phiếu đăng ký lưu trú (tạm trú)",
         "template": "Mẫu A5 theo quy định công an (NA17)",
         "size": "A5",
         "linked": true
       },
       {
+        "id": "tpl-5",
         "doc": "Phiếu khai báo tạm trú người nước ngoài",
         "template": "Mẫu NA17 song ngữ Anh–Việt",
         "size": "A5",
         "linked": true
       },
       {
+        "id": "tpl-6",
         "doc": "Phiếu xác nhận đặt phòng (Booking Confirmation)",
         "template": "Mẫu A4 có logo cơ sở",
         "size": "A4",
         "linked": true
       },
       {
+        "id": "tpl-7",
         "doc": "Biên nhận tạm ứng (Deposit Receipt)",
         "template": "Mẫu biên nhận K80",
         "size": "K80 (80mm)",
         "linked": true
       },
       {
+        "id": "tpl-8",
         "doc": "Phiếu ghi dịch vụ phát sinh (Extra Charge Slip)",
         "template": "Mẫu K80 kèm chữ ký khách",
         "size": "K80 (80mm)",
         "linked": true
       },
       {
+        "id": "tpl-9",
         "doc": "Phiếu bàn giao ca (Shift Handover)",
         "template": "Chưa chọn mẫu",
         "size": "—",
         "linked": false
       },
       {
+        "id": "tpl-10",
         "doc": "Thẻ chìa khoá / thẻ phòng (Key Card Envelope)",
         "template": "Mẫu bao thẻ phòng in logo",
         "size": "Tuỳ chỉnh 8.5×5.4cm",
@@ -610,21 +644,67 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
     ]
   },
   "sync": {
-    "otaChannels": [
-      "Booking.com",
-      "Agoda",
-      "Airbnb",
-      "Traveloka",
-      "Expedia"
-    ],
-    "selectedChannels": [
-      "Booking.com",
-      "Agoda",
-      "Airbnb"
+    "connections": [
+      {
+        "id": "default-conn-booking",
+        "provider": "Booking.com",
+        "propertyCode": "",
+        "apiKeyEncrypted": null,
+        "hasApiKey": false,
+        "syncRooms": true,
+        "syncRates": true,
+        "syncAvailability": true,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "default-conn-agoda",
+        "provider": "Agoda",
+        "propertyCode": "",
+        "apiKeyEncrypted": null,
+        "hasApiKey": false,
+        "syncRooms": true,
+        "syncRates": true,
+        "syncAvailability": true,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "default-conn-airbnb",
+        "provider": "Airbnb",
+        "propertyCode": "",
+        "apiKeyEncrypted": null,
+        "hasApiKey": false,
+        "syncRooms": true,
+        "syncRates": true,
+        "syncAvailability": true,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "default-conn-traveloka",
+        "provider": "Traveloka",
+        "propertyCode": "",
+        "apiKeyEncrypted": null,
+        "hasApiKey": false,
+        "syncRooms": true,
+        "syncRates": true,
+        "syncAvailability": true,
+        "status": "PAUSED"
+      },
+      {
+        "id": "default-conn-expedia",
+        "provider": "Expedia",
+        "propertyCode": "",
+        "apiKeyEncrypted": null,
+        "hasApiKey": false,
+        "syncRooms": true,
+        "syncRates": true,
+        "syncAvailability": true,
+        "status": "PAUSED"
+      }
     ],
     "syncGoogleHotel": true,
     "syncWebsite": true,
-    "autoSync": true
+    "autoSync": true,
+    "syncTimeOfDay": "03:00"
   },
   "db": {
     "info": [
@@ -915,6 +995,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
   "assets": {
     "items": [
       {
+        "id": "default-asset-1",
         "name": "Điều hoà Daikin",
         "code": "DH",
         "room": "204",
@@ -928,6 +1009,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
         "stt": 1
       },
       {
+        "id": "default-asset-2",
         "name": "Khoá cửa thông minh",
         "code": "KC",
         "room": "118",
@@ -941,6 +1023,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
         "stt": 2
       },
       {
+        "id": "default-asset-3",
         "name": "TV Samsung 55\"",
         "code": "TV",
         "room": "310",
@@ -954,6 +1037,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
         "stt": 3
       },
       {
+        "id": "default-asset-4",
         "name": "Bình nóng lạnh",
         "code": "BNL",
         "room": "402",
@@ -967,6 +1051,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
         "stt": 4
       },
       {
+        "id": "default-asset-5",
         "name": "Camera hành lang T3",
         "code": "CAM",
         "room": "Khu vực chung",
@@ -980,6 +1065,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
         "stt": 5
       },
       {
+        "id": "default-asset-6",
         "name": "Giường đôi",
         "code": "GD",
         "room": "Nhiều phòng",
@@ -993,6 +1079,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
         "stt": 6
       },
       {
+        "id": "default-asset-7",
         "name": "Tủ lạnh mini",
         "code": "TL",
         "room": "Nhiều phòng",
@@ -1006,6 +1093,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
         "stt": 7
       },
       {
+        "id": "default-asset-8",
         "name": "Quạt treo tường",
         "code": "QT",
         "room": "Nhiều phòng",
@@ -1019,6 +1107,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
         "stt": 8
       },
       {
+        "id": "default-asset-9",
         "name": "Tủ quần áo",
         "code": "QA",
         "room": "Nhiều phòng",
@@ -1276,6 +1365,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
   },
   "payment": {
     "channels": [
+      "SePay",
       "VNPay",
       "MoMo",
       "ZaloPay",
@@ -1302,7 +1392,15 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
     "selectedHowToPay": [
       "Tiền mặt",
       "Chuyển khoản ngân hàng"
-    ]
+    ],
+    "sepay": {
+      "enabled": false,
+      "bankAccount": "",
+      "bankName": "",
+      "accountHolder": "",
+      "apiTokenEncrypted": null,
+      "hasApiToken": false
+    }
   },
   "roles": {
     "scopes": [

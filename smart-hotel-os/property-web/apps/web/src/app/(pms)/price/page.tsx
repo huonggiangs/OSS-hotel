@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react";
 import { AddRoomTypeModal } from "@/components/price/AddRoomTypeModal";
 import { AddRoomModal } from "@/components/price/AddRoomModal";
-import { api, isApiError } from "@/lib/api-client";
+import { api, apiFetchBlob, isApiError } from "@/lib/api-client";
 
-// Trang "Phòng và giá" (mở từ panel Cài đặt) — ĐÃ NỐI API THẬT
-// (GET /api/v1/room-types + GET /api/v1/rooms, bảng đã có sẵn từ trước, chỉ
-// còn thiếu UI nối vào). Các cột không có trong schema MVP hiện tại (Tính
-// tiền/Giảm giá/Mã phòng/Bữa ăn/QR Code/Sync) giữ placeholder tĩnh đúng bản
-// gốc (chưa có bảng nguồn tương ứng) — xem PROGRESS.md.
-interface ApiRoomType {
+// Trang "Phòng và giá" (mở từ panel Cài đặt) — ĐÃ NỐI API THẬT cho toàn bộ
+// CRUD: GET/POST/PATCH/DELETE /api/v1/room-types và /api/v1/rooms, bật/tắt
+// đồng bộ OTA qua PATCH /api/v1/rooms/:id/sync, xem QR qua GET
+// /api/v1/rooms/:id/qr (ảnh PNG, xem components/price/*Modal.tsx cho form).
+export interface ApiRoomType {
   id: string;
   name: string;
   base_price: string;
@@ -19,15 +18,21 @@ interface ApiRoomType {
   beds_small: number;
   area_m2: string | null;
   status: "ACTIVE" | "INACTIVE";
+  pricing_method: string;
+  discount_percent: string;
 }
-interface ApiRoom {
+export interface ApiRoom {
   id: string;
   number: string;
   floor: string;
+  zone: string;
   room_type_id: string;
   room_type_name: string;
   room_type_price: string;
   status: "OCCUPIED" | "VACANT" | "DIRTY" | "MAINTENANCE";
+  room_code: string;
+  qr_token: string;
+  sync_enabled: boolean;
 }
 
 function formatVnd(v: string | number) {
@@ -39,14 +44,23 @@ const ROOM_STATUS_LABEL: Record<ApiRoom["status"], { label: string; color: strin
   DIRTY: { label: "Chờ xử lý", color: "#FAB505" },
   MAINTENANCE: { label: "Ngừng hoạt động", color: "#CC2F42" },
 };
+const PRICING_METHOD_LABEL: Record<string, string> = {
+  PER_NIGHT: "Giá ngày",
+  PER_HOUR: "Giá giờ",
+};
 
 export default function PricePage() {
   const [roomTypes, setRoomTypes] = useState<ApiRoomType[]>([]);
   const [rooms, setRooms] = useState<ApiRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const [showAddRoomType, setShowAddRoomType] = useState(false);
+  const [editingRoomType, setEditingRoomType] = useState<ApiRoomType | null>(null);
   const [showAddRoom, setShowAddRoom] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<ApiRoom | null>(null);
+  const [qrRoom, setQrRoom] = useState<ApiRoom | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   useEffect(() => {
@@ -70,6 +84,44 @@ export default function PricePage() {
     }
   }
 
+  async function handleDeleteRoomType(rt: ApiRoomType) {
+    if (!window.confirm(`Xoá loại phòng "${rt.name}"?`)) return;
+    setActionError(null);
+    try {
+      await api.delete(`/api/v1/room-types/${rt.id}`);
+      await load();
+    } catch (err) {
+      setActionError(isApiError(err) ? err.message : "Không xoá được loại phòng.");
+    }
+  }
+
+  async function handleDeleteRoom(r: ApiRoom) {
+    if (!window.confirm(`Xoá phòng "${r.number}"?`)) return;
+    setActionError(null);
+    try {
+      await api.delete(`/api/v1/rooms/${r.id}`);
+      await load();
+    } catch (err) {
+      setActionError(isApiError(err) ? err.message : "Không xoá được phòng.");
+    }
+  }
+
+  // Bật/tắt cờ đồng bộ OTA — cập nhật lạc quan (optimistic), hoàn tác nếu lỗi
+  // (cùng khuôn mẫu với handleTogglePower ở rooms/page.tsx).
+  async function handleToggleSync(r: ApiRoom) {
+    const next = !r.sync_enabled;
+    setRooms((rs) => rs.map((x) => (x.id === r.id ? { ...x, sync_enabled: next } : x)));
+    setActionError(null);
+    try {
+      await api.patch(`/api/v1/rooms/${r.id}/sync`, { syncEnabled: next });
+    } catch (err) {
+      setRooms((rs) => rs.map((x) => (x.id === r.id ? { ...x, sync_enabled: !next } : x)));
+      setActionError(isApiError(err) ? err.message : "Không đổi được trạng thái đồng bộ.");
+    }
+  }
+
+  const floors = Array.from(new Set(rooms.map((r) => r.floor))).sort();
+
   if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
   if (error)
     return (
@@ -85,9 +137,24 @@ export default function PricePage() {
         <h1 className="m-0 text-[20px] font-bold">ANIO Riverside Hotel</h1>
       </div>
 
+      {actionError && (
+        <div className="mb-4 flex items-center justify-between rounded-xl bg-[#FDECEC] px-4 py-3 text-[13px] text-pms-danger shadow-card">
+          {actionError}
+          <span className="cursor-pointer font-semibold" onClick={() => setActionError(null)}>
+            ✕
+          </span>
+        </div>
+      )}
+
       <div className="mb-3 flex items-center justify-between">
         <h3 className="m-0 text-[16px] font-bold">Danh sách loại phòng</h3>
-        <div className="cursor-pointer rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white" onClick={() => setShowAddRoomType(true)}>
+        <div
+          className="cursor-pointer rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
+          onClick={() => {
+            setEditingRoomType(null);
+            setShowAddRoomType(true);
+          }}
+        >
           + Thêm
         </div>
       </div>
@@ -117,13 +184,26 @@ export default function PricePage() {
                   <td className="border-b border-pms-divider px-2 py-3">{rt.capacity}</td>
                   <td className="border-b border-pms-divider px-2 py-3">📐 {rt.area_m2 ?? "—"}m2</td>
                   <td className="border-b border-pms-divider px-2 py-3">{formatVnd(rt.base_price)}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">Giá ngày</td>
-                  <td className="border-b border-pms-divider px-2 py-3">—</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{PRICING_METHOD_LABEL[rt.pricing_method] ?? rt.pricing_method}</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{Number(rt.discount_percent) > 0 ? `${rt.discount_percent}%` : "—"}</td>
                   <td className="border-b border-pms-divider px-2 py-3 font-semibold" style={{ color: rt.status === "ACTIVE" ? "#00C853" : "#CC2F42" }}>
                     {rt.status === "ACTIVE" ? "Đang hoạt động" : "Ngừng hoạt động"}
                   </td>
                   <td className="relative border-b border-pms-divider px-2 py-3">
-                    <RowMenu id={key} open={openMenu === key} onToggle={() => setOpenMenu(openMenu === key ? null : key)} />
+                    <RowMenu
+                      id={key}
+                      open={openMenu === key}
+                      onToggle={() => setOpenMenu(openMenu === key ? null : key)}
+                      onEdit={() => {
+                        setEditingRoomType(rt);
+                        setShowAddRoomType(true);
+                        setOpenMenu(null);
+                      }}
+                      onDelete={() => {
+                        setOpenMenu(null);
+                        handleDeleteRoomType(rt);
+                      }}
+                    />
                   </td>
                 </tr>
               );
@@ -135,7 +215,13 @@ export default function PricePage() {
 
       <div className="mb-3 flex items-center justify-between">
         <h3 className="m-0 text-[16px] font-bold">Danh sách phòng</h3>
-        <div className="cursor-pointer rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white" onClick={() => setShowAddRoom(true)}>
+        <div
+          className="cursor-pointer rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
+          onClick={() => {
+            setEditingRoom(null);
+            setShowAddRoom(true);
+          }}
+        >
           + Thêm
         </div>
       </div>
@@ -158,23 +244,44 @@ export default function PricePage() {
                 <tr key={key}>
                   <td className="border-b border-pms-divider px-2 py-3 font-semibold">{r.number}</td>
                   <td className="border-b border-pms-divider px-2 py-3">{r.room_type_name}</td>
-                  <td className="border-b border-pms-divider px-2 py-3">—</td>
+                  <td className="border-b border-pms-divider px-2 py-3">{r.room_code}</td>
                   <td className="border-b border-pms-divider px-2 py-3">{r.floor}</td>
                   <td className="border-b border-pms-divider px-2 py-3">—</td>
                   <td className="border-b border-pms-divider px-2 py-3">—</td>
                   <td className="border-b border-pms-divider px-2 py-3">{formatVnd(r.room_type_price)}</td>
                   <td className="border-b border-pms-divider px-2 py-3">Tự động</td>
-                  <td className="border-b border-pms-divider px-2 py-3 text-pms-primary">▦</td>
                   <td className="border-b border-pms-divider px-2 py-3">
-                    <div className="relative h-5 w-9 rounded-full bg-pms-border">
-                      <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow" />
+                    <span className="cursor-pointer text-pms-primary" onClick={() => setQrRoom(r)}>
+                      ▦
+                    </span>
+                  </td>
+                  <td className="border-b border-pms-divider px-2 py-3">
+                    <div
+                      className="relative h-5 w-9 cursor-pointer rounded-full"
+                      style={{ background: r.sync_enabled ? "#284AB1" : "#E6E8EC" }}
+                      onClick={() => handleToggleSync(r)}
+                    >
+                      <div className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow" style={{ left: r.sync_enabled ? "18px" : "2px" }} />
                     </div>
                   </td>
                   <td className="border-b border-pms-divider px-2 py-3 font-semibold" style={{ color: st.color }}>
                     {st.label}
                   </td>
                   <td className="relative border-b border-pms-divider px-2 py-3">
-                    <RowMenu id={key} open={openMenu === key} onToggle={() => setOpenMenu(openMenu === key ? null : key)} />
+                    <RowMenu
+                      id={key}
+                      open={openMenu === key}
+                      onToggle={() => setOpenMenu(openMenu === key ? null : key)}
+                      onEdit={() => {
+                        setEditingRoom(r);
+                        setShowAddRoom(true);
+                        setOpenMenu(null);
+                      }}
+                      onDelete={() => {
+                        setOpenMenu(null);
+                        handleDeleteRoom(r);
+                      }}
+                    />
                   </td>
                 </tr>
               );
@@ -184,13 +291,39 @@ export default function PricePage() {
         <Pagination count={rooms.length} />
       </div>
 
-      {showAddRoomType && <AddRoomTypeModal onClose={() => setShowAddRoomType(false)} />}
-      {showAddRoom && <AddRoomModal onClose={() => setShowAddRoom(false)} />}
+      {showAddRoomType && (
+        <AddRoomTypeModal
+          onClose={() => setShowAddRoomType(false)}
+          onSaved={load}
+          initial={editingRoomType ?? undefined}
+        />
+      )}
+      {showAddRoom && (
+        <AddRoomModal
+          onClose={() => setShowAddRoom(false)}
+          onSaved={load}
+          floors={floors}
+          initial={editingRoom ?? undefined}
+        />
+      )}
+      {qrRoom && <RoomQrModal room={qrRoom} onClose={() => setQrRoom(null)} />}
     </div>
   );
 }
 
-function RowMenu({ open, onToggle }: { id: string; open: boolean; onToggle: () => void }) {
+function RowMenu({
+  id,
+  open,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  id: string;
+  open: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   return (
     <>
       <div className="cursor-pointer px-2 py-1" onClick={onToggle}>
@@ -198,15 +331,55 @@ function RowMenu({ open, onToggle }: { id: string; open: boolean; onToggle: () =
       </div>
       {open && (
         <div className="absolute right-2 top-8 z-50 w-[130px] rounded-[10px] bg-white shadow-popover">
-          <div className="cursor-pointer px-3.5 py-2.5 text-[13px]" onClick={onToggle}>
+          <div className="cursor-pointer px-3.5 py-2.5 text-[13px]" onClick={onEdit}>
             ✎ Sửa
           </div>
-          <div className="cursor-pointer px-3.5 py-2.5 text-[13px] text-pms-danger" onClick={onToggle}>
+          <div className="cursor-pointer px-3.5 py-2.5 text-[13px] text-pms-danger" onClick={onDelete}>
             🗑 Xóa
           </div>
         </div>
       )}
     </>
+  );
+}
+
+// Modal xem QR Code của phòng — tải ảnh PNG kèm JWT qua apiFetchBlob() (thẻ
+// <img> không tự gắn header Authorization được), dựng thành blob URL. Kèm
+// link công khai /guest/room/:token để nhân viên copy gửi khách nếu cần.
+function RoomQrModal({ room, onClose }: { room: ApiRoom; onClose: () => void }) {
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const guestUrl =
+    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3100") + `/guest/room/${room.qr_token}`;
+
+  useEffect(() => {
+    let revoke: string | null = null;
+    apiFetchBlob(`/api/v1/rooms/${room.id}/qr`)
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        revoke = url;
+        setImgUrl(url);
+      })
+      .catch((err) => setError(isApiError(err) ? err.message : "Không tải được mã QR."));
+    return () => {
+      if (revoke) URL.revokeObjectURL(revoke);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.id]);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[rgba(23,26,31,.45)]" onClick={onClose}>
+      <div className="flex w-[340px] flex-col items-center gap-4 rounded-[14px] bg-white p-6" onClick={(e) => e.stopPropagation()}>
+        <b className="text-[15px]">QR Code phòng {room.number}</b>
+        {error && <div className="text-[12px] text-pms-danger">{error}</div>}
+        {!error && imgUrl && <img src={imgUrl} alt={`QR phòng ${room.number}`} width={220} height={220} />}
+        {!error && !imgUrl && <div className="text-[12px] text-pms-muted">Đang tải mã QR...</div>}
+        <div className="w-full break-all rounded-lg bg-pms-divider px-3 py-2 text-center text-[11px] text-pms-muted">{guestUrl}</div>
+        <div className="cursor-pointer rounded-lg bg-pms-primary px-4 py-2 text-[13px] font-semibold text-white" onClick={onClose}>
+          Đóng
+        </div>
+      </div>
+    </div>
   );
 }
 

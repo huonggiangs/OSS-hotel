@@ -1,11 +1,16 @@
 import { Router } from "express";
 import { z } from "zod";
+import QRCode from "qrcode";
 import { asyncHandler } from "../utils/asyncHandler";
 import { Errors } from "../utils/errors";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import { writeAuditLog } from "../middleware/audit";
 import { roomsRepo } from "../repositories/rooms.repo";
+
+// URL công khai của web khách (property-web/apps/web) — dùng để dựng link
+// /guest/room/:token nhúng vào mã QR. Tài liệu ở .env.example.
+const PUBLIC_WEB_BASE_URL = process.env.PUBLIC_WEB_BASE_URL ?? "http://localhost:3100";
 
 export const roomsRouter = Router();
 roomsRouter.use(requireAuth);
@@ -21,6 +26,7 @@ const upsertSchema = z.object({
 });
 
 const powerSchema = z.object({ powerOn: z.boolean() });
+const syncSchema = z.object({ syncEnabled: z.boolean() });
 
 roomsRouter.get(
   "/",
@@ -77,5 +83,60 @@ roomsRouter.patch(
       afterData: { power_on: parsed.data.powerOn },
     });
     res.json(room);
+  })
+);
+
+// Bật/tắt "đủ điều kiện đồng bộ OTA" — cờ boolean lưu thật trong DB, dùng cho
+// công tắc "Sync" ở bảng "Danh sách phòng" trang /price. CHƯA gọi API kênh
+// phân phối thật (channel-manager-service) — đây chỉ đánh dấu phòng nào hotel
+// muốn đưa lên kênh khi đã kết nối kênh đó, phạm vi gọi API thật nằm ngoài task này.
+roomsRouter.patch(
+  "/:id/sync",
+  requireRole("OWNER", "MANAGER"),
+  asyncHandler(async (req, res) => {
+    const existing = await roomsRepo.findById(req.user!.propertyId, req.params.id);
+    if (!existing) throw Errors.notFound("phòng");
+    const parsed = syncSchema.safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    const room = await roomsRepo.setSync(req.user!.propertyId, req.params.id, parsed.data.syncEnabled);
+    await writeAuditLog({
+      req,
+      action: "TOGGLE_ROOM_SYNC",
+      entityType: "room",
+      entityId: req.params.id,
+      beforeData: { sync_enabled: existing.sync_enabled },
+      afterData: { sync_enabled: parsed.data.syncEnabled },
+    });
+    res.json(room);
+  })
+);
+
+// Xoá phòng — chặn nếu phòng đang có khách ở (OCCUPIED), tránh xoá mất dữ
+// liệu phòng đang gắn với 1 lượt lưu trú thật.
+roomsRouter.delete(
+  "/:id",
+  requireRole("OWNER", "MANAGER"),
+  asyncHandler(async (req, res) => {
+    const existing = await roomsRepo.findById(req.user!.propertyId, req.params.id);
+    if (!existing) throw Errors.notFound("phòng");
+    if (existing.status === "OCCUPIED") throw Errors.conflict("Không thể xoá phòng đang có khách ở.");
+    await roomsRepo.remove(req.user!.propertyId, req.params.id);
+    await writeAuditLog({ req, action: "DELETE_ROOM", entityType: "room", entityId: req.params.id, beforeData: existing });
+    res.status(204).end();
+  })
+);
+
+// Ảnh QR PNG của phòng — mã hoá URL công khai /guest/room/:qr_token, để nhân
+// viên in/dán lên cửa phòng cho khách quét. Chỉ cần đăng nhập (bất kỳ vai trò
+// nào ở cơ sở), không giới hạn OWNER/MANAGER vì lễ tân/buồng phòng cũng cần in.
+roomsRouter.get(
+  "/:id/qr",
+  asyncHandler(async (req, res) => {
+    const room = await roomsRepo.findById(req.user!.propertyId, req.params.id);
+    if (!room) throw Errors.notFound("phòng");
+    const url = `${PUBLIC_WEB_BASE_URL}/guest/room/${room.qr_token}`;
+    const buffer = await QRCode.toBuffer(url, { type: "png", width: 300 });
+    res.type("png");
+    res.send(buffer);
   })
 );

@@ -67,4 +67,25 @@ export const api = {
     apiFetch<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
   put: <T>(path: string, body?: unknown) =>
     apiFetch<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
+  delete: <T>(path: string) => apiFetch<T>(path, { method: "DELETE" }),
 };
+
+// Tải file nhị phân có gắn JWT (ảnh QR PNG, file xuất dữ liệu...) — thẻ <img>/
+// <a> thường không tự gắn header Authorization được, nên phải fetch thủ công
+// rồi dựng lại thành blob URL / trigger tải xuống.
+export async function apiFetchBlob(path: string): Promise<Blob> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    let body: { error_code?: string; message?: string } = {};
+    try {
+      body = await res.json();
+    } catch {
+      // không có body JSON hợp lệ
+    }
+    throw new ApiClientError(res.status, body.error_code ?? "UNKNOWN_ERROR", body.message ?? "Đã có lỗi xảy ra.");
+  }
+  return res.blob();
+}
