@@ -3,6 +3,7 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSettings } from "@/lib/useSettings";
+import { api } from "@/lib/api-client";
 
 type Tab = "info" | "owner" | "payment";
 
@@ -15,9 +16,22 @@ const TABS: { key: Tab; label: string }[] = [
 const ACCOMMODATION_TYPES = ["Khách sạn", "Nhà nghỉ", "Homestay", "Resort", "Villa / Biệt thự du lịch", "Căn hộ du lịch", "Hostel", "Khác"];
 const MAX_LOGO_BYTES = 750 * 1024;
 const MAX_FLOORS = 200;
+const MAX_ROOMS_PER_FLOOR = 200;
+
+interface FloorRoom {
+  id: string;
+  name: string;
+  number: string;
+}
+
+interface FloorInput {
+  id: string;
+  name: string;
+  rooms: FloorRoom[];
+}
 
 interface BasicData {
-  floorInputs: string[];
+  floorInputs: FloorInput[];
   info: {
     intro: string;
     logoDataUrl: string;
@@ -42,7 +56,34 @@ function normaliseBasicData(value: Partial<BasicData> | null | undefined): Basic
   const info = value?.info ?? FALLBACK.info;
   const location = info.location ?? FALLBACK.info.location;
   return {
-    floorInputs: Array.isArray(value?.floorInputs) ? value.floorInputs.filter((floor): floor is string => typeof floor === "string") : [],
+    // Tương thích dữ liệu cũ chỉ lưu chuỗi "Tầng 1". Từ phiên này, mỗi tầng
+    // có id ổn định, tên và danh sách phòng để người dùng quản lý trực tiếp.
+    floorInputs: Array.isArray(value?.floorInputs)
+      ? value.floorInputs
+          .map((floor, index): FloorInput | null => {
+            if (typeof floor === "string") return { id: `legacy-floor-${index + 1}`, name: floor, rooms: [] };
+            if (!floor || typeof floor !== "object") return null;
+            const candidate = floor as Partial<FloorInput>;
+            return {
+              id: typeof candidate.id === "string" && candidate.id ? candidate.id : `legacy-floor-${index + 1}`,
+              name: typeof candidate.name === "string" ? candidate.name : `Tầng ${index + 1}`,
+              rooms: Array.isArray(candidate.rooms)
+                ? candidate.rooms
+                    .map((room, roomIndex): FloorRoom | null => {
+                      if (!room || typeof room !== "object") return null;
+                      const roomCandidate = room as Partial<FloorRoom>;
+                      return {
+                        id: typeof roomCandidate.id === "string" && roomCandidate.id ? roomCandidate.id : `legacy-room-${index + 1}-${roomIndex + 1}`,
+                        name: typeof roomCandidate.name === "string" ? roomCandidate.name : "",
+                        number: typeof roomCandidate.number === "string" ? roomCandidate.number : "",
+                      };
+                    })
+                    .filter((room): room is FloorRoom => room !== null)
+                : [],
+            };
+          })
+          .filter((floor): floor is FloorInput => floor !== null)
+      : [],
     info: {
       intro: info.intro ?? "", logoDataUrl: info.logoDataUrl ?? "", logoFileName: info.logoFileName ?? "", website: info.website ?? "", ctvCode: info.ctvCode ?? "", accommodationType: info.accommodationType ?? "",
       location: { address: location.address ?? "", latitude: typeof location.latitude === "number" ? location.latitude : null, longitude: typeof location.longitude === "number" ? location.longitude : null, source: location.source === "ip" ? "ip" : "" },
@@ -52,8 +93,12 @@ function normaliseBasicData(value: Partial<BasicData> | null | undefined): Basic
   };
 }
 
-function floorsForCount(count: number): string[] {
-  return Array.from({ length: count }, (_, index) => `Tầng ${index + 1}`);
+function newId(prefix: string): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto ? `${prefix}-${crypto.randomUUID()}` : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function createFloor(index: number): FloorInput {
+  return { id: newId("floor"), name: `Tầng ${index + 1}`, rooms: [] };
 }
 
 export default function BasicPage() {
@@ -62,6 +107,7 @@ export default function BasicPage() {
   const [form, setForm] = useState<BasicData>(FALLBACK);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [layoutError, setLayoutError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
 
   useEffect(() => {
@@ -95,33 +141,78 @@ export default function BasicPage() {
   function setFloorCount(rawValue: string) {
     const number = Number(rawValue);
     const count = Number.isFinite(number) ? Math.min(MAX_FLOORS, Math.max(0, Math.trunc(number))) : 0;
-    setForm((current) => ({ ...current, floorInputs: floorsForCount(count) }));
+    setForm((current) => {
+      if (count >= current.floorInputs.length) {
+        return { ...current, floorInputs: [...current.floorInputs, ...Array.from({ length: count - current.floorInputs.length }, (_, index) => createFloor(current.floorInputs.length + index))] };
+      }
+      const removed = current.floorInputs.slice(count);
+      if (removed.some((floor) => floor.rooms.length > 0) && !window.confirm("Giảm số lượng tầng sẽ xóa sơ đồ phòng của các tầng cuối. Bạn có muốn tiếp tục?")) return current;
+      return { ...current, floorInputs: current.floorInputs.slice(0, count) };
+    });
   }
 
   function addFloor() {
-    setForm((current) => ({ ...current, floorInputs: [...current.floorInputs, `Tầng ${current.floorInputs.length + 1}`] }));
+    setForm((current) => ({ ...current, floorInputs: [...current.floorInputs, createFloor(current.floorInputs.length)] }));
+  }
+
+  function removeFloor(floorId: string) {
+    setForm((current) => {
+      const floor = current.floorInputs.find((item) => item.id === floorId);
+      if (!floor) return current;
+      if (floor.rooms.length > 0 && !window.confirm(`Xóa ${floor.name || "tầng này"} sẽ xóa ${floor.rooms.length} phòng trong sơ đồ. Bạn có muốn tiếp tục?`)) return current;
+      return { ...current, floorInputs: current.floorInputs.filter((item) => item.id !== floorId) };
+    });
+  }
+
+  function updateFloorName(floorId: string, name: string) {
+    setForm((current) => ({ ...current, floorInputs: current.floorInputs.map((floor) => (floor.id === floorId ? { ...floor, name } : floor)) }));
+  }
+
+  function addRoom(floorId: string) {
+    setForm((current) => ({
+      ...current,
+      floorInputs: current.floorInputs.map((floor) =>
+        floor.id === floorId && floor.rooms.length < MAX_ROOMS_PER_FLOOR ? { ...floor, rooms: [...floor.rooms, { id: newId("room"), name: "", number: "" }] } : floor
+      ),
+    }));
+  }
+
+  function updateRoom(floorId: string, roomId: string, field: "name" | "number", value: string) {
+    setForm((current) => ({
+      ...current,
+      floorInputs: current.floorInputs.map((floor) =>
+        floor.id === floorId ? { ...floor, rooms: floor.rooms.map((room) => (room.id === roomId ? { ...room, [field]: value } : room)) } : floor
+      ),
+    }));
+  }
+
+  function removeRoom(floorId: string, roomId: string) {
+    setForm((current) => ({
+      ...current,
+      floorInputs: current.floorInputs.map((floor) => (floor.id === floorId ? { ...floor, rooms: floor.rooms.filter((room) => room.id !== roomId) } : floor)),
+    }));
   }
 
   async function detectLocationByIp() {
     setLocating(true);
     setLocationError(null);
     try {
-      // Người dùng chủ động bấm nút mới gọi dịch vụ định vị IP công khai. Kết quả
-      // chỉ là cấp thành phố/khu vực, không phải địa chỉ chính xác của cơ sở.
-      const response = await fetch("https://ipapi.co/json/");
-      if (!response.ok) throw new Error("IP_LOOKUP_FAILED");
-      const result = (await response.json()) as { city?: string; region?: string; country_name?: string; latitude?: number; longitude?: number };
-      if (typeof result.latitude !== "number" || typeof result.longitude !== "number") throw new Error("IP_LOCATION_MISSING");
-      const address = [result.city, result.region, result.country_name].filter(Boolean).join(", ");
-      setForm((current) => ({ ...current, info: { ...current.info, location: { address, latitude: result.latitude!, longitude: result.longitude!, source: "ip" } } }));
+      const result = await api.get<{ address: string; latitude: number; longitude: number; source: "ip" }>("/api/v1/location/by-ip");
+      setForm((current) => ({ ...current, info: { ...current.info, location: result } }));
     } catch {
-      setLocationError("Không lấy được vị trí từ IP. Kiểm tra kết nối Internet rồi thử lại.");
+      setLocationError("Không lấy được vị trí từ IP. Vui lòng thử lại sau.");
     } finally {
       setLocating(false);
     }
   }
 
   async function handleSave() {
+    const incompleteRoom = form.floorInputs.flatMap((floor) => floor.rooms.map((room) => ({ floor, room }))).find(({ room }) => !room.name.trim() || !room.number.trim());
+    if (incompleteRoom) {
+      setLayoutError(`Nhập đủ tên và số cho phòng ở ${incompleteRoom.floor.name || "tầng chưa đặt tên"} trước khi lưu.`);
+      return;
+    }
+    setLayoutError(null);
     try {
       await save(normaliseBasicData(form));
     } catch {
@@ -139,6 +230,7 @@ export default function BasicPage() {
 
         {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
         {!loading && error && <p className="mb-4 text-[13px] text-pms-danger">{error}</p>}
+        {!loading && layoutError && <p className="mb-4 text-[13px] text-pms-danger">{layoutError}</p>}
         {!loading && savedAt && !error && <p className="mb-4 text-[13px] text-[#00A844]">Đã lưu vào cơ sở dữ liệu.</p>}
 
         {!loading && tab === "info" && <div className="flex max-w-[900px] flex-col gap-5">
@@ -158,7 +250,23 @@ export default function BasicPage() {
           <Row label="Khu, phân khu"><SelectBox placeholder="Chọn khu, phân khu" /></Row>
           <Row label="Tòa nhà"><SelectBox placeholder="Tên tòa nhà" /></Row>
           <Row label="Số lượng tầng"><div className="flex flex-wrap items-center gap-3"><input aria-label="Số lượng tầng" type="number" min="0" max={MAX_FLOORS} value={form.floorInputs.length} onChange={(event) => setFloorCount(event.target.value)} className="w-28 rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" /><button type="button" onClick={addFloor} disabled={form.floorInputs.length >= MAX_FLOORS} className="rounded-lg border border-pms-primary px-3 py-2.5 text-[13px] font-medium text-pms-primary disabled:cursor-not-allowed disabled:opacity-50">+ Thêm tầng</button><span className="text-[12px] text-pms-muted">Tối đa {MAX_FLOORS} tầng</span></div></Row>
-          {form.floorInputs.length > 0 && <div className="grid grid-cols-[220px_1fr] gap-4"><span /><div className="grid grid-cols-3 gap-2.5">{form.floorInputs.map((floor) => <div key={floor} className="flex items-center gap-2 text-[12px]"><span className="text-pms-danger">●</span>{floor}</div>)}</div></div>}
+          {form.floorInputs.length > 0 && <div className="grid grid-cols-[220px_1fr] gap-4"><span /><div className="space-y-3">
+            {form.floorInputs.map((floor, floorIndex) => <div key={floor.id} className="rounded-lg border border-pms-border p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <input aria-label={`Tên tầng ${floorIndex + 1}`} value={floor.name} onChange={(event) => updateFloorName(floor.id, event.target.value)} className="min-w-[180px] flex-1 rounded-md border border-pms-border px-2.5 py-2 text-[13px]" placeholder="Tên tầng" />
+                <span className="text-[12px] text-pms-muted">{floor.rooms.length} phòng</span>
+                <button type="button" onClick={() => addRoom(floor.id)} disabled={floor.rooms.length >= MAX_ROOMS_PER_FLOOR} className="rounded-md border border-pms-primary px-2.5 py-2 text-[12px] font-medium text-pms-primary disabled:opacity-50">+ Thêm phòng</button>
+                <button type="button" onClick={() => removeFloor(floor.id)} className="rounded-md px-2.5 py-2 text-[12px] font-medium text-pms-danger">Xóa tầng</button>
+              </div>
+              {floor.rooms.length > 0 && <div className="mt-3 space-y-2 border-t border-pms-border pt-3">
+                {floor.rooms.map((room, roomIndex) => <div key={room.id} className="grid grid-cols-[1fr_140px_auto] gap-2">
+                  <input aria-label={`Tên phòng ${floorIndex + 1}-${roomIndex + 1}`} value={room.name} onChange={(event) => updateRoom(floor.id, room.id, "name", event.target.value)} className="rounded-md border border-pms-border px-2.5 py-2 text-[13px]" placeholder="Tên phòng" />
+                  <input aria-label={`Số phòng ${floorIndex + 1}-${roomIndex + 1}`} value={room.number} onChange={(event) => updateRoom(floor.id, room.id, "number", event.target.value)} className="rounded-md border border-pms-border px-2.5 py-2 text-[13px]" placeholder="Số phòng" />
+                  <button type="button" aria-label={`Xóa phòng ${floorIndex + 1}-${roomIndex + 1}`} onClick={() => removeRoom(floor.id, room.id)} className="px-2 text-[12px] text-pms-danger">Xóa</button>
+                </div>)}
+              </div>}
+            </div>)}
+          </div></div>}
           <Row label="Ngôn ngữ"><SelectBox placeholder="Chọn ngôn ngữ" /></Row>
           <Row label="Vị trí" tall><div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3"><button type="button" onClick={detectLocationByIp} disabled={locating} className="rounded-lg border border-pms-primary px-3 py-2.5 text-[13px] font-medium text-pms-primary disabled:cursor-wait disabled:opacity-60">{locating ? "Đang lấy vị trí..." : "Lấy vị trí theo IP"}</button>{form.info.location.address && <span className="text-[12px] text-pms-muted">{form.info.location.address}</span>}</div>

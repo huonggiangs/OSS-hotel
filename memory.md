@@ -6,6 +6,14 @@
 - Sau khi tạo handoff, commit toàn bộ thay đổi đã được người dùng duyệt và push lên `https://github.com/huonggiangs/OSS-hotel.git` trên nhánh `main`.
 - Không tự sửa mã nguồn/chức năng. Mọi lỗi, điều chỉnh hoặc tối ưu phải trình bày bằng tiếng Việt và chờ người dùng duyệt trước khi thực hiện.
 
+## Phiên 2026-08-22 — Tầng/phòng, tiện ích, hình ảnh và định vị IP
+
+- Theo yêu cầu đã được duyệt, `/basic` nay cho phép thêm, đổi tên và xóa tầng; thêm/xóa từng phòng với tên và số phòng trong từng tầng. Dữ liệu là **sơ đồ cấu hình tầng/phòng** lưu trong `property_settings.basic`, chưa tự tạo phòng vận hành/đặt phòng để không tự suy diễn loại phòng và khu vực còn thiếu.
+- Đã thay dịch vụ định vị IP từ `ipapi.co` (trả HTTP 403 trên mạng hiện tại) sang endpoint API nội bộ dùng `ipwho.is`, với timeout 8 giây và kiểm tra tọa độ. Kiểm thử thực tế từ Docker API trả về khu vực Từ Sơn, Bắc Ninh, Việt Nam; vị trí IP chỉ được lấy khi người dùng bấm nút và chỉ chính xác ở mức khu vực/thành phố.
+- `/amenities` tự lưu ngay sau mỗi lần bấm chọn/bỏ chọn; kiểm thử chọn, khôi phục và tải lại vẫn giữ trạng thái.
+- `/images` đã có API/migration `property_images` và hộp chọn PNG/JPG/WebP (tối đa 1 MB) cho ảnh cơ sở hoặc từng loại phòng. Ảnh được lưu độc lập trong PostgreSQL, không dùng dữ liệu hardcode và không ghi data URL vào audit log.
+- Đã kiểm thử typecheck API/Web, Docker production build, migration, API định vị/ảnh và UI ba trang. Tất cả container OSS đang healthy. Không có dữ liệu kiểm thử còn lại; cấu hình hiện có 10 tầng, 0 phòng cấu hình và 0 ảnh mới do phiên này tạo.
+
 ## Phiên 2026-08-22 — Lưu cấu hình trang Cơ bản
 
 - Theo yêu cầu người dùng, trang `Property Web /basic` đã lưu thực tế vào PostgreSQL `property_settings` các thông tin: logo cơ sở, số tầng/danh sách tầng, phân loại lưu trú, vị trí theo IP (tọa độ + địa chỉ khu vực), chủ sở hữu và tài khoản thanh toán.
@@ -37,7 +45,7 @@
 
 File này tồn tại để **phiên làm việc (Cowork session) sau có thể tiếp tục ngay** mà không phải đọc lại toàn bộ lịch sử chat. Luôn đọc file này đầu tiên khi bắt đầu một phiên mới trên dự án `D:\hotel\OSS`, và **cập nhật lại file này ở cuối mỗi phiên** (mục "Đã xong" / "Đang làm" / "Chưa làm" + ngày).
 
-Cập nhật lần cuối: **2026-08-22 09:02 (Cấu hình Cơ bản)** — các trường được yêu cầu tại `/basic` đã nối DB, kiểm thử và Docker build thành công; xem mục phiên 2026-08-22 ở đầu file.
+Cập nhật lần cuối: **2026-08-22 10:26 (Tầng/phòng, tiện ích, hình ảnh và định vị IP)** — các lỗi A/B/C đã được xử lý, kiểm thử và triển khai vào Docker; xem mục phiên 2026-08-22 ở đầu file.
 
 ## ⚠ QUAN TRỌNG NHẤT — đọc mục này TRƯỚC KHI làm gì ở phiên tiếp theo
 

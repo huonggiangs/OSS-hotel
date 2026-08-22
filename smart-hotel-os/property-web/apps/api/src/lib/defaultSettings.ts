@@ -6,15 +6,15 @@
 export const DEFAULT_SETTINGS: Record<string, unknown> = {
   "basic": {
     "floorInputs": [
-      "Tầng 1",
-      "Tầng 2",
-      "Tầng 3",
-      "Tầng 4",
-      "Tầng 5",
-      "Tầng 6",
-      "Tầng 7",
-      "Tầng 8",
-      "Tầng 9"
+      { "id": "default-floor-1", "name": "Tầng 1", "rooms": [] },
+      { "id": "default-floor-2", "name": "Tầng 2", "rooms": [] },
+      { "id": "default-floor-3", "name": "Tầng 3", "rooms": [] },
+      { "id": "default-floor-4", "name": "Tầng 4", "rooms": [] },
+      { "id": "default-floor-5", "name": "Tầng 5", "rooms": [] },
+      { "id": "default-floor-6", "name": "Tầng 6", "rooms": [] },
+      { "id": "default-floor-7", "name": "Tầng 7", "rooms": [] },
+      { "id": "default-floor-8", "name": "Tầng 8", "rooms": [] },
+      { "id": "default-floor-9", "name": "Tầng 9", "rooms": [] }
     ],
     "info": {
       "intro": "",

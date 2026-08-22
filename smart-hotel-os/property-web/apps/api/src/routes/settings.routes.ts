@@ -39,8 +39,20 @@ const VALID_GROUPS = new Set([
 
 const putSchema = z.object({ data: z.unknown() });
 
+const floorRoomSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().trim().min(1).max(120),
+  number: z.string().trim().min(1).max(50),
+});
+
+const floorSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().trim().min(1).max(120),
+  rooms: z.array(floorRoomSchema).max(200),
+});
+
 const basicSettingsSchema = z.object({
-  floorInputs: z.array(z.string().trim().min(1).max(64)).max(200),
+  floorInputs: z.array(floorSchema).max(200),
   info: z.object({
     intro: z.string().max(4000),
     logoDataUrl: z.string().max(1_100_000).refine((value) => value === "" || /^data:image\/(png|jpeg|webp);base64,/.test(value), "Logo không đúng định dạng ảnh hợp lệ."),

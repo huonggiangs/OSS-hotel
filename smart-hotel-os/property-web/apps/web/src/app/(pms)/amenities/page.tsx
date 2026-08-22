@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSettings } from "@/lib/useSettings";
 
@@ -28,8 +28,8 @@ function zip3(a: string[], b: string[], c: string[]): string[] {
 // Trang "Tiện ích cơ sở" — ĐÃ NỐI API THẬT: property_settings nhóm
 // "amenities" (groups/activitiesCols/amenityServicesCols/selected). Bản gốc
 // KHÔNG có logic chọn thật (chỉ hiển thị checkbox tĩnh) — bổ sung state
-// "selected" (đã chọn) + nút "Lưu lựa chọn" để nút Lưu gọi API thật, đúng yêu
-// cầu nhiệm vụ, mà không phá vỡ giao diện gốc (checkbox vẫn giữ hình dạng cũ).
+// "selected" (đã chọn). Mỗi thay đổi được lưu ngay qua API để không có trạng
+// thái checkbox chỉ hiển thị cục bộ rồi mất khi tải lại.
 interface AmenityGroup {
   title: string;
   items: string[];
@@ -44,13 +44,12 @@ const FALLBACK: AmenitiesData = { groups: [], activitiesCols: [[], [], []], amen
 
 export default function AmenitiesPage() {
   const [tab, setTab] = useState<Tab>("info");
-  const { data, loading, saving, save } = useSettings<AmenitiesData>("amenities", FALLBACK);
+  const { data, loading, saving, error, save } = useSettings<AmenitiesData>("amenities", FALLBACK);
   const [selected, setSelected] = useState<string[]>([]);
-  const [dirty, setDirty] = useState(false);
+  const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
 
-  useMemo(() => {
-    if (!loading && !dirty) setSelected(data.selected);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!loading) setSelected(data.selected);
   }, [loading, data.selected]);
 
   const activitiesList = useMemo(() => zip3(data.activitiesCols[0] ?? [], data.activitiesCols[1] ?? [], data.activitiesCols[2] ?? []), [data]);
@@ -59,14 +58,16 @@ export default function AmenitiesPage() {
     [data]
   );
 
-  function toggle(name: string) {
-    setDirty(true);
-    setSelected((prev) => (prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name]));
-  }
-
-  async function handleSave() {
-    await save({ ...data, selected });
-    setDirty(false);
+  async function toggle(name: string) {
+    const next = selected.includes(name) ? selected.filter((item) => item !== name) : [...selected, name];
+    setSelected(next);
+    setAutoSaveError(null);
+    try {
+      await save({ ...data, selected: next });
+    } catch {
+      setSelected(selected);
+      setAutoSaveError("Không thể lưu lựa chọn. Vui lòng chọn lại.");
+    }
   }
 
   return (
@@ -80,22 +81,22 @@ export default function AmenitiesPage() {
         <div className="mb-6 flex items-center justify-between border-b border-pms-border">
           <div className="flex gap-7 text-[14px]">
             {TABS.map((t) => (
-              <div
+              <button
                 key={t.key}
-                className="cursor-pointer pb-3 font-semibold"
+                type="button"
+                className="cursor-pointer border-0 bg-transparent pb-3 font-semibold"
                 style={{ color: tab === t.key ? "#284AB1" : "#777E90", borderBottom: `2px solid ${tab === t.key ? "#284AB1" : "transparent"}` }}
                 onClick={() => setTab(t.key)}
               >
                 {t.label}
-              </div>
+              </button>
             ))}
           </div>
-          <div className="cursor-pointer pb-3 text-[13px] font-semibold text-pms-primary" onClick={handleSave}>
-            {saving ? "Đang lưu..." : "Lưu lựa chọn"}
-          </div>
+          <div className="pb-3 text-[13px] font-semibold text-pms-primary">{saving ? "Đang lưu..." : "Tự động lưu"}</div>
         </div>
 
         {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
+        {!loading && (error || autoSaveError) && <p className="mb-4 text-[13px] text-pms-danger">{autoSaveError ?? error}</p>}
 
         {!loading && tab === "info" &&
           data.groups.map((grp) => (
@@ -131,13 +132,13 @@ export default function AmenitiesPage() {
 
 function AmenityItem({ name, checked, onToggle }: { name: string; checked: boolean; onToggle: () => void }) {
   return (
-    <div className="flex cursor-pointer items-center gap-2.5 text-[13px]" onClick={onToggle}>
+    <button type="button" aria-pressed={checked} className="flex cursor-pointer items-center gap-2.5 border-0 bg-transparent p-0 text-left text-[13px]" onClick={onToggle}>
       <div
         className="h-4 w-4 flex-shrink-0 rounded border-[1.5px] border-pms-muted-2"
         style={checked ? { background: "#284AB1", borderColor: "#284AB1" } : undefined}
       />
       <div className="h-5 w-5 flex-shrink-0 rounded-full bg-pms-muted" />
       {name}
-    </div>
+    </button>
   );
 }

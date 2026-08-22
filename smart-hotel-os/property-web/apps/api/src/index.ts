@@ -16,6 +16,8 @@ import { settingsRouter } from "./routes/settings.routes";
 import { branchesRouter } from "./routes/branches.routes";
 import { usersRouter } from "./routes/users.routes";
 import { auditLogRouter } from "./routes/auditLog.routes";
+import { propertyImagesRouter } from "./routes/propertyImages.routes";
+import { locationRouter } from "./routes/location.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { pool, DB_MODE, embeddedDb } from "./lib/db";
@@ -52,6 +54,8 @@ app.use("/api/v1/settings", settingsRouter);
 app.use("/api/v1/branches", branchesRouter);
 app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/audit-log", auditLogRouter);
+app.use("/api/v1/property-images", propertyImagesRouter);
+app.use("/api/v1/location", locationRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error_code: "ROUTE_NOT_FOUND", message: "Không tìm thấy endpoint." });
