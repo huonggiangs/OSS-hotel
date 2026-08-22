@@ -18,8 +18,17 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
     ],
     "info": {
       "intro": "",
+      "logoDataUrl": "",
+      "logoFileName": "",
       "website": "",
-      "ctvCode": ""
+      "ctvCode": "",
+      "accommodationType": "",
+      "location": {
+        "address": "",
+        "latitude": null,
+        "longitude": null,
+        "source": ""
+      }
     },
     "owner": {
       "fullName": "",

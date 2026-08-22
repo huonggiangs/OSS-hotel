@@ -6,6 +6,13 @@
 - Sau khi tạo handoff, commit toàn bộ thay đổi đã được người dùng duyệt và push lên `https://github.com/huonggiangs/OSS-hotel.git` trên nhánh `main`.
 - Không tự sửa mã nguồn/chức năng. Mọi lỗi, điều chỉnh hoặc tối ưu phải trình bày bằng tiếng Việt và chờ người dùng duyệt trước khi thực hiện.
 
+## Phiên 2026-08-22 — Lưu cấu hình trang Cơ bản
+
+- Theo yêu cầu người dùng, trang `Property Web /basic` đã lưu thực tế vào PostgreSQL `property_settings` các thông tin: logo cơ sở, số tầng/danh sách tầng, phân loại lưu trú, vị trí theo IP (tọa độ + địa chỉ khu vực), chủ sở hữu và tài khoản thanh toán.
+- Logo được đọc cục bộ tại trình duyệt rồi lưu dạng data URL trong DB (PNG/JPG/WebP, tối đa 750 KB); API giới hạn body 2 MB, xác thực schema và loại ảnh, đồng thời che dữ liệu ảnh khỏi audit log để tránh phình log.
+- Vị trí chỉ được gọi khi người dùng bấm `Lấy vị trí theo IP`; dùng IP geolocation công khai để nhận vị trí gần đúng cấp thành phố/khu vực và nhúng Google Maps từ tọa độ. Không tự động gọi khi mở trang.
+- Đã kiểm thử UI và API: phân loại/tầng, chủ sở hữu, thanh toán, logo data URL, save/reload DB và hoàn tác dữ liệu test. Docker build Property Web/API, typecheck API/Web và mọi container health đều thành công. Không kích hoạt lệnh định vị IP thật khi test vì thao tác đó sẽ gửi IP công khai của máy đến dịch vụ định vị bên thứ ba.
+
 ## Phiên 2026-08-21 — Docker Desktop, DevOps và đồng bộ dữ liệu
 
 - Đã Docker hóa và chạy nền đầy đủ 4 nhóm: Webadmin (3000/4000), Property Web (3100/4100), bốn microservice (4101–4104) và Edge Node (4200). Tất cả có healthcheck, `restart: unless-stopped`, log quay vòng và kiểm tra trạng thái qua `ops/scripts/Get-OssStatus.ps1`; có thể đóng Codex sau khi chạy `Start-Oss.ps1`.
@@ -30,7 +37,7 @@
 
 File này tồn tại để **phiên làm việc (Cowork session) sau có thể tiếp tục ngay** mà không phải đọc lại toàn bộ lịch sử chat. Luôn đọc file này đầu tiên khi bắt đầu một phiên mới trên dự án `D:\hotel\OSS`, và **cập nhật lại file này ở cuối mỗi phiên** (mục "Đã xong" / "Đang làm" / "Chưa làm" + ngày).
 
-Cập nhật lần cuối: **2026-08-21 23:23 (Docker, DevOps và đồng bộ)** — môi trường Docker chạy nền đã hoạt động, DevOps nền tảng đã bổ sung và tạo handoff phiên này; xem mục phiên 2026-08-21 ở đầu file.
+Cập nhật lần cuối: **2026-08-22 09:02 (Cấu hình Cơ bản)** — các trường được yêu cầu tại `/basic` đã nối DB, kiểm thử và Docker build thành công; xem mục phiên 2026-08-22 ở đầu file.
 
 ## ⚠ QUAN TRỌNG NHẤT — đọc mục này TRƯỚC KHI làm gì ở phiên tiếp theo
 

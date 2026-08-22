@@ -32,7 +32,9 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+// Basic settings có thể chứa logo dạng data URL. Giới hạn 2 MB bảo đảm ảnh
+// logo đã kiểm soát dung lượng vẫn được lưu mà không mở request body vô hạn.
+app.use(express.json({ limit: "2mb" }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
