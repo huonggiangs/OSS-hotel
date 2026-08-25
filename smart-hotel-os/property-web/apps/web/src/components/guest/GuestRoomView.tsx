@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 // Nội dung trang khách quét QR — tách thành client component riêng vì
 // page.tsx (App Router, Next 16) nhận `params` dạng Promise, chỉ resolve được
 // ở server component; toàn bộ logic fetch()/state ở đây vẫn cần "use client".
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4100";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/backend";
 
 interface PublicRoomInfo {
   propertyName: string;

@@ -1,6 +1,7 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $envFile = Join-Path $root "ops\.env"
+$watcherScript = Join-Path $root "ops\scripts\Watch-Oss.ps1"
 
 if (-not (Test-Path $envFile)) {
     throw "Thiếu $envFile. Chạy .\ops\scripts\Initialize-OssEnvironment.ps1 trước."
@@ -14,6 +15,25 @@ function Start-ComposeProject {
     Write-Host "Khởi động $Project..." -ForegroundColor Cyan
     & docker compose --project-name $Project --env-file $envFile -f $ComposeFile up --detach --build --remove-orphans
     if ($LASTEXITCODE -ne 0) { throw "Docker Compose thất bại ở project $Project." }
+}
+
+function Start-OssWatcher {
+    if (-not (Test-Path $watcherScript)) {
+        Write-Host "Chưa có Watch-Oss.ps1, bỏ qua tự cập nhật." -ForegroundColor Yellow
+        return
+    }
+
+    $runningWatcher = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -eq "powershell.exe" -and $_.CommandLine -like "*Watch-Oss.ps1*" }
+    if ($runningWatcher) {
+        Write-Host "Watcher tự cập nhật đã chạy (PID $($runningWatcher[0].ProcessId))." -ForegroundColor Green
+        return
+    }
+
+    Start-Process -FilePath "powershell.exe" `
+        -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $watcherScript `
+        -WindowStyle Hidden
+    Write-Host "Đã bật watcher: code hợp lệ lưu vào workspace sẽ tự build và healthcheck Docker." -ForegroundColor Green
 }
 
 Start-ComposeProject -Project "oss-webadmin" -ComposeFile (Join-Path $root "webadmin\docker-compose.yml")
@@ -47,4 +67,5 @@ foreach ($url in $healthUrls) {
     Write-Host "Sẵn sàng: $url" -ForegroundColor Green
 }
 
+Start-OssWatcher
 Write-Host "Môi trường OSS đang chạy nền bằng Docker. Có thể đóng Codex/PowerShell." -ForegroundColor Green

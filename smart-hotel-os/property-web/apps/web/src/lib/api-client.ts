@@ -4,7 +4,9 @@
 // `webadmin/apps/web/src/lib/api.ts` (fetch thuần, gắn JWT vào header Authorization
 // từ localStorage), đổi tên key lưu token để không đụng với token của webadmin
 // khi cả hai app chạy song song trên cùng trình duyệt.
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4100";
+// Cùng-origin proxy giúp PMS hoạt động từ máy khác trong LAN: browser gọi về
+// hostname/IP đang mở trang, Next.js mới gọi tiếp API Docker nội bộ.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/backend";
 const TOKEN_KEY = "property_web_token";
 
 export class ApiClientError extends Error {

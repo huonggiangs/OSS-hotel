@@ -8,7 +8,9 @@ WORKDIR /app/apps/web
 COPY --from=deps /app/apps/web/node_modules ./node_modules
 COPY apps/web ./
 ARG NEXT_PUBLIC_API_URL
+ARG API_PROXY_TARGET
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV API_PROXY_TARGET=$API_PROXY_TARGET
 RUN npm run build
 
 FROM node:20-alpine AS runtime

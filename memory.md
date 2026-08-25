@@ -1,5 +1,38 @@
 # Memory — Smart Hotel Group OSS Project
 
+## Phiên 2026-08-25 — Khắc phục deploy cũ, LAN và cập nhật Docker tự động
+
+- Nguyên nhân bản nâng cấp không xuất hiện đã xác minh: Docker restart image cũ
+  tạo trước commit `1feaa31`; GitHub `main` cũng chưa chứa commit này. Đã backup
+  đầy đủ trước mọi thay đổi: `backups/oss_20260825_224117/` và backup script đã
+  verify tại `backups/oss_20260825_225252_verify-automation/` (PostgreSQL, Edge
+  Node data, Git bundle, SHA-256); các thư mục backup bị Git ignore.
+- Đã rebuild toàn bộ 4 Docker project, áp dụng Property migrations `001`→`007`
+  trên PostgreSQL thật và xác minh 9 service healthy. Route nâng cấp (data export,
+  guest QR) đã có ở runtime, không còn 404 do image cũ.
+- Docker/LAN giữ các cổng dùng chung `3000` HQ Console, `3100` Property PMS,
+  `4200` Edge. API Docker chỉ bind loopback `4000/4100`; Web/PMS dùng Next.js
+  same-origin proxy `/api/backend`, nên mở bằng IP LAN không còn gọi nhầm
+  `localhost` của thiết bị khách. Chạy `ops/scripts/Test-OssLan.ps1` để lấy IP
+  DHCP hiện tại và test ba web; không ghi IP tĩnh vào tài liệu.
+- Chế độ dev không Docker đã tách cổng: HQ `13000/14000`, PMS `13100/14100`,
+  Edge `14200`; `start-all.ps1` và hai `start-dev.bat` chạy song song Docker.
+- Thêm `Watch-Oss.ps1`: theo dõi source của cả 4 project, debounce 8 giây,
+  typecheck trước deploy và `docker compose up --build --wait`; build lỗi sẽ giữ
+  container khỏe mạnh trước đó. `Start-Oss.ps1` tự bật watcher; Windows Startup
+  nay gọi Start-Oss sau đăng nhập. Thay đổi SQL migration sẽ backup tự động qua
+  `Backup-Oss.ps1` trước khi deploy. Nạp lại watcher sau khi sửa script bằng
+  `Restart-OssWatcher.ps1`.
+- Đã sửa foreign key `devices.room_id`: create device nay atomically xác minh
+  phòng thuộc đúng property (`FOR KEY SHARE`), ID phòng không hợp lệ trả HTTP 404
+  thay vì PostgreSQL FK error. Đã kiểm chứng `orphan_devices=0`, cả hai FK của
+  `devices` validated và smoke test invalid `roomId` trả 404 qua LAN proxy.
+- Mọi coding agent phải đọc `AGENTS.md`; Claude có chỉ dẫn trong `CLAUDE.md`,
+  Cursor có `.cursorrules`. Checklist Internet/blue-green ở
+  `ops/PUBLIC_DEPLOYMENT_CHECKLIST.md`. Một Docker replica vẫn có ngắt rất ngắn
+  khi thay image; zero-downtime tuyệt đối cần reverse proxy + hai replica/blue-green
+  theo checklist, không được tuyên bố đã có ở LAN MVP.
+
 ## Phiên 2026-08-22 (buổi 2) — Rà soát + sửa 9 màn hình Cài đặt property-web
 
 Theo yêu cầu chi tiết của người dùng (rà soát `/price`, `/payment`, `/currency`, `/tax`,

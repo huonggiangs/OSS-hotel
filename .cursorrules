@@ -1,0 +1,1 @@
+Read AGENTS.md before modifying this workspace. Keep Docker/LAN ports 3000, 3100 and 4200 reserved; use the dev ports documented there. Make changes only in D:\hotel\OSS source, never inside containers. The active watcher deploys valid saved source after typechecking; test status and LAN access before committing.

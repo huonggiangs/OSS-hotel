@@ -1,6 +1,9 @@
 "use client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+// Gọi qua Next.js cùng origin thay vì hard-code localhost. Nhờ vậy khi mở HQ
+// Console từ máy khác trong LAN, trình duyệt vẫn gọi ngược về đúng máy chủ OSS
+// (Next.js proxy request tới API nội bộ), không gọi localhost của máy khách.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/backend";
 
 export class ApiClientError extends Error {
   errorCode: string;

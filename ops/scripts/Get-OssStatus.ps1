@@ -1,6 +1,15 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $envFile = Join-Path $root "ops\.env"
+
+$watchers = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq "powershell.exe" -and $_.CommandLine -like "*Watch-Oss.ps1*" }
+Write-Host "=== Auto-update watcher ===" -ForegroundColor Cyan
+if ($watchers) {
+    $watchers | Select-Object ProcessId, CreationDate, CommandLine | Format-Table -AutoSize
+} else {
+    Write-Host "CHƯA CHẠY — chạy .\ops\scripts\Start-Oss.ps1 để bật lại." -ForegroundColor Yellow
+}
 
 foreach ($project in @(
     @{ Name = "oss-webadmin"; File = "webadmin\docker-compose.yml" },

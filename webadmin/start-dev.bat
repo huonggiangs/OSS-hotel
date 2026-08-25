@@ -47,15 +47,15 @@ if not exist "%ROOT%apps\web\node_modules" (
 )
 
 echo.
-echo Dang mo 2 cua so: API (cong 4000, che do database embedded) va Web (cong 3000)...
+echo Dang mo 2 cua so DEV: API (cong 14000, che do database embedded) va Web (cong 13000)...
 echo.
 
-start "webadmin API (4000)" cmd /k "cd /d "%ROOT%apps\api" && npm run dev"
-start "webadmin WEB (3000)" cmd /k "cd /d "%ROOT%apps\web" && npm run dev"
+start "webadmin API (14000)" cmd /k "cd /d "%ROOT%apps\api" && npm run dev"
+start "webadmin WEB (13000)" cmd /k "cd /d "%ROOT%apps\web" && npm run dev"
 
 echo ============================================================
-echo   Web:  http://localhost:3000
-echo   API:  http://localhost:4000/health
+echo   Web:  http://localhost:13000
+echo   API:  http://localhost:14000/health
 echo.
 echo   Tai khoan demo (mat khau chung: ChangeMe123!):
 echo     - admin@hq-console.local       (SUPER_ADMIN)

@@ -33,7 +33,10 @@ fixture test để Edge đồng bộ với Property demo.
 `Start-Oss.ps1` tự bật Docker Desktop nếu cần, build image, chạy detached và
 đợi healthcheck. Có thể đóng Codex ngay sau khi lệnh thành công.
 
-## URL cục bộ
+Trước migration/deploy lớn, chạy `./ops/scripts/Backup-Oss.ps1`. Backup gồm mọi
+database, Edge Node volume, Git bundle và SHA-256 checksum trong `backups/`.
+
+## URL Docker/LAN và URL dev
 
 | Thành phần | URL |
 |---|---|
@@ -42,12 +45,28 @@ fixture test để Edge đồng bộ với Property demo.
 | Edge Node | http://localhost:4200 |
 | Microservice APIs | http://localhost:4101 đến http://localhost:4104 |
 
-PostgreSQL chỉ bind `127.0.0.1` tại các cổng 5432–5434; không bị phơi ra mạng
-LAN. Edge Node vẫn bind cổng 4200 ra LAN để đúng mô hình vận hành tại cơ sở.
+Trên mạng LAN, dùng `http://<IPv4-LAN-của-máy-OSS>:3000` (HQ Console),
+`http://<IPv4-LAN-của-máy-OSS>:3100` (PMS) và
+`http://<IPv4-LAN-của-máy-OSS>:4200` (Edge Node). DHCP có thể đổi IP Wi-Fi,
+vì vậy luôn chạy `./ops/scripts/Test-OssLan.ps1` để in chính xác URL hiện tại.
+Web/API đã dùng proxy cùng origin nên người dùng ở máy khác không còn gọi nhầm
+`localhost` của chính họ.
+
+Chế độ dev không Docker luôn dùng dải cổng riêng: HQ `13000/14000`, PMS
+`13100/14100`, Edge `14200`; chạy `start-all.ps1` không còn tranh cổng Docker.
+PostgreSQL và API Docker chỉ bind loopback; không bị phơi trực tiếp ra mạng LAN.
 
 ## Bảo trì an toàn
 
 - Xem log: `docker compose --project-name oss-property --env-file ops/.env -f smart-hotel-os/property-web/docker-compose.yml logs --tail 100 api`.
 - Không chạy `docker compose down -v` nếu không chủ động muốn xóa toàn bộ dữ liệu test trong volume.
 - Docker log dùng driver `local`, tối đa 3 file x 10 MB cho mỗi service.
-- Mỗi khi thay đổi Dockerfile/compose, chạy lại `Start-Oss.ps1`; lệnh sẽ build lại phần cần thiết.
+- `Start-Oss.ps1` tự bật `Watch-Oss.ps1`: thay đổi mã nguồn hợp lệ từ Claude,
+  Codex hay Cursor trong đúng workspace sẽ typecheck, build, migrate và healthcheck
+  tự động. Xem log ở `ops/.runtime/auto-update.log`.
+- Watcher giữ image khỏe mạnh khi typecheck/build thất bại. Một lượt thay image của
+  môi trường một-replica vẫn có ngắt rất ngắn; xem checklist blue-green tại
+  `ops/PUBLIC_DEPLOYMENT_CHECKLIST.md` nếu cần zero-downtime tuyệt đối.
+- Nếu watcher nhận thay đổi SQL trong `database/migrations/`, nó tạo backup tự
+  động trước khi chạy migration. Đừng sửa migration đã áp dụng; hãy thêm file có
+  số thứ tự mới theo quy ước hiện có.

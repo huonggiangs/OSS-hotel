@@ -40,7 +40,7 @@ function formatVnd(v: string | number) {
   return Number(v).toLocaleString("vi-VN") + "đ";
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4100";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/backend";
 
 interface SepaySettings {
   enabled: boolean;

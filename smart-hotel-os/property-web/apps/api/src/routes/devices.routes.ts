@@ -36,6 +36,7 @@ devicesRouter.post(
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
     const device = await devicesRepo.create(req.user!.propertyId, req.user!.tenantId, parsed.data);
+    if (!device) throw Errors.notFound("phòng thuộc cơ sở");
     await writeAuditLog({ req, action: "CREATE_DEVICE", entityType: "device", entityId: device.id, afterData: device });
     res.status(201).json(device);
   })

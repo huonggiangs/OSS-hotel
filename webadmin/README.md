@@ -67,8 +67,8 @@ npm run dev
 
 Sau khi cả 2 cửa sổ đều chạy (giữ nguyên, không đóng):
 
-- Web: http://localhost:3000
-- API: http://localhost:4000 (health check: mở http://localhost:4000/health, phải thấy
+- Web DEV: http://localhost:13000
+- API DEV: http://localhost:14000 (health check: mở http://localhost:14000/health, phải thấy
   `{"status":"ok","db_mode":"embedded"}`)
 - Đăng nhập demo: xem bảng "Vai trò demo" bên dưới, mật khẩu chung `ChangeMe123!`
 
@@ -175,11 +175,11 @@ con cá voi ở khay hệ thống hết xoay rồi thử lại. Nếu vẫn lỗ
 Docker Desktop, dùng thẳng **Cách 1 (không cần Docker)** ở trên — đây là lý do cách đó
 được thêm vào.
 
-**b) Mở `http://localhost:3000/` hoặc `http://localhost:4000/` báo "This site can't be
-reached" / "Đăng nhập thất bại"** → API (cổng 4000) chưa chạy hoặc chưa kết nối được
-database. Kiểm tra bằng cách mở trình duyệt tới http://localhost:4000/health — nếu không
+**b) Mở `http://localhost:13000/` hoặc `http://localhost:14000/` báo "This site can't be
+reached" / "Đăng nhập thất bại"** → API dev (cổng 14000) chưa chạy hoặc chưa kết nối được
+database. Kiểm tra bằng cách mở trình duyệt tới http://localhost:14000/health — nếu không
 tải được trang này (connection refused), quay lại chạy `npm run dev` trong `apps/api`
-(Cách 1) và đọc log lỗi in ra ngay trong cửa sổ đó. Trang web chỉ chạy được (cổng 3000)
+(Cách 1) và đọc log lỗi in ra ngay trong cửa sổ đó. Trang web chỉ chạy được (cổng 13000)
 SAU KHI cả API lẫn Web đều đã `npm run dev` xong trong 2 cửa sổ riêng — mở web trước khi
 API sẵn sàng cũng sẽ báo lỗi tương tự.
 

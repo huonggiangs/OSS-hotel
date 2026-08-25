@@ -89,8 +89,8 @@ npm run dev
 
 Sau khi cả 2 cửa sổ đều chạy (giữ nguyên, không đóng):
 
-- Web: http://localhost:3100 (khác cổng `webadmin` 3000 — chạy song song được)
-- API: http://localhost:4100 (health check: mở http://localhost:4100/health, phải thấy
+- Web DEV: http://localhost:13100 (khác cổng Docker/LAN 3100 — chạy song song được)
+- API DEV: http://localhost:14100 (health check: mở http://localhost:14100/health, phải thấy
   `{"status":"ok"}`)
 - Đăng nhập demo: xem bảng "Tài khoản demo" bên dưới, mật khẩu chung `Anio2026@`
 
@@ -130,8 +130,8 @@ Nếu muốn gõ một dòng duy nhất: PowerShell dùng `;` thay cho `&&`
 (`Set-Location D:\hotel\OSS\smart-hotel-os\property-web; docker compose up --build`);
 CMD dùng `&` (`cd /d D:\hotel\OSS\smart-hotel-os\property-web & docker compose up --build`).
 
-Lần đầu chạy: service `migrate` tự động tạo schema (`database/migrations/001_init.sql`,
-`002_add_username.sql`) rồi seed dữ liệu demo trước khi `api` khởi động. Sau khi cả 4
+Lần đầu chạy: service `migrate` tự động tạo schema (toàn bộ migration hiện có) rồi seed
+dữ liệu demo trước khi `api` khởi động. Sau khi cả 4
 service (`postgres`, `migrate`, `api`, `web`) lên xong:
 
 - Web: http://localhost:3100 (khác cổng `webadmin` 3000 — chạy song song được)
@@ -159,9 +159,9 @@ con cá voi ở khay hệ thống hết xoay rồi thử lại. Nếu vẫn lỗ
 Docker Desktop, dùng thẳng **Cách 1 (không cần Docker)** ở trên — đây là lý do cách đó
 được thêm vào.
 
-**b) Trang `/login` báo "Đăng nhập thất bại. Vui lòng thử lại"** → API (cổng 4100) chưa
+**b) Trang `/login` dev báo "Đăng nhập thất bại. Vui lòng thử lại"** → API dev (cổng 14100) chưa
 chạy hoặc chưa kết nối được database. Kiểm tra bằng cách mở trình duyệt tới
-http://localhost:4100/health — nếu không tải được trang này (connection refused), quay lại
+http://localhost:14100/health — nếu không tải được trang này (connection refused), quay lại
 chạy `npm run dev` trong `apps/api` (Cách 1) và đọc log lỗi in ra ngay trong cửa sổ đó.
 
 **c) PowerShell báo không cho chạy script (`... cannot be loaded because running scripts

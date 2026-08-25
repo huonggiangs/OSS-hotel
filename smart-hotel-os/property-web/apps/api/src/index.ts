@@ -74,7 +74,8 @@ app.use((_req, res) => {
 });
 app.use(errorHandler);
 
-const PORT = Number(process.env.PORT) || 4100;
+// 14100 dành cho chế độ dev không Docker; Docker luôn truyền PORT=4100.
+const PORT = Number(process.env.PORT) || 14100;
 
 async function start() {
   // Chế độ embedded (PGlite, không cần Docker/PostgreSQL): tự chạy migration +

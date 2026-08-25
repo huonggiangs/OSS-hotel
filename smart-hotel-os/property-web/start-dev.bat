@@ -46,15 +46,15 @@ if not exist "%ROOT%apps\web\node_modules" (
 )
 
 echo.
-echo Dang mo 2 cua so: API (cong 4100, che do database embedded) va Web (cong 3100)...
+echo Dang mo 2 cua so DEV: API (cong 14100, che do database embedded) va Web (cong 13100)...
 echo.
 
-start "property-web API (4100)" cmd /k "cd /d "%ROOT%apps\api" && npm run dev"
-start "property-web WEB (3100)" cmd /k "cd /d "%ROOT%apps\web" && npm run dev"
+start "property-web API (14100)" cmd /k "cd /d "%ROOT%apps\api" && npm run dev"
+start "property-web WEB (13100)" cmd /k "cd /d "%ROOT%apps\web" && npm run dev"
 
 echo ============================================================
-echo   Web:  http://localhost:3100
-echo   API:  http://localhost:4100/health
+echo   Web:  http://localhost:13100
+echo   API:  http://localhost:14100/health
 echo.
 echo   Tai khoan demo (mat khau chung: Anio2026@):
 echo     - owner          (OWNER)

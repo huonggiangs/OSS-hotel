@@ -1,5 +1,9 @@
 # ADDITION: PMS + AUTOMATION SYSTEM REQUIREMENTS
 
+> **Bắt buộc khi chỉnh code:** đọc `AGENTS.md` trước. Mọi thay đổi phải ở đúng
+> `D:\hotel\OSS`; Docker/LAN tự cập nhật qua watcher sau khi typecheck. Không dùng
+> các cổng Docker 3000/3100/4200 cho chế độ dev và không sửa trực tiếp container.
+
 ## 1. Objective
 
 Extend the existing kiosk management system into a full Smart Hotel Operating System including:

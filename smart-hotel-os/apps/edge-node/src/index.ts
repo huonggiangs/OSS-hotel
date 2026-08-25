@@ -68,7 +68,8 @@ app.use((_req, res) => {
 });
 app.use(errorHandler);
 
-const PORT = Number(process.env.PORT) || 4200;
+// 14200 dành cho chế độ dev không Docker; Docker luôn truyền PORT=4200.
+const PORT = Number(process.env.PORT) || 14200;
 
 async function start() {
   if (DB_MODE === "embedded" && embeddedDb) {

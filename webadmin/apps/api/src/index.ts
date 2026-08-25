@@ -51,7 +51,9 @@ app.use((_req, res) => {
 });
 app.use(errorHandler);
 
-const PORT = Number(process.env.PORT) || 4000;
+// 14000 dành cho chế độ dev không Docker; Docker luôn truyền PORT=4000.
+// Tách cổng này tránh việc start-all.ps1 tranh cổng với môi trường LAN Docker.
+const PORT = Number(process.env.PORT) || 14000;
 
 async function start() {
   // Chế độ embedded (PGlite, không cần Docker/PostgreSQL): tự chạy migration +

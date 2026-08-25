@@ -62,9 +62,9 @@ services:
       SETTINGS_ENCRYPTION_KEY: "${SETTINGS_ENCRYPTION_KEY:?SETTINGS_ENCRYPTION_KEY phải được đặt trong ops/.env}"
       INTERNAL_SERVICE_KEY: "${INTERNAL_SERVICE_KEY:?INTERNAL_SERVICE_KEY phải được đặt trong ops/.env}"
       PORT: "4100"
-      WEB_ORIGIN: "http://localhost:3100"
+      WEB_ORIGIN: "*"
     ports:
-      - "4100:4100"
+      - "127.0.0.1:4100:4100"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4100/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 15s
@@ -82,7 +82,8 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: "http://localhost:4100"
+        NEXT_PUBLIC_API_URL: "/api/backend"
+        API_PROXY_TARGET: "http://api:4100"
     restart: unless-stopped
     init: true
     environment:

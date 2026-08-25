@@ -20,3 +20,7 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Runtime state and safety backups created by OSS operations scripts
+ops/.runtime/
+backups/
