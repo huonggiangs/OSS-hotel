@@ -120,6 +120,9 @@ roomsRouter.delete(
     const existing = await roomsRepo.findById(req.user!.propertyId, req.params.id);
     if (!existing) throw Errors.notFound("phòng");
     if (existing.status === "OCCUPIED") throw Errors.conflict("Không thể xoá phòng đang có khách ở.");
+    if (await roomsRepo.hasBookingReferences(req.user!.propertyId, req.params.id)) {
+      throw Errors.conflict("Không thể xoá phòng đã có hợp đồng đặt phòng. Hãy lưu giữ lịch sử hoặc hủy hợp đồng trước.");
+    }
     await roomsRepo.remove(req.user!.propertyId, req.params.id);
     await writeAuditLog({ req, action: "DELETE_ROOM", entityType: "room", entityId: req.params.id, beforeData: existing });
     res.status(204).end();

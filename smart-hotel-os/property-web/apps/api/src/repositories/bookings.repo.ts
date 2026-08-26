@@ -22,6 +22,30 @@ export interface BookingWithDetails extends Booking {
   room_type_name: string | null;
 }
 
+async function ensureRoomAvailable(db: DbPool, propertyId: string, roomId: string, checkinDate: string, checkoutDate: string, excludeBookingId?: string) {
+  const { rows: roomRows } = await db.query<{ id: string }>(
+    `SELECT id FROM rooms WHERE property_id = $1 AND id = $2 FOR UPDATE`,
+    [propertyId, roomId]
+  );
+  if (!roomRows[0]) throw Errors.notFound("phòng");
+
+  const params: unknown[] = [propertyId, roomId, checkinDate, checkoutDate];
+  let excludeClause = "";
+  if (excludeBookingId) {
+    params.push(excludeBookingId);
+    excludeClause = ` AND id <> $${params.length}`;
+  }
+  const { rows: conflicts } = await db.query<{ id: string }>(
+    `SELECT id FROM bookings
+     WHERE property_id = $1 AND room_id = $2
+       AND status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
+       AND checkin_date < $4 AND checkout_date > $3${excludeClause}
+     LIMIT 1`,
+    params
+  );
+  if (conflicts[0]) throw Errors.conflict("Phòng đã có đặt chỗ trong khoảng ngày đã chọn.");
+}
+
 export const bookingsRepo = {
   async list(propertyId: string): Promise<BookingWithDetails[]> {
     const { rows } = await pool.query<BookingWithDetails>(
@@ -60,6 +84,7 @@ export const bookingsRepo = {
 
   async create(propertyId: string, tenantId: string, createdBy: string | undefined, input: BookingInput): Promise<Booking> {
     return pool.transaction(async (tx) => {
+      if (input.roomId) await ensureRoomAvailable(tx, propertyId, input.roomId, input.checkinDate, input.checkoutDate);
       const code = await this.nextCode(tx, propertyId);
       const { rows } = await tx.query<Booking>(
         `INSERT INTO bookings
@@ -87,6 +112,12 @@ export const bookingsRepo = {
   },
 
   async update(propertyId: string, id: string, input: Partial<BookingInput>): Promise<Booking | null> {
+    const existing = await this.findById(propertyId, id);
+    if (!existing) return null;
+    const roomId = input.roomId ?? existing.room_id;
+    const checkinDate = input.checkinDate ?? existing.checkin_date;
+    const checkoutDate = input.checkoutDate ?? existing.checkout_date;
+    if (roomId) await ensureRoomAvailable(pool, propertyId, roomId, checkinDate, checkoutDate, id);
     const fields: string[] = [];
     const params: unknown[] = [];
     const map: Record<string, unknown> = {
@@ -189,10 +220,10 @@ export const bookingsRepo = {
   // Dữ liệu Gantt cho tab "Lịch đặt phòng" ở Dashboard — trả booking theo phòng,
   // đã JOIN room/room_type, để frontend tự tính cột ngày theo tuần đang xem.
   async listForGantt(propertyId: string): Promise<
-    { room_number: string; room_type_name: string; guest_name: string | null; checkin_date: string; checkout_date: string; status: BookingStatus }[]
+    { room_id: string; room_number: string; room_type_name: string; guest_name: string | null; checkin_date: string; checkout_date: string; status: BookingStatus }[]
   > {
     const { rows } = await pool.query(
-      `SELECT r.number AS room_number, rt.name AS room_type_name, c.full_name AS guest_name,
+      `SELECT r.id AS room_id, r.number AS room_number, rt.name AS room_type_name, c.full_name AS guest_name,
               b.checkin_date, b.checkout_date, b.status
        FROM bookings b
        JOIN rooms r ON r.id = b.room_id

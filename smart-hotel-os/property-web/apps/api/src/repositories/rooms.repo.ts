@@ -17,14 +17,32 @@ export interface RoomInput {
 export interface RoomWithType extends Room {
   room_type_name: string;
   room_type_price: string;
+  active_booking_id: string | null;
+  active_guest_name: string | null;
+  active_checkin_date: string | null;
+  active_booking_total_price: string | null;
+  active_booking_deposit: string | null;
 }
 
 export const roomsRepo = {
   async list(propertyId: string): Promise<RoomWithType[]> {
     const { rows } = await pool.query<RoomWithType>(
-      `SELECT r.*, rt.name AS room_type_name, rt.base_price AS room_type_price
+      `SELECT r.*, rt.name AS room_type_name, rt.base_price AS room_type_price,
+              active_booking.id AS active_booking_id,
+              active_booking.guest_name AS active_guest_name,
+              active_booking.checkin_date AS active_checkin_date,
+              active_booking.total_price AS active_booking_total_price,
+              active_booking.deposit AS active_booking_deposit
        FROM rooms r
        JOIN room_types rt ON rt.id = r.room_type_id
+       LEFT JOIN LATERAL (
+         SELECT b.id, c.full_name AS guest_name, b.checkin_date, b.total_price, b.deposit
+         FROM bookings b
+         LEFT JOIN customers c ON c.id = b.customer_id
+         WHERE b.property_id = r.property_id AND b.room_id = r.id AND b.status = 'CHECKED_IN'
+         ORDER BY b.checkin_date DESC, b.updated_at DESC
+         LIMIT 1
+       ) active_booking ON true
        WHERE r.property_id = $1
        ORDER BY r.number ASC`,
       [propertyId]
@@ -121,6 +139,14 @@ export const roomsRepo = {
   // Xoá phòng — route đã kiểm tra trước phòng không ở trạng thái OCCUPIED.
   async remove(propertyId: string, id: string): Promise<void> {
     await pool.query(`DELETE FROM rooms WHERE property_id = $1 AND id = $2`, [propertyId, id]);
+  },
+
+  async hasBookingReferences(propertyId: string, id: string): Promise<boolean> {
+    const { rows } = await pool.query<{ exists: boolean }>(
+      `SELECT EXISTS(SELECT 1 FROM bookings WHERE property_id = $1 AND room_id = $2) AS exists`,
+      [propertyId, id]
+    );
+    return rows[0]?.exists ?? false;
   },
 
   // Tra cứu công khai theo qr_token — dùng cho trang khách quét QR

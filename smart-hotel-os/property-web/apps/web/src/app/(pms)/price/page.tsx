@@ -121,6 +121,7 @@ export default function PricePage() {
   }
 
   const floors = Array.from(new Set(rooms.map((r) => r.floor))).sort();
+  const zones = Array.from(new Set(rooms.map((r) => r.zone))).sort();
 
   if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
   if (error)
@@ -303,6 +304,7 @@ export default function PricePage() {
           onClose={() => setShowAddRoom(false)}
           onSaved={load}
           floors={floors}
+          zones={zones}
           initial={editingRoom ?? undefined}
         />
       )}

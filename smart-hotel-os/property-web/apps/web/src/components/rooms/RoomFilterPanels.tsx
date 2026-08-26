@@ -1,6 +1,6 @@
 "use client";
 
-import type { LegendItem } from "@/lib/mock-data";
+import type { LegendItem } from "@/lib/room-status";
 import { Donut, buildConicGradient } from "@/components/ui/Donut";
 
 export interface RoomFilters {

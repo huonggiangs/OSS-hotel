@@ -18,8 +18,7 @@ dashboardRouter.get(
 dashboardRouter.get(
   "/gantt",
   asyncHandler(async (req, res) => {
-    const items = await dashboardRepo.gantt(req.user!.propertyId);
-    res.json({ items });
+    res.json(await dashboardRepo.gantt(req.user!.propertyId));
   })
 );
 

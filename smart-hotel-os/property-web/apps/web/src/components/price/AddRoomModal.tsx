@@ -20,16 +20,19 @@ export function AddRoomModal({
   onClose,
   onSaved,
   floors,
+  zones,
   initial,
 }: {
   onClose: () => void;
   onSaved: () => void;
   floors: string[];
+  zones: string[];
   initial?: ApiRoom;
 }) {
   const isEdit = !!initial;
   const [number, setNumber] = useState(initial?.number ?? "");
   const [floor, setFloor] = useState(initial?.floor ?? floors[0] ?? "");
+  const [zone, setZone] = useState(initial?.zone ?? zones[0] ?? "");
   const [roomTypeId, setRoomTypeId] = useState(initial?.room_type_id ?? "");
   const [status, setStatus] = useState<ApiRoom["status"]>(initial?.status ?? "VACANT");
   const [roomTypes, setRoomTypes] = useState<ApiRoomType[]>([]);
@@ -62,13 +65,17 @@ export function AddRoomModal({
       setError("Vui lòng chọn loại phòng.");
       return;
     }
+    if (!zone.trim()) {
+      setError("Vui lòng chọn hoặc nhập khu/phân khu.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       const body = {
         number: number.trim(),
         floor: floor.trim(),
-        zone: initial?.zone ?? "Khu chính",
+        zone: zone.trim(),
         roomTypeId,
         status,
       };
@@ -146,6 +153,18 @@ export function AddRoomModal({
               ))}
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-[12px]">Khu / phân khu</label>
+          <input
+            className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px] outline-none focus:border-pms-primary"
+            list="zone-suggestions"
+            value={zone}
+            onChange={(e) => setZone(e.target.value)}
+            placeholder="VD: Khu A"
+          />
+          <datalist id="zone-suggestions">{zones.map((value) => <option key={value} value={value} />)}</datalist>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
