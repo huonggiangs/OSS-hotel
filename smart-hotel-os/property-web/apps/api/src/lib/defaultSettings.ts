@@ -42,6 +42,14 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
       "accountHolder": ""
     }
   },
+  "facility": {
+    "accommodationForm": "",
+    "religion": "Không xác định",
+    "language": "vi",
+    "languageMode": "DEFAULT",
+    "buildings": [],
+    "zones": []
+  },
   "amenities": {
     "groups": [
       {
@@ -508,9 +516,9 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
   },
   "time": {
     "holidays": [
-      { "id": "hol-1", "name": "Giỗ tổ", "from": "", "to": "" },
-      { "id": "hol-2", "name": "Quốc khánh", "from": "", "to": "" },
-      { "id": "hol-3", "name": "Dương lịch", "from": "", "to": "" }
+      { "id": "hol-1", "name": "Giỗ tổ", "from": "", "to": "", "adjustmentType": "PERCENT", "adjustmentValue": 0 },
+      { "id": "hol-2", "name": "Quốc khánh", "from": "", "to": "", "adjustmentType": "PERCENT", "adjustmentValue": 0 },
+      { "id": "hol-3", "name": "Dương lịch", "from": "", "to": "", "adjustmentType": "PERCENT", "adjustmentValue": 0 }
     ],
     "prepaidServices": [
       "Điện",

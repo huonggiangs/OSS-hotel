@@ -39,6 +39,43 @@ a:hover {
   color: #1d3585;
 }
 
+/* Các điều khiển CRUD dùng lại ở Cài đặt cơ sở. Dùng class có tiền tố ngắn
+   nhưng rõ nghĩa để không phụ thuộc stylesheet/icon từ nhà cung cấp. */
+.input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #e6e8ec;
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 10px;
+  font-size: 12.5px;
+  color: #23262f;
+}
+.input:focus {
+  outline: none;
+  border-color: #284ab1;
+}
+.button {
+  border: 0;
+  border-radius: 8px;
+  background: #284ab1;
+  padding: 9px 12px;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.delete {
+  border: 1px solid #f2c5ca;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px;
+  color: #cc2f42;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 /* Biểu đồ tròn dùng cho các panel thống kê (khu vực/tầng/trạng thái/loại phòng ở Rooms,
    biểu đồ sử dụng phòng/lịch sử đặt ở Dashboard) — giữ đúng như thiết kế gốc dùng class .donut */
 .donut {

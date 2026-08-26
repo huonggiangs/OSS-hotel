@@ -9,6 +9,8 @@ interface Holiday {
   name: string;
   from: string; // "yyyy-mm-dd" hoặc rỗng nếu chưa chọn
   to: string;
+  adjustmentType: "PERCENT" | "FIXED";
+  adjustmentValue: number;
 }
 
 interface TimeData {
@@ -56,13 +58,15 @@ function normalise(value: Partial<TimeData> | null | undefined): TimeData {
   return {
     holidays: Array.isArray(value?.holidays)
       ? value.holidays.map((raw): Holiday => {
-          if (typeof raw === "string") return { id: newId(), name: raw, from: "", to: "" };
+          if (typeof raw === "string") return { id: newId(), name: raw, from: "", to: "", adjustmentType: "PERCENT", adjustmentValue: 0 };
           const h = raw as Partial<Holiday>;
           return {
             id: typeof h.id === "string" && h.id ? h.id : newId(),
             name: h.name ?? "",
             from: h.from ?? "",
             to: h.to ?? "",
+            adjustmentType: h.adjustmentType === "FIXED" ? "FIXED" : "PERCENT",
+            adjustmentValue: typeof h.adjustmentValue === "number" && Number.isFinite(h.adjustmentValue) ? Math.max(0, h.adjustmentValue) : 0,
           };
         })
       : [],
@@ -104,10 +108,13 @@ export default function TimePage() {
   }, [loading, data]);
 
   function addHolidayRow() {
-    setForm((f) => ({ ...f, holidays: [...f.holidays, { id: newId(), name: "", from: "", to: "" }] }));
+    setForm((f) => ({ ...f, holidays: [...f.holidays, { id: newId(), name: "", from: "", to: "", adjustmentType: "PERCENT", adjustmentValue: 0 }] }));
   }
   function updateHolidayName(id: string, name: string) {
     setForm((f) => ({ ...f, holidays: f.holidays.map((h) => (h.id === id ? { ...h, name } : h)) }));
+  }
+  function updateHoliday(id: string, patch: Partial<Holiday>) {
+    setForm((f) => ({ ...f, holidays: f.holidays.map((h) => (h.id === id ? { ...h, ...patch } : h)) }));
   }
   function removeHoliday(id: string) {
     setForm((f) => ({ ...f, holidays: f.holidays.filter((h) => h.id !== id) }));
@@ -258,34 +265,14 @@ export default function TimePage() {
                 </button>
               </div>
               {form.holidays.map((h) => (
-                <div key={h.id} className="mb-3 grid grid-cols-[220px_170px_60px_130px_60px_130px_30px] items-center gap-3">
-                  <span />
-                  <input
-                    value={h.name}
-                    onChange={(e) => updateHolidayName(h.id, e.target.value)}
-                    className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
-                    placeholder="Tên ngày lễ"
-                  />
-                  <span className="text-[13px] text-pms-muted">Từ ngày</span>
-                  <div
-                    className="flex cursor-pointer justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
-                    onClick={() => setOpenPickerFor(`holiday|${h.id}|from`)}
-                  >
-                    {formatDmy(h.from)} 📅
-                  </div>
-                  <span className="text-[13px] text-pms-muted">Đến ngày</span>
-                  <div
-                    className="flex cursor-pointer justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
-                    onClick={() => setOpenPickerFor(`holiday|${h.id}|to`)}
-                  >
-                    {formatDmy(h.to)} 📅
-                  </div>
-                  <div
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-pms-border text-pms-danger"
-                    onClick={() => removeHoliday(h.id)}
-                  >
-                    −
-                  </div>
+                <div key={h.id} className="mb-3 grid gap-2 rounded-lg border border-pms-divider p-3 md:grid-cols-[minmax(140px,1fr)_125px_125px_120px_120px_28px] md:items-center">
+                  <input value={h.name} onChange={(e) => updateHolidayName(h.id, e.target.value)} className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" placeholder="Tên ngày lễ" />
+                  <div className="flex cursor-pointer justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" onClick={() => setOpenPickerFor(`holiday|${h.id}|from`)}>{formatDmy(h.from)} 📅</div>
+                  <div className="flex cursor-pointer justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" onClick={() => setOpenPickerFor(`holiday|${h.id}|to`)}>{formatDmy(h.to)} 📅</div>
+                  <select value={h.adjustmentType} onChange={(e) => updateHoliday(h.id, { adjustmentType: e.target.value as Holiday["adjustmentType"] })} className="rounded-lg border border-pms-border bg-white px-3 py-2.5 text-[13px]"><option value="PERCENT">Tăng theo %</option><option value="FIXED">Tăng số tiền</option></select>
+                  <input type="number" min="0" value={h.adjustmentValue} onChange={(e) => updateHoliday(h.id, { adjustmentValue: Math.max(0, Number(e.target.value) || 0) })} className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" placeholder={h.adjustmentType === "PERCENT" ? "%" : "VND"} />
+                  <button type="button" aria-label={`Xóa ${h.name || "ngày lễ"}`} className="flex h-7 w-7 items-center justify-center rounded-lg border border-pms-border text-pms-danger" onClick={() => removeHoliday(h.id)}>−</button>
+                  <div className="md:col-span-6 text-[11px] text-pms-muted">Đơn giá phòng khi rơi vào ngày này tăng {h.adjustmentValue.toLocaleString("vi-VN")}{h.adjustmentType === "PERCENT" ? "%" : " VND"} so với giá ngày thường.</div>
                 </div>
               ))}
               {form.holidays.length === 0 && <p className="text-[12px] text-pms-muted">Chưa có ngày lễ nào. Bấm &quot;+ Thêm ngày lễ&quot; để thêm.</p>}

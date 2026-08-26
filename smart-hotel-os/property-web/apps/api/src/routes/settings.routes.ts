@@ -6,6 +6,7 @@ import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import { writeAuditLog } from "../middleware/audit";
 import { settingsRepo } from "../repositories/settings.repo";
+import { requestIp } from "../middleware/ipAllowlist";
 import {
   redactEmailSettings,
   secureEmailSettings,
@@ -19,9 +20,11 @@ export const settingsRouter = Router();
 settingsRouter.use(requireAuth);
 
 // Danh sách nhóm hợp lệ — chặn client ghi vào group_key tuỳ ý ngoài dự kiến.
-// Khớp đúng 21 nhóm đã seed ở database/migrations/003_property_settings.sql.
+// Khớp đúng các nhóm cấu hình đã seed; nhóm "facility" giữ CRUD tòa nhà/khu
+// và chính sách ngôn ngữ, tách khỏi basic để dữ liệu vận hành có vòng đời riêng.
 const VALID_GROUPS = new Set([
   "basic",
+  "facility",
   "amenities",
   "images",
   "email",
@@ -121,6 +124,16 @@ settingsRouter.get(
       throw new ApiError(502, "FX_RATE_UNAVAILABLE", `Không lấy được tỷ giá VND cho mã tiền tệ "${code}".`);
     }
     res.json({ code, rateVnd });
+  })
+);
+
+// Hiển thị chính địa chỉ mà API nhận từ reverse proxy hiện tại. Người quản lý
+// dùng giá trị này để thêm allowlist trước khi bật giới hạn IP, tránh đoán IP
+// sai khi PMS chạy sau Docker/Next.js proxy.
+settingsRouter.get(
+  "/security/observed-ip",
+  asyncHandler(async (req, res) => {
+    res.json({ ip: requestIp(req) });
   })
 );
 

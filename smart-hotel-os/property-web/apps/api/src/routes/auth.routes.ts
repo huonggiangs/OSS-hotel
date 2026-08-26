@@ -2,10 +2,11 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { asyncHandler } from "../utils/asyncHandler";
-import { Errors } from "../utils/errors";
+import { ApiError, Errors } from "../utils/errors";
 import { requireAuth, signAccessToken } from "../middleware/auth";
 import { propertyUsersRepo } from "../repositories/propertyUsers.repo";
 import { writeAuditLog } from "../middleware/audit";
+import { isRequestIpAllowed, requestIp } from "../middleware/ipAllowlist";
 
 export const authRouter = Router();
 
@@ -29,6 +30,9 @@ authRouter.post(
 
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) throw Errors.invalidCredentials();
+    if (!(await isRequestIpAllowed(req, user.property_id))) {
+      throw new ApiError(403, "IP_NOT_ALLOWED", `IP ${requestIp(req) || "hiện tại"} không nằm trong danh sách được phép.`);
+    }
 
     const token = signAccessToken({
       id: user.id,

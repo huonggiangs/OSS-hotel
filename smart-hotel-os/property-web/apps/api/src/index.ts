@@ -29,6 +29,9 @@ import { ensureDefaultSettings } from "./lib/settingsBootstrap";
 import { settingsRepo } from "./repositories/settings.repo";
 
 const app = express();
+// API Docker chỉ nhận request từ Next.js proxy/loopback. Tin đúng một proxy để
+// req.ip đọc được X-Forwarded-For của thiết bị LAN khi allowlist IP được bật.
+app.set("trust proxy", 1);
 
 app.use(helmet());
 app.use(

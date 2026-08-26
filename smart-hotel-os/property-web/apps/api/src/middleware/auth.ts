@@ -1,7 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { Errors } from "../utils/errors";
+import { ApiError, Errors } from "../utils/errors";
 import type { PropertyUserRole } from "../types/domain";
+import { isRequestIpAllowed } from "./ipAllowlist";
 
 // AuthUser gắn vào req.user sau khi verify JWT — CHỨA propertyId/tenantId vì
 // property_users luôn thuộc về đúng 1 property (đúng nguyên tắc multi-tenant ở
@@ -48,17 +49,25 @@ export function signAccessToken(user: AuthUser): string {
   return jwt.sign(user, JWT_SECRET as string, { expiresIn: "12h" });
 }
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
     return next(Errors.unauthorized());
   }
   const token = header.slice("Bearer ".length);
+  let payload: AuthUser;
   try {
-    const payload = jwt.verify(token, JWT_SECRET as string) as AuthUser;
-    req.user = payload;
-    next();
+    payload = jwt.verify(token, JWT_SECRET as string) as AuthUser;
   } catch {
-    next(Errors.unauthorized());
+    return next(Errors.unauthorized());
+  }
+  req.user = payload;
+  try {
+    if (!(await isRequestIpAllowed(req, payload.propertyId))) {
+      return next(new ApiError(403, "IP_NOT_ALLOWED", "IP hiện tại không nằm trong danh sách được phép."));
+    }
+    next();
+  } catch (error) {
+    next(error);
   }
 }

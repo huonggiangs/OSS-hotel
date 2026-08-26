@@ -81,7 +81,32 @@ export const roomsRepo = {
              AND rtr.active = true
            ORDER BY rtr.sort_order ASC, rtr.updated_at DESC
            LIMIT 1
-         ), rt.base_price) AS amount
+         ), rt.base_price) AS base_amount
+       ) base_rate ON true
+       LEFT JOIN LATERAL (
+         SELECT
+           h->>'adjustmentType' AS adjustment_type,
+           CASE
+             WHEN COALESCE(h->>'adjustmentValue', '') ~ '^[0-9]+(\\.[0-9]+)?$'
+               THEN (h->>'adjustmentValue')::numeric
+             ELSE 0
+           END AS adjustment_value
+         FROM property_settings settings
+         CROSS JOIN LATERAL jsonb_array_elements(COALESCE(settings.data->'holidays', '[]'::jsonb)) h
+         WHERE settings.property_id = r.property_id
+           AND settings.group_key = 'time'
+           AND CURRENT_DATE BETWEEN
+             CASE WHEN COALESCE(h->>'from', '') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN (h->>'from')::date ELSE NULL END
+             AND CASE WHEN COALESCE(h->>'to', '') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN (h->>'to')::date ELSE NULL END
+         ORDER BY h->>'from' ASC
+         LIMIT 1
+       ) holiday ON true
+       LEFT JOIN LATERAL (
+         SELECT CASE
+           WHEN holiday.adjustment_type = 'PERCENT' THEN base_rate.base_amount * (1 + holiday.adjustment_value / 100)
+           WHEN holiday.adjustment_type = 'FIXED' THEN base_rate.base_amount + holiday.adjustment_value
+           ELSE base_rate.base_amount
+         END AS amount
        ) night_rate ON true
        CROSS JOIN occupancy
        LEFT JOIN last_stays ON last_stays.room_id = r.id

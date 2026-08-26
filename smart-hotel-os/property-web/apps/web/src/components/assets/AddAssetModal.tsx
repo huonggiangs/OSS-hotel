@@ -18,6 +18,13 @@ export interface AssetItem {
   fg: string;
 }
 
+export interface AssetRoomOption {
+  id: string;
+  number: string;
+  floor: string;
+  zone: string;
+}
+
 // 3 trạng thái hợp lệ + màu hiển thị tương ứng — khớp đúng 3 trạng thái đã có
 // trong dữ liệu mẫu ban đầu. Người dùng CHỌN từ danh sách này (không được gõ
 // màu tuỳ ý) để tránh dữ liệu rác/không nhất quán.
@@ -41,15 +48,17 @@ export function AddAssetModal({
   onSave,
   initial,
   nextStt,
+  rooms,
 }: {
   onClose: () => void;
   onSave: (item: AssetItem) => void;
   initial?: AssetItem;
   nextStt: number;
+  rooms: AssetRoomOption[];
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [code, setCode] = useState(initial?.code ?? "");
-  const [room, setRoom] = useState(initial?.room ?? "");
+  const [room, setRoom] = useState(initial?.room ?? "Khu vực chung");
   const [value, setValue] = useState(initial?.value ?? "");
   const [qty, setQty] = useState(initial?.qty ?? 1);
   const isCustomUnit = !!initial && !UNIT_OPTIONS.slice(0, -1).includes(initial.unit);
@@ -164,7 +173,13 @@ export function AddAssetModal({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="mb-1.5 block text-[12px]">Phòng lắp đặt</label>
-            <input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="VD: 204, Nhiều phòng, Khu vực chung..." className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" />
+            <select value={room} onChange={(e) => setRoom(e.target.value)} className="w-full rounded-lg border border-pms-border bg-white px-3 py-2.5 text-[13px]">
+              <option value="">Chọn phòng lắp đặt</option>
+              <option value="Khu vực chung">Khu vực chung</option>
+              {room && room !== "Khu vực chung" && !rooms.some((item) => item.number === room) && <option value={room}>{room} (dữ liệu cũ)</option>}
+              {rooms.map((item) => <option key={item.id} value={item.number}>Phòng {item.number} · Tầng {item.floor} · {item.zone}</option>)}
+            </select>
+            {rooms.length === 0 && <p className="mb-0 mt-1 text-[11px] text-pms-danger">Chưa có phòng. Hãy tạo phòng trước khi thêm tài sản.</p>}
           </div>
           <div>
             <label className="mb-1.5 block text-[12px]">Trạng thái</label>

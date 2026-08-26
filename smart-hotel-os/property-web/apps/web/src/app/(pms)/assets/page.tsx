@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSettings } from "@/lib/useSettings";
-import { AddAssetModal, AssetItem } from "@/components/assets/AddAssetModal";
+import { api } from "@/lib/api-client";
+import { AddAssetModal, AssetItem, AssetRoomOption } from "@/components/assets/AddAssetModal";
 
 interface AssetsData {
   items: AssetItem[];
@@ -55,6 +56,7 @@ export default function AssetsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<AssetItem | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [rooms, setRooms] = useState<AssetRoomOption[]>([]);
   const { data, loading, error, save } = useSettings<AssetsData>("assets", FALLBACK);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -64,6 +66,12 @@ export default function AssetsPage() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    api.get<{ items: AssetRoomOption[] }>("/api/v1/rooms")
+      .then((response) => setRooms(response.items.sort((left, right) => left.number.localeCompare(right.number, "vi", { numeric: true }))))
+      .catch(() => setRooms([]));
   }, []);
 
   function upsertItem(item: AssetItem) {
@@ -111,7 +119,8 @@ export default function AssetsPage() {
         {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
         {error && <div className="text-[13px] text-red-500">{error}</div>}
         {!loading && (
-          <table className="w-full min-w-[1200px] border-collapse whitespace-nowrap text-[13px]">
+          <div className="max-w-full overflow-x-auto">
+          <table className="w-full min-w-[1120px] table-fixed border-collapse text-[13px]">
             <thead>
               <tr>
                 <th className={`${TH} w-7`}>
@@ -133,14 +142,14 @@ export default function AssetsPage() {
                     <input type="checkbox" />
                   </td>
                   <td className={`${TD} text-pms-muted`}>{a.stt}</td>
-                  <td className={`${TD} font-semibold`}>{a.name}</td>
-                  <td className={`${TD} text-pms-muted`}>{a.code}</td>
-                  <td className={TD}>{a.room}</td>
-                  <td className={TD}>{a.value}</td>
+                  <td className={`${TD} max-w-[180px] truncate font-semibold`} title={a.name}>{a.name}</td>
+                  <td className={`${TD} max-w-[110px] truncate text-pms-muted`} title={a.code}>{a.code}</td>
+                  <td className={`${TD} max-w-[150px] truncate`} title={a.room}>{a.room}</td>
+                  <td className={`${TD} max-w-[120px] truncate`} title={a.value}>{a.value}</td>
                   <td className={TD}>{a.qty}</td>
                   <td className={TD}>{a.unit}</td>
                   <td className={TD}>{a.depMonths}</td>
-                  <td className={TD}>{a.depValue}</td>
+                  <td className={`${TD} max-w-[120px] truncate`} title={a.depValue}>{a.depValue}</td>
                   <td className={TD}>
                     <div className="flex h-8 w-8 items-center justify-center rounded-md bg-pms-primary text-[14px] text-white">🖼</div>
                   </td>
@@ -172,11 +181,12 @@ export default function AssetsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
-      {showAdd && <AddAssetModal onClose={() => setShowAdd(false)} onSave={upsertItem} nextStt={nextStt} />}
-      {editing && <AddAssetModal onClose={() => setEditing(null)} onSave={upsertItem} initial={editing} nextStt={nextStt} />}
+      {showAdd && <AddAssetModal onClose={() => setShowAdd(false)} onSave={upsertItem} nextStt={nextStt} rooms={rooms} />}
+      {editing && <AddAssetModal onClose={() => setEditing(null)} onSave={upsertItem} initial={editing} nextStt={nextStt} rooms={rooms} />}
     </div>
   );
 }

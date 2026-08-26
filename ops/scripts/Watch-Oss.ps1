@@ -64,7 +64,7 @@ function Test-DeployablePath {
     $name = [System.IO.Path]::GetFileName($normalized)
     if ($name -in @("Dockerfile", "package.json", "package-lock.json")) { return $true }
     return [System.IO.Path]::GetExtension($name).ToLowerInvariant() -in @(
-        ".ts", ".tsx", ".js", ".mjs", ".cjs", ".css", ".sql", ".json", ".yml", ".yaml", ".html", ".svg", ".png", ".jpg", ".jpeg", ".webp"
+        ".ts", ".tsx", ".js", ".mjs", ".cjs", ".css", ".sql", ".json", ".yml", ".yaml", ".conf", ".html", ".svg", ".png", ".jpg", ".jpeg", ".webp"
     )
 }
 
