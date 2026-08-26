@@ -2,18 +2,19 @@
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $envFile = Join-Path $root "ops\.env"
 $watcherScript = Join-Path $root "ops\scripts\Watch-Oss.ps1"
+$docker = & (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1")
 
 if (-not (Test-Path $envFile)) {
     throw "Thiếu $envFile. Chạy .\ops\scripts\Initialize-OssEnvironment.ps1 trước."
 }
 
-& docker desktop start --timeout 120
+& $docker desktop start --timeout 120
 if ($LASTEXITCODE -ne 0) { throw "Không thể khởi động Docker Desktop." }
 
 function Start-ComposeProject {
     param([string]$Project, [string]$ComposeFile)
     Write-Host "Khởi động $Project..." -ForegroundColor Cyan
-    & docker compose --project-name $Project --env-file $envFile -f $ComposeFile up --detach --build --remove-orphans
+    & $docker compose --project-name $Project --env-file $envFile -f $ComposeFile up --detach --build --remove-orphans
     if ($LASTEXITCODE -ne 0) { throw "Docker Compose thất bại ở project $Project." }
 }
 

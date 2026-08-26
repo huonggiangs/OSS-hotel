@@ -1,6 +1,7 @@
 ﻿$ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $envFile = Join-Path $root "ops\.env"
+$docker = & (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1")
 
 $watchers = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -eq "powershell.exe" -and $_.CommandLine -like "*Watch-Oss.ps1*" }
@@ -18,7 +19,7 @@ foreach ($project in @(
     @{ Name = "oss-edge"; File = "smart-hotel-os\apps\edge-node\docker-compose.yml" }
 )) {
     Write-Host "`n=== $($project.Name) ===" -ForegroundColor Cyan
-    & docker compose --project-name $project.Name --env-file $envFile -f (Join-Path $root $project.File) ps
+    & $docker compose --project-name $project.Name --env-file $envFile -f (Join-Path $root $project.File) ps
 }
 
 Write-Host "`n=== Health endpoints ===" -ForegroundColor Cyan

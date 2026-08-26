@@ -20,6 +20,26 @@ $services = @(
     @{ Name = "Edge Node"; Port = 4200 }
 )
 
+$hostName = [System.Net.Dns]::GetHostName()
+$profiles = Get-NetConnectionProfile -ErrorAction SilentlyContinue |
+    Where-Object { $_.IPv4Connectivity -ne "Disconnected" }
+$ossRules = Get-NetFirewallRule -DisplayName "OSS LAN - *" -ErrorAction SilentlyContinue
+
+Write-Host "=== URL theo tên máy (không đổi khi DHCP đổi IP) ===" -ForegroundColor Cyan
+foreach ($service in $services) {
+    Write-Host "$($service.Name): http://${hostName}:$($service.Port)"
+}
+
+if ($profiles) {
+    $profiles | ForEach-Object {
+        Write-Host "Mạng: $($_.InterfaceAlias) / $($_.Name) — $($_.NetworkCategory)" -ForegroundColor $(if ($_.NetworkCategory -eq "Public") { "Yellow" } else { "Green" })
+    }
+}
+
+if (-not $ossRules) {
+    Write-Host "CHƯA CÓ rule Windows Firewall cho OSS LAN. Mở PowerShell Administrator và chạy .\ops\scripts\Enable-OssLanAccess.ps1" -ForegroundColor Yellow
+}
+
 foreach ($ip in $lanIps) {
     Write-Host "`n=== LAN IP: $ip ===" -ForegroundColor Cyan
     foreach ($service in $services) {
@@ -33,5 +53,5 @@ foreach ($ip in $lanIps) {
     }
 }
 
-Write-Host "`nTừ máy khác cùng Wi-Fi, mở ba URL OK ở trên và thử đăng nhập. Nếu không mở được," -ForegroundColor Yellow
-Write-Host "hãy kiểm tra cả hai thiết bị đang cùng mạng Private và cho phép Docker Desktop qua Windows Firewall." -ForegroundColor Yellow
+Write-Host "`nTừ máy khác cùng Wi-Fi, ưu tiên mở các URL theo tên máy ở trên rồi thử đăng nhập." -ForegroundColor Yellow
+Write-Host "Nếu tên máy không mở được trên thiết bị đó, dùng URL IP vừa in ra hoặc cấu hình DNS nội bộ/DHCP reservation trên router." -ForegroundColor Yellow

@@ -8,6 +8,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$docker = & (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1")
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $safeLabel = ($Label -replace "[^a-zA-Z0-9_-]", "-").Trim("-")
 if (-not $safeLabel) { $safeLabel = "manual" }
@@ -26,14 +27,14 @@ $backups = @(
 try {
     foreach ($backup in $backups) {
         $containerPath = "/tmp/$($backup.File)"
-        & docker exec $backup.Container sh -c "rm -f $containerPath && pg_dump -U $($backup.User) -Fc -f $containerPath $($backup.Database)"
+        & $docker exec $backup.Container sh -c "rm -f $containerPath && pg_dump -U $($backup.User) -Fc -f $containerPath $($backup.Database)"
         if ($LASTEXITCODE -ne 0) { throw "Không backup được database $($backup.Database)." }
-        & docker cp "$($backup.Container):$containerPath" (Join-Path $backupDir $backup.File)
+        & $docker cp "$($backup.Container):$containerPath" (Join-Path $backupDir $backup.File)
         if ($LASTEXITCODE -ne 0) { throw "Không copy được database backup $($backup.Database)." }
-        & docker exec $backup.Container rm -f $containerPath
+        & $docker exec $backup.Container rm -f $containerPath
     }
 
-    & docker run --rm -v oss-edge_node_data:/from -v "${backupDir}:/to" alpine:3.20 sh -c "cd /from && tar -czf /to/edge_node_data.tar.gz ."
+    & $docker run --rm -v oss-edge_node_data:/from -v "${backupDir}:/to" alpine:3.20 sh -c "cd /from && tar -czf /to/edge_node_data.tar.gz ."
     if ($LASTEXITCODE -ne 0) { throw "Không backup được Edge Node volume." }
 
     & git -C $root bundle create (Join-Path $backupDir "oss-source.bundle") --all

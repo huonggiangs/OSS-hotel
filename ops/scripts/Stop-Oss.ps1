@@ -1,6 +1,7 @@
 ﻿$ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $envFile = Join-Path $root "ops\.env"
+$docker = & (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1")
 
 # Dừng watcher trước để nó không lập tức build và khởi động lại các container
 # vừa được yêu cầu dừng. Chỉ chọn đúng PowerShell đang chạy script workspace.
@@ -12,7 +13,7 @@ foreach ($watcher in $watchers) {
 
 function Stop-ComposeProject {
     param([string]$Project, [string]$ComposeFile)
-    & docker compose --project-name $Project --env-file $envFile -f $ComposeFile down
+    & $docker compose --project-name $Project --env-file $envFile -f $ComposeFile down
     if ($LASTEXITCODE -ne 0) { throw "Không thể dừng project $Project." }
 }
 

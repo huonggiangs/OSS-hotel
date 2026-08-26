@@ -61,7 +61,7 @@ services:
       PORT: "4101"
       SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
-      - "4101:4101"
+      - "127.0.0.1:4101:4101"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4101/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 15s
@@ -104,7 +104,7 @@ services:
       PORT: "4102"
       SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
-      - "4102:4102"
+      - "127.0.0.1:4102:4102"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4102/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 15s
@@ -147,7 +147,7 @@ services:
       PORT: "4103"
       SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
-      - "4103:4103"
+      - "127.0.0.1:4103:4103"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4103/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 15s
@@ -190,7 +190,7 @@ services:
       PORT: "4104"
       SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
     ports:
-      - "4104:4104"
+      - "127.0.0.1:4104:4104"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4104/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 15s

@@ -45,12 +45,28 @@ database, Edge Node volume, Git bundle và SHA-256 checksum trong `backups/`.
 | Edge Node | http://localhost:4200 |
 | Microservice APIs | http://localhost:4101 đến http://localhost:4104 |
 
-Trên mạng LAN, dùng `http://<IPv4-LAN-của-máy-OSS>:3000` (HQ Console),
-`http://<IPv4-LAN-của-máy-OSS>:3100` (PMS) và
-`http://<IPv4-LAN-của-máy-OSS>:4200` (Edge Node). DHCP có thể đổi IP Wi-Fi,
-vì vậy luôn chạy `./ops/scripts/Test-OssLan.ps1` để in chính xác URL hiện tại.
-Web/API đã dùng proxy cùng origin nên người dùng ở máy khác không còn gọi nhầm
-`localhost` của chính họ.
+Trên mạng LAN, ưu tiên dùng tên máy OSS: `http://<TEN-MAY-OSS>:3000` (HQ Console),
+`http://<TEN-MAY-OSS>:3100` (PMS) và `http://<TEN-MAY-OSS>:4200` (Edge Node).
+Tên máy không đổi khi DHCP đổi IP sau khi chuyển Wi-Fi/router; chạy
+`./ops/scripts/Test-OssLan.ps1` để in tên và IP hiện tại. Web/API đã dùng proxy
+cùng origin nên người dùng ở máy khác không còn gọi nhầm `localhost` của chính họ.
+
+Thiết lập Windows Firewall một lần bằng **PowerShell chạy Administrator**:
+
+```powershell
+.\ops\scripts\Enable-OssLanAccess.ps1
+```
+
+Script chỉ cho phép ba cổng giao diện từ `LocalSubnet`, kể cả khi Windows nhận
+Wi-Fi mới là mạng `Public`; API Docker vẫn chỉ bind loopback. Không nên tự đổi
+mạng công cộng sang `Private`. Khi biết chắc mạng đang tin cậy, có thể dùng
+`Enable-OssLanAccess.ps1 -SetCurrentNetworkPrivate`.
+
+Một số router hoặc điện thoại không phân giải tên Windows/mDNS. Trong trường hợp
+đó hãy cấu hình một bản ghi DNS nội bộ (ví dụ `oss-hotel`) và DHCP reservation
+trên từng router, hoặc dùng URL IP mà `Test-OssLan.ps1` in ra. Không thể giữ một
+IPv4 duy nhất khi chuyển giữa các subnet khác nhau; DNS nội bộ hoặc một mạng
+overlay là cách truy cập ổn định giữa nhiều mạng.
 
 Chế độ dev không Docker luôn dùng dải cổng riêng: HQ `13000/14000`, PMS
 `13100/14100`, Edge `14200`; chạy `start-all.ps1` không còn tranh cổng Docker.

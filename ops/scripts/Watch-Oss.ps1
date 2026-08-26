@@ -11,6 +11,7 @@ $envFile = Join-Path $root "ops\.env"
 $runtimeDir = Join-Path $root "ops\.runtime"
 $logFile = Join-Path $runtimeDir "auto-update.log"
 $backupScript = Join-Path $root "ops\scripts\Backup-Oss.ps1"
+$docker = & (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1")
 
 if (-not (Test-Path $envFile)) {
     throw "Thiếu $envFile. Chạy Initialize-OssEnvironment.ps1 trước."
@@ -95,7 +96,7 @@ function Invoke-ProjectUpdate {
         }
         $env:OSS_VERSION = (& git -C $root rev-parse --short HEAD).Trim()
         Write-WatchLog "[$($Project.Name)] typecheck passed; building version $env:OSS_VERSION."
-        & docker compose --project-name $Project.Name --env-file $envFile -f (Join-Path $root $Project.Compose) up --detach --build --remove-orphans --wait --wait-timeout 240
+        & $docker compose --project-name $Project.Name --env-file $envFile -f (Join-Path $root $Project.Compose) up --detach --build --remove-orphans --wait --wait-timeout 240
         if ($LASTEXITCODE -ne 0) {
             throw "Docker Compose thất bại (exit $LASTEXITCODE)."
         }
