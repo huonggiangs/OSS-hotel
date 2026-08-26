@@ -1,9 +1,10 @@
 import { pool } from "../lib/db";
-import type { Device, DeviceStatus, DeviceType } from "../types/domain";
+import type { Device, DeviceControlKind, DeviceStatus, DeviceType } from "../types/domain";
 
 export interface DeviceInput {
   roomId?: string | null;
   deviceType?: DeviceType;
+  controlKind?: DeviceControlKind;
   name: string;
   externalId?: string | null;
   status?: DeviceStatus;
@@ -32,8 +33,8 @@ export const devicesRepo = {
         `WITH selected_room AS (
            SELECT id FROM rooms WHERE id = $3 AND property_id = $1 FOR KEY SHARE
          )
-         INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, name, external_id, status, power_on)
-         SELECT gen_random_uuid()::text, $1, $2, selected_room.id, $4, $5, $6, $7, $8
+         INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, control_kind, name, external_id, status, power_on)
+         SELECT gen_random_uuid()::text, $1, $2, selected_room.id, $4, $5, $6, $7, $8, $9
          FROM selected_room
          RETURNING *`,
         [
@@ -41,6 +42,7 @@ export const devicesRepo = {
           tenantId,
           input.roomId,
           input.deviceType ?? "POWER_SWITCH",
+          input.controlKind ?? "POWER_SWITCH",
           input.name,
           input.externalId ?? null,
           input.status ?? "OFFLINE",
@@ -51,14 +53,15 @@ export const devicesRepo = {
     }
 
     const { rows } = await pool.query<Device>(
-      `INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, name, external_id, status, power_on)
-       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8)
+      `INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, control_kind, name, external_id, status, power_on)
+       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING *`,
       [
         propertyId,
         tenantId,
         input.roomId ?? null,
         input.deviceType ?? "POWER_SWITCH",
+        input.controlKind ?? "POWER_SWITCH",
         input.name,
         input.externalId ?? null,
         input.status ?? "OFFLINE",
@@ -74,5 +77,9 @@ export const devicesRepo = {
       [powerOn, propertyId, id]
     );
     return rows[0] ?? null;
+  },
+
+  async remove(propertyId: string, id: string): Promise<void> {
+    await pool.query(`DELETE FROM devices WHERE property_id = $1 AND id = $2`, [propertyId, id]);
   },
 };

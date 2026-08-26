@@ -7,6 +7,7 @@ import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import { writeAuditLog } from "../middleware/audit";
 import { roomsRepo } from "../repositories/rooms.repo";
+import { roomTypesRepo } from "../repositories/roomTypes.repo";
 
 // URL công khai của web khách (property-web/apps/web) — dùng để dựng link
 // /guest/room/:token nhúng vào mã QR. Tài liệu ở .env.example.
@@ -27,6 +28,31 @@ const upsertSchema = z.object({
 
 const powerSchema = z.object({ powerOn: z.boolean() });
 const syncSchema = z.object({ syncEnabled: z.boolean() });
+const batchCreateSchema = z.object({
+  roomTypeId: z.string().min(1),
+  floor: z.string().trim().min(1),
+  zone: z.string().trim().min(1),
+  numbers: z.array(z.string().trim().min(1)).min(1).max(200),
+}).superRefine((value, ctx) => {
+  const seen = new Set<string>();
+  for (const number of value.numbers) {
+    if (seen.has(number)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Số phòng ${number} bị lặp.` });
+      return;
+    }
+    seen.add(number);
+  }
+});
+
+async function ensureRoomTypeForProperty(propertyId: string, roomTypeId: string) {
+  const roomType = await roomTypesRepo.findById(propertyId, roomTypeId);
+  if (!roomType) throw Errors.notFound("loại phòng");
+  return roomType;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "23505";
+}
 
 roomsRouter.get(
   "/",
@@ -42,9 +68,51 @@ roomsRouter.post(
   asyncHandler(async (req, res) => {
     const parsed = upsertSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
-    const room = await roomsRepo.create(req.user!.propertyId, req.user!.tenantId, parsed.data);
+    await ensureRoomTypeForProperty(req.user!.propertyId, parsed.data.roomTypeId);
+    if (await roomsRepo.findByNumber(req.user!.propertyId, parsed.data.number)) {
+      throw Errors.conflict(`Số phòng ${parsed.data.number} đã tồn tại.`);
+    }
+    let room;
+    try {
+      room = await roomsRepo.create(req.user!.propertyId, req.user!.tenantId, parsed.data);
+    } catch (error) {
+      if (isUniqueViolation(error)) throw Errors.conflict(`Số phòng ${parsed.data.number} đã tồn tại.`);
+      throw error;
+    }
     await writeAuditLog({ req, action: "CREATE_ROOM", entityType: "room", entityId: room.id, afterData: room });
     res.status(201).json(room);
+  })
+);
+
+roomsRouter.post(
+  "/batch",
+  requireRole("OWNER", "MANAGER"),
+  asyncHandler(async (req, res) => {
+    const parsed = batchCreateSchema.safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    await ensureRoomTypeForProperty(req.user!.propertyId, parsed.data.roomTypeId);
+    const existing = await Promise.all(parsed.data.numbers.map((number) => roomsRepo.findByNumber(req.user!.propertyId, number)));
+    const duplicate = existing.find((room) => room !== null);
+    if (duplicate) throw Errors.conflict(`Số phòng ${duplicate.number} đã tồn tại. Không phòng nào được thêm.`);
+    let rooms;
+    try {
+      rooms = await roomsRepo.createMany(
+        req.user!.propertyId,
+        req.user!.tenantId,
+        parsed.data.numbers.map((number) => ({
+          roomTypeId: parsed.data.roomTypeId,
+          number,
+          floor: parsed.data.floor,
+          zone: parsed.data.zone,
+          status: "VACANT",
+        }))
+      );
+    } catch (error) {
+      if (isUniqueViolation(error)) throw Errors.conflict("Có số phòng đã tồn tại. Không phòng nào được thêm.");
+      throw error;
+    }
+    await Promise.all(rooms.map((room) => writeAuditLog({ req, action: "CREATE_ROOM", entityType: "room", entityId: room.id, afterData: room })));
+    res.status(201).json({ items: rooms, total: rooms.length });
   })
 );
 
@@ -56,7 +124,17 @@ roomsRouter.patch(
     if (!existing) throw Errors.notFound("phòng");
     const parsed = upsertSchema.partial().safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
-    const room = await roomsRepo.update(req.user!.propertyId, req.params.id, parsed.data);
+    if (parsed.data.roomTypeId) await ensureRoomTypeForProperty(req.user!.propertyId, parsed.data.roomTypeId);
+    if (parsed.data.number && await roomsRepo.findByNumber(req.user!.propertyId, parsed.data.number, existing.id)) {
+      throw Errors.conflict(`Số phòng ${parsed.data.number} đã tồn tại.`);
+    }
+    let room;
+    try {
+      room = await roomsRepo.update(req.user!.propertyId, req.params.id, parsed.data);
+    } catch (error) {
+      if (isUniqueViolation(error)) throw Errors.conflict("Số phòng đã tồn tại.");
+      throw error;
+    }
     await writeAuditLog({ req, action: "UPDATE_ROOM", entityType: "room", entityId: req.params.id, beforeData: existing, afterData: room });
     res.json(room);
   })

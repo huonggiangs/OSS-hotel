@@ -30,6 +30,9 @@ function normalise(value: Partial<PrinterData> | null | undefined): PrinterData 
             template: t.template ?? "",
             size: t.size ?? "",
             linked: t.linked === true,
+            content: t.content ?? "",
+            sourceUrl: t.sourceUrl ?? "",
+            legalNotice: t.legalNotice ?? "",
           };
         })
       : [],
@@ -61,11 +64,24 @@ function openTestPrint(printerName: string, paperSize: string) {
 <body>
   <h1>[Tên cơ sở lưu trú]</h1>
   <div class="muted">Bản in thử — ${dateStr}</div>
-  <div class="row"><span>Máy in:</span><span>${printerName || "(chưa đặt tên)"}</span></div>
-  <div class="row"><span>Khổ giấy:</span><span>${paperSize}</span></div>
+  <div class="row"><span>Máy in:</span><span>${escapeHtml(printerName || "(chưa đặt tên)")}</span></div>
+  <div class="row"><span>Khổ giấy:</span><span>${escapeHtml(paperSize)}</span></div>
   <div class="box">ĐÂY LÀ BẢN IN THỬ</div>
 </body>
 </html>`);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function openTemplatePrint(template: PrintTemplate, printerName: string) {
+  const win = window.open("", "_blank", "width=820,height=900");
+  if (!win) return;
+  win.document.write(`<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8" /><title>${escapeHtml(template.template)}</title><style>body{font-family:Arial,sans-serif;margin:28px;color:#23262f}h1{font-size:18px;margin:0 0 8px}.meta{font-size:12px;color:#777e90;margin-bottom:20px}pre{white-space:pre-wrap;font-family:Arial,sans-serif;font-size:13px;line-height:1.55}.notice{margin-top:22px;border-top:1px solid #e6e8ec;padding-top:10px;font-size:11px;color:#777e90}</style></head><body><h1>${escapeHtml(template.doc)}</h1><div class="meta">${escapeHtml(template.template)} · ${escapeHtml(template.size)} · Máy in: ${escapeHtml(printerName || "chọn trong hộp thoại")}</div><pre>${escapeHtml(template.content)}</pre>${template.legalNotice ? `<div class="notice">${escapeHtml(template.legalNotice)}</div>` : ""}</body></html>`);
   win.document.close();
   win.focus();
   win.print();
@@ -221,6 +237,9 @@ export default function PrinterPage() {
                           <button type="button" className="text-pms-primary" onClick={() => openEdit(t)}>
                             Sửa
                           </button>
+                          <button type="button" className="text-pms-primary" onClick={() => openTemplatePrint(t, form.defaultPrinter)}>
+                            In mẫu
+                          </button>
                           <button type="button" className="text-pms-danger" onClick={() => handleDeleteTemplate(t)}>
                             Xóa
                           </button>
@@ -248,6 +267,9 @@ export default function PrinterPage() {
                               {t.linked ? "Có" : "Không"}
                             </div>
                           </div>
+                          {t.content ? <pre className="mt-3 max-h-[280px] overflow-auto whitespace-pre-wrap rounded-lg border border-pms-border bg-white p-3 font-sans text-[12px] leading-5 text-pms-text">{t.content}</pre> : <p className="mt-3 text-[12px] text-pms-muted">Mẫu cũ chưa có nội dung. Bấm “Sửa” để soạn nội dung.</p>}
+                          {t.sourceUrl && <a href={t.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 block text-[12px] font-semibold text-pms-primary">Mở nguồn tham chiếu</a>}
+                          {t.legalNotice && <p className="mb-0 mt-2 text-[11.5px] text-pms-muted">{t.legalNotice}</p>}
                         </td>
                       </tr>
                     )}

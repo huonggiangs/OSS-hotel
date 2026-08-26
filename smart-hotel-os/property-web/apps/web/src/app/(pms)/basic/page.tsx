@@ -39,6 +39,12 @@ interface FacilityRoom {
   status: string;
 }
 
+interface RoomTypeOption {
+  id: string;
+  name: string;
+  status: "ACTIVE" | "INACTIVE";
+}
+
 interface BasicData {
   floorInputs: FloorInput[];
   info: {
@@ -124,6 +130,38 @@ function floorLayoutFromRooms(rooms: FacilityRoom[]): FloorInput[] {
     }));
 }
 
+// Cơ sở cũ có thể đã lưu tên tầng là "Tầng 1", trong khi bảng rooms lưu "1".
+// Dùng một khóa so sánh chung để chúng hiện đúng là MỘT tầng, nhưng vẫn giữ
+// nguyên dữ liệu đã lưu và tên tầng thực tế trên từng phòng.
+function floorKey(value: string): string {
+  const trimmed = value.trim();
+  const withoutPrefix = trimmed.replace(/^tầng\s*/iu, "").trim();
+  return (withoutPrefix || trimmed).toLocaleLowerCase("vi");
+}
+
+function declaredFloorInputs(floors: FloorInput[]): FloorInput[] {
+  const names = new Set<string>();
+  return floors
+    .map((floor) => ({ id: floor.id, name: floor.name.trim(), rooms: [] }))
+    .filter((floor) => floor.name && !names.has(floorKey(floor.name)) && (names.add(floorKey(floor.name)), true));
+}
+
+function mergeFacilityLayout(declaredFloors: FloorInput[], rooms: FacilityRoom[]): FloorInput[] {
+  const byFloor = new Map(declaredFloorInputs(declaredFloors).map((floor) => [floorKey(floor.name), { ...floor, rooms: [] as FloorRoom[] }]));
+  for (const room of rooms) {
+    const key = floorKey(room.floor);
+    const current = byFloor.get(key) ?? { id: `db-floor-${room.floor}`, name: room.floor, rooms: [] as FloorRoom[] };
+    // Ưu tiên cách ghi đang được rooms dùng, để link lọc /rooms?floor= luôn
+    // khớp dữ liệu thật ngay cả khi cài đặt cơ sở đang mang nhãn "Tầng N".
+    current.name = room.floor;
+    current.rooms.push({ id: room.id, number: room.number, name: `${room.room_type_name} · ${room.zone}` });
+    byFloor.set(key, current);
+  }
+  return Array.from(byFloor.values())
+    .sort((a, b) => a.name.localeCompare(b.name, "vi", { numeric: true }))
+    .map((floor) => ({ ...floor, rooms: floor.rooms.sort((a, b) => a.number.localeCompare(b.number, "vi", { numeric: true })) }));
+}
+
 export default function BasicPage() {
   const [tab, setTab] = useState<Tab>("info");
   const { data, loading, saving, error, savedAt, save } = useSettings<BasicData>("basic", FALLBACK);
@@ -133,6 +171,13 @@ export default function BasicPage() {
   const [facilityRooms, setFacilityRooms] = useState<FacilityRoom[]>([]);
   const [facilityLoading, setFacilityLoading] = useState(true);
   const [facilityError, setFacilityError] = useState<string | null>(null);
+  const [roomTypes, setRoomTypes] = useState<RoomTypeOption[]>([]);
+  const [quickFloor, setQuickFloor] = useState("");
+  const [quickZone, setQuickZone] = useState("");
+  const [quickRoomNumbers, setQuickRoomNumbers] = useState("");
+  const [quickRoomTypeId, setQuickRoomTypeId] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [quickError, setQuickError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
 
   useEffect(() => {
@@ -143,9 +188,15 @@ export default function BasicPage() {
     let active = true;
     const loadFacility = async () => {
       try {
-        const response = await api.get<{ items: FacilityRoom[] }>("/api/v1/rooms");
+        const [response, typesResponse] = await Promise.all([
+          api.get<{ items: FacilityRoom[] }>("/api/v1/rooms"),
+          api.get<{ items: RoomTypeOption[] }>("/api/v1/room-types"),
+        ]);
         if (!active) return;
         setFacilityRooms(response.items);
+        const activeTypes = typesResponse.items.filter((roomType) => roomType.status === "ACTIVE");
+        setRoomTypes(activeTypes);
+        setQuickRoomTypeId((current) => current || activeTypes[0]?.id || "");
         setFacilityError(null);
       } catch {
         if (active) setFacilityError("Không tải được sơ đồ tầng/phòng từ dữ liệu phòng.");
@@ -262,9 +313,39 @@ export default function BasicPage() {
       return;
     }
     try {
-      await save(normaliseBasicData({ ...form, floorInputs: floorLayoutFromRooms(facilityRooms) }));
+      await save(normaliseBasicData({ ...form, floorInputs: declaredFloorInputs(form.floorInputs) }));
     } catch {
       // Thông báo lỗi đã được useSettings hiển thị trong giao diện.
+    }
+  }
+
+  async function quickAddFloorAndRooms() {
+    const floor = quickFloor.trim();
+    const zone = quickZone.trim();
+    const roomNumbers = Array.from(new Set(quickRoomNumbers.split(/[\s,;]+/).map((value) => value.trim()).filter(Boolean)));
+    if (!floor) return setQuickError("Nhập tên hoặc số tầng.");
+    if (roomNumbers.length > 0 && (!zone || !quickRoomTypeId)) return setQuickError("Để tạo phòng, chọn khu/phân khu và loại phòng.");
+    setQuickSaving(true);
+    setQuickError(null);
+    try {
+      const nextFloorInputs = declaredFloorInputs([
+        ...form.floorInputs,
+        ...(form.floorInputs.some((item) => floorKey(item.name) === floorKey(floor)) ? [] : [{ id: newId("floor"), name: floor, rooms: [] }]),
+      ]);
+      if (roomNumbers.length > 0) {
+        await api.post("/api/v1/rooms/batch", { numbers: roomNumbers, floor, zone, roomTypeId: quickRoomTypeId });
+      }
+      const next = normaliseBasicData({ ...form, floorInputs: nextFloorInputs });
+      await save(next);
+      setForm(next);
+      const response = await api.get<{ items: FacilityRoom[] }>("/api/v1/rooms");
+      setFacilityRooms(response.items);
+      setQuickFloor("");
+      setQuickRoomNumbers("");
+    } catch (err) {
+      setQuickError(err instanceof Error ? err.message : "Không thể thêm nhanh tầng/phòng.");
+    } finally {
+      setQuickSaving(false);
     }
   }
 
@@ -297,7 +378,7 @@ export default function BasicPage() {
           <Row label="Phân loại cơ sở"><select value={form.info.accommodationType} onChange={(event) => setForm((current) => ({ ...current, info: { ...current.info, accommodationType: event.target.value } }))} className="w-full rounded-lg border border-pms-border bg-white px-3 py-2.5 text-[13px]"><option value="">Chọn loại cơ sở lưu trú</option>{ACCOMMODATION_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</select></Row>
           <Row label="Khu, phân khu"><div className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted">{Array.from(new Set(facilityRooms.map((room) => room.zone))).join(" · ") || "Chưa có khu vực trong danh sách phòng"}</div></Row>
           <Row label="Tòa nhà"><SelectBox placeholder="Tên tòa nhà" /></Row>
-          <Row label="Sơ đồ tầng & phòng" tall><div className="space-y-3"><p className="m-0 text-[12px] text-pms-muted">Sơ đồ này dùng cùng bảng dữ liệu với “Trạng thái phòng”. Thêm, sửa hoặc xóa phòng tại <Link href="/price" className="font-semibold text-pms-primary">Phòng &amp; giá</Link> để tránh lệch dữ liệu.</p>{facilityLoading ? <p className="text-[13px] text-pms-muted">Đang tải sơ đồ phòng...</p> : floorLayoutFromRooms(facilityRooms).map((floor) => <div key={floor.id} className="rounded-lg border border-pms-border p-3"><div className="flex items-center justify-between"><Link href={`/rooms?floor=${encodeURIComponent(floor.name)}`} className="text-[13px] font-semibold text-pms-text">Tầng {floor.name}</Link><span className="text-[12px] text-pms-muted">{floor.rooms.length} phòng</span></div><div className="mt-2 flex flex-wrap gap-2">{floor.rooms.map((room) => <Link key={room.id} href={`/rooms?floor=${encodeURIComponent(floor.name)}`} className="rounded-md bg-pms-divider px-2.5 py-1.5 text-[12px] text-pms-text no-underline">{room.number} · {room.name}</Link>)}</div></div>)}</div></Row>
+          <Row label="Sơ đồ tầng & phòng" tall><div className="space-y-3"><p className="m-0 text-[12px] text-pms-muted">Sơ đồ dùng chung dữ liệu với “Trạng thái phòng”. Thêm nhanh ở đây; cần sửa chi tiết loại phòng, giá hoặc trạng thái thì mở <Link href="/price" className="font-semibold text-pms-primary">Phòng &amp; giá</Link>.</p><div className="rounded-lg border border-pms-primary-soft bg-pms-primary-soft/30 p-3"><b className="text-[13px] text-pms-primary">Thêm nhanh tầng / phòng</b><div className="mt-2 grid grid-cols-2 gap-2"><input value={quickFloor} onChange={(event) => setQuickFloor(event.target.value)} placeholder="Tầng, VD: 4" className="rounded-md border border-pms-border px-2.5 py-2 text-[12.5px]" /><input value={quickZone} onChange={(event) => setQuickZone(event.target.value)} placeholder="Khu / phân khu" className="rounded-md border border-pms-border px-2.5 py-2 text-[12.5px]" /><input value={quickRoomNumbers} onChange={(event) => setQuickRoomNumbers(event.target.value)} placeholder="Số phòng: 401, 402 (để trống nếu chỉ thêm tầng)" className="col-span-2 rounded-md border border-pms-border px-2.5 py-2 text-[12.5px]" /><select value={quickRoomTypeId} onChange={(event) => setQuickRoomTypeId(event.target.value)} disabled={roomTypes.length === 0} className="rounded-md border border-pms-border bg-white px-2.5 py-2 text-[12.5px]"><option value="">Chọn loại phòng</option>{roomTypes.map((roomType) => <option key={roomType.id} value={roomType.id}>{roomType.name}</option>)}</select><button type="button" disabled={quickSaving} onClick={quickAddFloorAndRooms} className="rounded-md bg-pms-primary px-3 py-2 text-[12.5px] font-semibold text-white disabled:opacity-60">{quickSaving ? "Đang thêm..." : "Thêm nhanh"}</button></div>{quickError && <p className="mb-0 mt-2 text-[12px] text-pms-danger">{quickError}</p>}</div>{facilityLoading ? <p className="text-[13px] text-pms-muted">Đang tải sơ đồ phòng...</p> : mergeFacilityLayout(form.floorInputs, facilityRooms).map((floor) => <div key={floor.id} className="rounded-lg border border-pms-border p-3"><div className="flex items-center justify-between"><Link href={`/rooms?floor=${encodeURIComponent(floor.name)}`} className="text-[13px] font-semibold text-pms-text">Tầng {floor.name}</Link><span className="text-[12px] text-pms-muted">{floor.rooms.length} phòng</span></div><div className="mt-2 flex flex-wrap gap-2">{floor.rooms.length ? floor.rooms.map((room) => <Link key={room.id} href={`/rooms?floor=${encodeURIComponent(floor.name)}`} className="rounded-md bg-pms-divider px-2.5 py-1.5 text-[12px] text-pms-text no-underline">{room.number} · {room.name}</Link>) : <span className="text-[12px] text-pms-muted">Chưa có phòng — mở Phòng &amp; giá để cấu hình chi tiết.</span>}</div></div>)}</div></Row>
           <Row label="Ngôn ngữ"><SelectBox placeholder="Chọn ngôn ngữ" /></Row>
           <Row label="Vị trí" tall><div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3"><button type="button" onClick={detectLocationByIp} disabled={locating} className="rounded-lg border border-pms-primary px-3 py-2.5 text-[13px] font-medium text-pms-primary disabled:cursor-wait disabled:opacity-60">{locating ? "Đang lấy vị trí..." : "Lấy vị trí theo IP"}</button>{form.info.location.address && <span className="text-[12px] text-pms-muted">{form.info.location.address}</span>}</div>

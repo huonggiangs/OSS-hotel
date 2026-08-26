@@ -27,7 +27,41 @@ export interface RoomWithType extends Room {
 export const roomsRepo = {
   async list(propertyId: string): Promise<RoomWithType[]> {
     const { rows } = await pool.query<RoomWithType>(
-      `SELECT r.*, rt.name AS room_type_name, rt.base_price AS room_type_price,
+      `WITH occupancy AS (
+         SELECT COUNT(*)::numeric AS total_rooms,
+                COUNT(*) FILTER (WHERE status = 'OCCUPIED')::numeric AS occupied_rooms
+         FROM rooms
+         WHERE property_id = $1
+       ), last_stays AS (
+         SELECT room_id, MAX(checkout_date) AS last_checkout
+         FROM bookings
+         WHERE property_id = $1 AND status = 'CHECKED_OUT' AND room_id IS NOT NULL
+         GROUP BY room_id
+       )
+       SELECT r.*, rt.name AS room_type_name,
+              CASE
+                WHEN r.status = 'VACANT' AND dynamic_rule.enabled THEN GREATEST(
+                  COALESCE(dynamic_rule.minimum_price, 0),
+                  ROUND(
+                    night_rate.amount
+                    * CASE
+                        WHEN GREATEST(CURRENT_DATE - COALESCE(last_stays.last_checkout, r.created_at::date), 0) >= dynamic_rule.vacancy_days
+                          THEN 1 - dynamic_rule.vacancy_discount_percent / 100
+                        ELSE 1
+                      END
+                    * CASE
+                        WHEN occupancy.total_rooms = 0 THEN 1
+                        WHEN occupancy.occupied_rooms * 100 / occupancy.total_rooms < dynamic_rule.low_occupancy_percent
+                          THEN 1 + dynamic_rule.low_occupancy_adjustment_percent / 100
+                        WHEN occupancy.occupied_rooms * 100 / occupancy.total_rooms > dynamic_rule.high_occupancy_percent
+                          THEN 1 + dynamic_rule.high_occupancy_adjustment_percent / 100
+                        ELSE 1
+                      END,
+                    2
+                  )
+                )
+                ELSE night_rate.amount
+              END AS room_type_price,
               active_booking.id AS active_booking_id,
               active_booking.guest_name AS active_guest_name,
               active_booking.checkin_date AS active_checkin_date,
@@ -35,6 +69,22 @@ export const roomsRepo = {
               active_booking.deposit AS active_booking_deposit
        FROM rooms r
        JOIN room_types rt ON rt.id = r.room_type_id
+       LEFT JOIN room_type_dynamic_pricing dynamic_rule
+         ON dynamic_rule.property_id = r.property_id AND dynamic_rule.room_type_id = rt.id
+       LEFT JOIN LATERAL (
+         SELECT COALESCE((
+           SELECT rtr.amount
+           FROM room_type_rates rtr
+           WHERE rtr.property_id = r.property_id
+             AND rtr.room_type_id = rt.id
+             AND rtr.rate_key = 'NIGHT'
+             AND rtr.active = true
+           ORDER BY rtr.sort_order ASC, rtr.updated_at DESC
+           LIMIT 1
+         ), rt.base_price) AS amount
+       ) night_rate ON true
+       CROSS JOIN occupancy
+       LEFT JOIN last_stays ON last_stays.room_id = r.id
        LEFT JOIN LATERAL (
          SELECT b.id, c.full_name AS guest_name, b.checkin_date, b.total_price, b.deposit
          FROM bookings b
@@ -84,6 +134,51 @@ export const roomsRepo = {
       ]
     );
     return rows[0];
+  },
+
+  // Dùng cho luồng "Thêm nhanh tầng / phòng": toàn bộ danh sách được insert
+  // trong một transaction, nên một số phòng bị trùng sẽ không để lại trạng thái
+  // tạo dở dang ở các phòng trước đó.
+  async createMany(propertyId: string, tenantId: string, inputs: RoomInput[]): Promise<Room[]> {
+    return pool.transaction(async (tx) => {
+      const created: Room[] = [];
+      for (const input of inputs) {
+        const roomCode = `PHONG-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+        const qrToken = randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "");
+        const { rows } = await tx.query<Room>(
+          `INSERT INTO rooms
+            (id, property_id, tenant_id, room_type_id, number, floor, zone, status, power_on, note, room_code, qr_token)
+           VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           RETURNING *`,
+          [
+            propertyId,
+            tenantId,
+            input.roomTypeId,
+            input.number,
+            input.floor,
+            input.zone,
+            input.status ?? "VACANT",
+            input.powerOn ?? false,
+            input.note ?? null,
+            roomCode,
+            qrToken,
+          ]
+        );
+        created.push(rows[0]);
+      }
+      return created;
+    });
+  },
+
+  async findByNumber(propertyId: string, number: string, exceptId?: string): Promise<Room | null> {
+    const params: string[] = [propertyId, number];
+    const excludeClause = exceptId ? ` AND id <> $3` : "";
+    if (exceptId) params.push(exceptId);
+    const { rows } = await pool.query<Room>(
+      `SELECT * FROM rooms WHERE property_id = $1 AND number = $2${excludeClause} LIMIT 1`,
+      params
+    );
+    return rows[0] ?? null;
   },
 
   async update(propertyId: string, id: string, input: Partial<RoomInput>): Promise<Room | null> {

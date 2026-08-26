@@ -12,7 +12,9 @@ devicesRouter.use(requireAuth);
 
 const createSchema = z.object({
   roomId: z.string().optional().nullable(),
-  deviceType: z.enum(["POWER_SWITCH", "AC_CONTROLLER", "DOOR_LOCK", "OTHER"]).default("POWER_SWITCH"),
+  controlKind: z
+    .enum(["POWER_METER", "POWER_SWITCH", "LIGHTING_CONTROLLER", "AC_CONTROLLER", "DOOR_LOCK", "ANNOUNCEMENT_SPEAKER", "SMART_TV", "OTHER"])
+    .default("POWER_SWITCH"),
   name: z.string().min(1),
   externalId: z.string().optional(),
   status: z.enum(["ONLINE", "OFFLINE", "ERROR"]).default("OFFLINE"),
@@ -20,6 +22,16 @@ const createSchema = z.object({
 });
 
 const powerSchema = z.object({ powerOn: z.boolean() });
+const DEVICE_TYPE_BY_CONTROL_KIND = {
+  POWER_METER: "OTHER",
+  POWER_SWITCH: "POWER_SWITCH",
+  LIGHTING_CONTROLLER: "POWER_SWITCH",
+  AC_CONTROLLER: "AC_CONTROLLER",
+  DOOR_LOCK: "DOOR_LOCK",
+  ANNOUNCEMENT_SPEAKER: "OTHER",
+  SMART_TV: "OTHER",
+  OTHER: "OTHER",
+} as const;
 
 devicesRouter.get(
   "/",
@@ -35,10 +47,26 @@ devicesRouter.post(
   asyncHandler(async (req, res) => {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
-    const device = await devicesRepo.create(req.user!.propertyId, req.user!.tenantId, parsed.data);
+    const device = await devicesRepo.create(req.user!.propertyId, req.user!.tenantId, {
+      ...parsed.data,
+      deviceType: DEVICE_TYPE_BY_CONTROL_KIND[parsed.data.controlKind],
+    });
     if (!device) throw Errors.notFound("phòng thuộc cơ sở");
     await writeAuditLog({ req, action: "CREATE_DEVICE", entityType: "device", entityId: device.id, afterData: device });
     res.status(201).json(device);
+  })
+);
+
+devicesRouter.delete(
+  "/:id",
+  requireRole("OWNER", "MANAGER"),
+  asyncHandler(async (req, res) => {
+    const devices = await devicesRepo.list(req.user!.propertyId);
+    const existing = devices.find((device) => device.id === req.params.id);
+    if (!existing) throw Errors.notFound("thiết bị");
+    await devicesRepo.remove(req.user!.propertyId, existing.id);
+    await writeAuditLog({ req, action: "DELETE_DEVICE", entityType: "device", entityId: existing.id, beforeData: existing });
+    res.status(204).end();
   })
 );
 

@@ -33,6 +33,10 @@ export interface ApiRoom {
   room_code: string;
   qr_token: string;
   sync_enabled: boolean;
+  note: string | null;
+}
+interface BasicSettingsData {
+  floorInputs?: { name?: string }[];
 }
 
 function formatVnd(v: string | number) {
@@ -55,6 +59,7 @@ export default function PricePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [declaredFloors, setDeclaredFloors] = useState<string[]>([]);
 
   const [showAddRoomType, setShowAddRoomType] = useState(false);
   const [editingRoomType, setEditingRoomType] = useState<ApiRoomType | null>(null);
@@ -71,12 +76,14 @@ export default function PricePage() {
     setLoading(true);
     setError(null);
     try {
-      const [rt, r] = await Promise.all([
+      const [rt, r, basic] = await Promise.all([
         api.get<{ items: ApiRoomType[] }>("/api/v1/room-types"),
         api.get<{ items: ApiRoom[] }>("/api/v1/rooms"),
+        api.get<{ data: BasicSettingsData }>("/api/v1/settings/basic"),
       ]);
       setRoomTypes(rt.items);
       setRooms(r.items);
+      setDeclaredFloors((basic.data.floorInputs ?? []).map((floor) => floor.name?.trim() ?? "").filter(Boolean));
     } catch (err) {
       setError(isApiError(err) ? err.message : "Không tải được dữ liệu phòng và giá.");
     } finally {
@@ -120,7 +127,7 @@ export default function PricePage() {
     }
   }
 
-  const floors = Array.from(new Set(rooms.map((r) => r.floor))).sort();
+  const floors = Array.from(new Set([...rooms.map((r) => r.floor), ...declaredFloors])).sort((a, b) => a.localeCompare(b, "vi", { numeric: true }));
   const zones = Array.from(new Set(rooms.map((r) => r.zone))).sort();
 
   if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
@@ -163,7 +170,7 @@ export default function PricePage() {
         <table className="w-full min-w-[900px] border-collapse whitespace-nowrap text-[13px]">
           <thead>
             <tr>
-              {["STT", "Loại phòng", "Số phòng", "Giường", "S.chứa", "Diện tích", "Giá cơ bản", "Tính tiền", "Giảm giá", "Trạng thái", "Action"].map((h) => (
+              {["STT", "Loại phòng", "Số phòng", "Giường", "S.chứa", "Diện tích", "Giá cơ bản", "Giá linh hoạt", "Tính tiền", "Giảm giá", "Trạng thái", "Action"].map((h) => (
                 <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
                   {h}
                 </th>
@@ -185,6 +192,7 @@ export default function PricePage() {
                   <td className="border-b border-pms-divider px-2 py-3">{rt.capacity}</td>
                   <td className="border-b border-pms-divider px-2 py-3">📐 {rt.area_m2 ?? "—"}m2</td>
                   <td className="border-b border-pms-divider px-2 py-3">{formatVnd(rt.base_price)}</td>
+                  <td className="border-b border-pms-divider px-2 py-3"><button type="button" className="font-semibold text-pms-primary" onClick={() => { setEditingRoomType(rt); setShowAddRoomType(true); }}>Cài đặt</button></td>
                   <td className="border-b border-pms-divider px-2 py-3">{PRICING_METHOD_LABEL[rt.pricing_method] ?? rt.pricing_method}</td>
                   <td className="border-b border-pms-divider px-2 py-3">{Number(rt.discount_percent) > 0 ? `${rt.discount_percent}%` : "—"}</td>
                   <td className="border-b border-pms-divider px-2 py-3 font-semibold" style={{ color: rt.status === "ACTIVE" ? "#00C853" : "#CC2F42" }}>

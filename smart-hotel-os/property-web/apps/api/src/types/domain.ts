@@ -13,6 +13,15 @@ export type InvoiceMethod = "CASH" | "BANK_TRANSFER" | "CARD" | "OTA_WALLET" | "
 export type InvoiceStatus = "PAID" | "PENDING" | "FAILED";
 export type DeviceType = "POWER_SWITCH" | "AC_CONTROLLER" | "DOOR_LOCK" | "OTHER";
 export type DeviceStatus = "ONLINE" | "OFFLINE" | "ERROR";
+export type DeviceControlKind =
+  | "POWER_METER"
+  | "POWER_SWITCH"
+  | "LIGHTING_CONTROLLER"
+  | "AC_CONTROLLER"
+  | "DOOR_LOCK"
+  | "ANNOUNCEMENT_SPEAKER"
+  | "SMART_TV"
+  | "OTHER";
 
 export interface Property {
   id: string;
@@ -69,6 +78,7 @@ export interface Room {
   zone: string;
   status: RoomStatus;
   power_on: boolean;
+  control_kind: DeviceControlKind;
   note: string | null;
   // Migration 006: mã phòng hệ thống tự sinh (không cho client đặt), token QR
   // riêng (dùng trong URL công khai /guest/room/:token), bật/tắt đồng bộ OTA.
