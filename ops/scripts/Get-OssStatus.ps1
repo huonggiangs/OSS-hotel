@@ -1,7 +1,8 @@
 ﻿$ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $envFile = Join-Path $root "ops\.env"
-$docker = & (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1")
+$docker = [string](@(& (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1") | Where-Object { $_ })[0])
+if (-not $docker -or -not (Test-Path -LiteralPath $docker)) { throw "Không xác định được Docker CLI hợp lệ." }
 
 $watchers = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -eq "powershell.exe" -and $_.CommandLine -like "*Watch-Oss.ps1*" }

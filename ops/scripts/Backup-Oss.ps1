@@ -8,7 +8,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$docker = & (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1")
+# Giữ đúng một đường dẫn Docker CLI; tránh mảng output bị PowerShell ghép lại
+# thành một command name khi script được watcher gọi nền.
+$dockerValues = @(& (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1") | Where-Object { $_ })
+$docker = [string]$dockerValues[0]
+if (-not $docker -or -not (Test-Path -LiteralPath $docker)) {
+    throw "Không xác định được Docker CLI hợp lệ để backup."
+}
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $safeLabel = ($Label -replace "[^a-zA-Z0-9_-]", "-").Trim("-")
 if (-not $safeLabel) { $safeLabel = "manual" }

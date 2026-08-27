@@ -21,6 +21,7 @@ import { locationRouter } from "./routes/location.routes";
 import { publicRoomsRouter } from "./routes/publicRooms.routes";
 import { sepayRouter, sepayWebhookRouter, publicSepayRouter } from "./routes/sepayPayments.routes";
 import { dataExportRouter } from "./routes/dataExport.routes";
+import { maintenanceRouter } from "./routes/maintenance.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { pool, DB_MODE, embeddedDb } from "./lib/db";
@@ -52,6 +53,7 @@ app.use("/api/v1/room-types", roomTypesRouter);
 app.use("/api/v1/rooms", roomsRouter);
 app.use("/api/v1/customers", customersRouter);
 app.use("/api/v1/bookings", bookingsRouter);
+app.use("/api/v1/maintenance", maintenanceRouter);
 // Router SePay (public webhook + API xác thực) phải đăng ký TRƯỚC
 // invoicesRouter — Express khớp route theo THỨ TỰ đăng ký chứ không theo độ
 // cụ thể, nên nếu invoicesRouter (có requireAuth) đăng ký trước thì

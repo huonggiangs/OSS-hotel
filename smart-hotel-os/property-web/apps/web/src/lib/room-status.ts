@@ -19,6 +19,7 @@ export const ROOM_STATUS_BY_API: Record<ApiRoomStatus, RoomStatusKey> = {
 
 export interface RoomCard {
   id: string;
+  roomTypeId?: string;
   n: string;
   floor: string;
   zone: string;
@@ -38,6 +39,7 @@ export interface RoomCard {
   activeBookingId?: string;
   activeBookingTotal?: number;
   activeBookingDeposit?: number;
+  activeStayType?: "HOURLY" | "OVERNIGHT" | "DAILY";
 }
 
 export interface LegendItem {

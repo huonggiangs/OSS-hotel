@@ -113,6 +113,9 @@ export interface Booking {
   status: BookingStatus;
   checkin_date: string;
   checkout_date: string;
+  stay_type: "HOURLY" | "OVERNIGHT" | "DAILY";
+  checkin_at: Date | null;
+  checkout_at: Date | null;
   total_price: string;
   deposit: string;
   notes: string | null;

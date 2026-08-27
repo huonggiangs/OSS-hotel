@@ -1,7 +1,8 @@
 ﻿$ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $envFile = Join-Path $root "ops\.env"
-$docker = & (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1")
+$docker = [string](@(& (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1") | Where-Object { $_ })[0])
+if (-not $docker -or -not (Test-Path -LiteralPath $docker)) { throw "Không xác định được Docker CLI hợp lệ." }
 
 # Dừng watcher trước để nó không lập tức build và khởi động lại các container
 # vừa được yêu cầu dừng. Chỉ chọn đúng PowerShell đang chạy script workspace.

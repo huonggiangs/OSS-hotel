@@ -20,6 +20,9 @@ export interface RoomWithType extends Room {
   active_booking_id: string | null;
   active_guest_name: string | null;
   active_checkin_date: string | null;
+  active_checkin_at: Date | null;
+  active_checkout_at: Date | null;
+  active_stay_type: "HOURLY" | "OVERNIGHT" | "DAILY" | null;
   active_booking_total_price: string | null;
   active_booking_deposit: string | null;
 }
@@ -65,6 +68,9 @@ export const roomsRepo = {
               active_booking.id AS active_booking_id,
               active_booking.guest_name AS active_guest_name,
               active_booking.checkin_date AS active_checkin_date,
+              active_booking.checkin_at AS active_checkin_at,
+              active_booking.checkout_at AS active_checkout_at,
+              active_booking.stay_type AS active_stay_type,
               active_booking.total_price AS active_booking_total_price,
               active_booking.deposit AS active_booking_deposit
        FROM rooms r
@@ -111,7 +117,7 @@ export const roomsRepo = {
        CROSS JOIN occupancy
        LEFT JOIN last_stays ON last_stays.room_id = r.id
        LEFT JOIN LATERAL (
-         SELECT b.id, c.full_name AS guest_name, b.checkin_date, b.total_price, b.deposit
+         SELECT b.id, c.full_name AS guest_name, b.checkin_date, b.checkin_at, b.checkout_at, b.stay_type, b.total_price, b.deposit
          FROM bookings b
          LEFT JOIN customers c ON c.id = b.customer_id
          WHERE b.property_id = r.property_id AND b.room_id = r.id AND b.status = 'CHECKED_IN'

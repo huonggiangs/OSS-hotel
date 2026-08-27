@@ -2,7 +2,8 @@
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $envFile = Join-Path $root "ops\.env"
 $watcherScript = Join-Path $root "ops\scripts\Watch-Oss.ps1"
-$docker = & (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1")
+$docker = [string](@(& (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1") | Where-Object { $_ })[0])
+if (-not $docker -or -not (Test-Path -LiteralPath $docker)) { throw "Không xác định được Docker CLI hợp lệ." }
 
 if (-not (Test-Path $envFile)) {
     throw "Thiếu $envFile. Chạy .\ops\scripts\Initialize-OssEnvironment.ps1 trước."

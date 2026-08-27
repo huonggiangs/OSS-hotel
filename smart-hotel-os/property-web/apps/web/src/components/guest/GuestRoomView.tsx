@@ -15,6 +15,7 @@ interface PublicRoomInfo {
   floor: string;
   basePrice: string;
   roomCode: string;
+  supportPartners?: { name: string; category: string; phone?: string; note?: string }[];
 }
 
 interface SepayQrResponse {
@@ -131,6 +132,15 @@ export function GuestRoomView({ token }: { token: string }) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={sepayImgUrl} alt="Mã QR thanh toán SePay" className="mx-auto w-full max-w-[260px] rounded-lg border border-pms-border" />
                 <p className="mt-2 text-[11.5px] text-pms-muted">Quét mã bằng ứng dụng ngân hàng để đặt cọc trước khi nhận phòng.</p>
+              </div>
+            )}
+            {room.supportPartners && room.supportPartners.length > 0 && (
+              <div className="mt-5 border-t border-pms-divider pt-4">
+                <b className="mb-2 block text-[14px]">Cần hỗ trợ trong phòng?</b>
+                <p className="mt-0 text-[11.5px] text-pms-muted">Liên hệ lễ tân hoặc đối tác hỗ trợ phù hợp:</p>
+                <div className="flex flex-col gap-2">
+                  {room.supportPartners.map((partner) => <div key={`${partner.name}-${partner.category}`} className="rounded-lg bg-pms-bg px-3 py-2 text-[12px]"><b>{partner.category}: {partner.name}</b>{partner.phone && <><br /><a href={`tel:${partner.phone.replace(/\s/g, "")}`} className="text-pms-primary">{partner.phone}</a></>}{partner.note && <span className="block text-pms-muted">{partner.note}</span>}</div>)}
+                </div>
               </div>
             )}
           </>

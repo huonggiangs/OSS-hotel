@@ -10,6 +10,7 @@ import { Errors } from "../utils/errors";
 export const publicRoomsRouter = Router();
 
 interface PublicRoomRow {
+  property_id: string;
   property_name: string;
   property_phone: string | null;
   room_number: string;
@@ -19,11 +20,36 @@ interface PublicRoomRow {
   room_code: string;
 }
 
+interface SupportPartner {
+  name: string;
+  category: string;
+  phone?: string;
+  note?: string;
+}
+
+function publicSupportPartners(value: unknown): SupportPartner[] {
+  if (!value || typeof value !== "object") return [];
+  const candidates = (value as { maintenancePartners?: unknown }).maintenancePartners;
+  if (!Array.isArray(candidates)) return [];
+  return candidates.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== "object") return [];
+    const item = candidate as Record<string, unknown>;
+    if (item.visibleToGuest === false || typeof item.name !== "string" || typeof item.category !== "string") return [];
+    return [{
+      name: item.name,
+      category: item.category,
+      ...(typeof item.phone === "string" && item.phone.trim() ? { phone: item.phone.trim() } : {}),
+      ...(typeof item.note === "string" && item.note.trim() ? { note: item.note.trim() } : {}),
+    }];
+  });
+}
+
 publicRoomsRouter.get(
   "/rooms/:token",
   asyncHandler(async (req, res) => {
     const { rows } = await pool.query<PublicRoomRow>(
       `SELECT
+         p.id AS property_id,
          p.name AS property_name,
          p.phone AS property_phone,
          r.number AS room_number,
@@ -39,6 +65,10 @@ publicRoomsRouter.get(
     );
     const row = rows[0];
     if (!row) throw Errors.notFound("thông tin phòng");
+    const { rows: settingRows } = await pool.query<{ data: unknown }>(
+      `SELECT data FROM property_settings WHERE property_id = $1 AND group_key = 'utilities'`,
+      [row.property_id]
+    );
     res.json({
       propertyName: row.property_name,
       propertyPhone: row.property_phone,
@@ -47,6 +77,7 @@ publicRoomsRouter.get(
       floor: row.floor,
       basePrice: row.base_price,
       roomCode: row.room_code,
+      supportPartners: publicSupportPartners(settingRows[0]?.data),
     });
   })
 );

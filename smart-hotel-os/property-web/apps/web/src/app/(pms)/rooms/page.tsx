@@ -7,11 +7,13 @@ import { RoomGrid } from "@/components/rooms/RoomGrid";
 import { QuickCheckinModal } from "@/components/rooms/QuickCheckinModal";
 import { StayManageModal } from "@/components/rooms/StayManageModal";
 import { HousekeepingSentModal } from "@/components/rooms/HousekeepingSentModal";
+import { MaintenanceRequestModal } from "@/components/rooms/MaintenanceRequestModal";
 import { api, isApiError } from "@/lib/api-client";
 import { buildRoomBreakdown, ROOM_STATUS_BY_API, ROOM_STATUS_KEYS, ROOM_STATUS_INFO, type ApiRoomStatus, type RoomCard, type RoomStatusKey } from "@/lib/room-status";
 
 interface ApiRoom {
   id: string;
+  room_type_id: string;
   number: string;
   floor: string;
   zone: string;
@@ -23,6 +25,9 @@ interface ApiRoom {
   active_booking_id: string | null;
   active_guest_name: string | null;
   active_checkin_date: string | null;
+  active_checkin_at: string | null;
+  active_checkout_at: string | null;
+  active_stay_type: "HOURLY" | "OVERNIGHT" | "DAILY" | null;
   active_booking_total_price: string | null;
   active_booking_deposit: string | null;
 }
@@ -30,17 +35,19 @@ interface ApiRoom {
 function formatVnd(amount: string | number) {
   return `${Number(amount).toLocaleString("vi-VN")}đ`;
 }
-function stayDuration(checkinDate: string | null) {
-  if (!checkinDate) return undefined;
-  const elapsed = Math.max(1, Math.floor((Date.now() - new Date(`${checkinDate.slice(0, 10)}T00:00:00`).getTime()) / 86_400_000) + 1);
-  return { hours: elapsed * 24, label: `${elapsed} ngày` };
+function stayDuration(checkinAt: string | null, fallbackDate: string | null) {
+  const source = checkinAt ?? (fallbackDate ? `${fallbackDate.slice(0, 10)}T00:00:00` : null);
+  if (!source) return undefined;
+  const elapsedHours = Math.max(1, Math.floor((Date.now() - new Date(source).getTime()) / 3_600_000));
+  return { hours: elapsedHours, label: elapsedHours < 24 ? `${elapsedHours} giờ` : `${Math.floor(elapsedHours / 24)} ngày ${elapsedHours % 24} giờ` };
 }
 function mapRoom(room: ApiRoom): RoomCard {
   const statusKey = ROOM_STATUS_BY_API[room.status];
   const info = ROOM_STATUS_INFO[statusKey];
-  const stay = stayDuration(room.active_checkin_date);
+  const stay = stayDuration(room.active_checkin_at, room.active_checkin_date);
   return {
     id: room.id,
+    roomTypeId: room.room_type_id,
     n: room.number,
     floor: room.floor,
     zone: room.zone,
@@ -60,6 +67,7 @@ function mapRoom(room: ApiRoom): RoomCard {
     activeBookingId: room.active_booking_id ?? undefined,
     activeBookingTotal: room.active_booking_total_price === null ? undefined : Number(room.active_booking_total_price),
     activeBookingDeposit: room.active_booking_deposit === null ? undefined : Number(room.active_booking_deposit),
+    activeStayType: room.active_stay_type ?? undefined,
   };
 }
 
@@ -77,6 +85,7 @@ export default function RoomsPage() {
   const [quickCheckinRoom, setQuickCheckinRoom] = useState<RoomCard | null>(null);
   const [stayManageRoom, setStayManageRoom] = useState<RoomCard | null>(null);
   const [housekeepingRoom, setHousekeepingRoom] = useState<RoomCard | null>(null);
+  const [maintenanceRoom, setMaintenanceRoom] = useState<RoomCard | null>(null);
 
   async function load() {
     setLoading(true);
@@ -124,6 +133,7 @@ export default function RoomsPage() {
     if (room.statusKey === "occupied") setStayManageRoom(room);
     else if (room.statusKey === "dirty") setHousekeepingRoom(room);
     else if (room.statusKey === "vacant") setQuickCheckinRoom(room);
+    else if (room.statusKey === "maintenance") setMaintenanceRoom(room);
   }
   async function handleTogglePower(roomId: string) {
     const room = rooms.find((item) => item.id === roomId);
@@ -150,6 +160,7 @@ export default function RoomsPage() {
       {quickCheckinRoom && <QuickCheckinModal room={quickCheckinRoom} onClose={() => setQuickCheckinRoom(null)} onChanged={load} />}
       {stayManageRoom && <StayManageModal room={stayManageRoom} onClose={() => setStayManageRoom(null)} onChanged={load} />}
       {housekeepingRoom && <HousekeepingSentModal room={housekeepingRoom} onClose={() => setHousekeepingRoom(null)} onChanged={load} />}
+      {maintenanceRoom && <MaintenanceRequestModal room={maintenanceRoom} onClose={() => setMaintenanceRoom(null)} onChanged={load} />}
     </div>
   );
 }

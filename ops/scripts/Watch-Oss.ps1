@@ -11,7 +11,14 @@ $envFile = Join-Path $root "ops\.env"
 $runtimeDir = Join-Path $root "ops\.runtime"
 $logFile = Join-Path $runtimeDir "auto-update.log"
 $backupScript = Join-Path $root "ops\scripts\Backup-Oss.ps1"
-$docker = & (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1")
+# Ép về đúng một chuỗi đường dẫn. Một số phiên PowerShell có thể trả thêm
+# output từ profile/command discovery; nếu để mảng đi vào toán tử `&`, Docker
+# bị ghép thành một lệnh không hợp lệ và watcher bỏ qua lần deploy.
+$dockerValues = @(& (Join-Path $PSScriptRoot "Resolve-OssDocker.ps1") | Where-Object { $_ })
+$docker = [string]$dockerValues[0]
+if (-not $docker -or -not (Test-Path -LiteralPath $docker)) {
+    throw "Không xác định được Docker CLI hợp lệ cho watcher."
+}
 
 if (-not (Test-Path $envFile)) {
     throw "Thiếu $envFile. Chạy Initialize-OssEnvironment.ps1 trước."
