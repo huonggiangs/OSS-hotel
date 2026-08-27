@@ -163,7 +163,7 @@ export default function TimePage() {
     <div>
       <h1 className="mb-5 text-[22px] font-bold">Thời gian</h1>
 
-      <div className="mb-4 rounded-xl bg-white p-6 shadow-card">
+      <div className="mb-4 min-w-0 rounded-xl bg-white p-4 shadow-card sm:p-6">
         {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
         {!loading && (
           <div className="flex max-w-[900px] flex-col gap-[18px]">
@@ -192,7 +192,7 @@ export default function TimePage() {
                 ))}
               </select>
             </FieldRow>
-            <div className="grid grid-cols-[220px_130px_30px_130px] items-center gap-3">
+            <div className="grid gap-3 sm:grid-cols-[180px_130px_30px_130px] sm:items-center lg:grid-cols-[220px_130px_30px_130px]">
               <span className="text-[13px]">Nhận phòng / trả phòng</span>
               <input
                 type="time"
@@ -208,7 +208,7 @@ export default function TimePage() {
                 className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
               />
             </div>
-            <div className="grid grid-cols-[220px_130px_30px_130px] items-center gap-3">
+            <div className="grid gap-3 sm:grid-cols-[180px_130px_30px_130px] sm:items-center lg:grid-cols-[220px_130px_30px_130px]">
               <span className="text-[13px]">Cấu hình giờ qua đêm</span>
               <input
                 type="time"
@@ -224,7 +224,7 @@ export default function TimePage() {
                 className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
               />
             </div>
-            <div className="grid grid-cols-[220px_120px_1fr] items-center gap-3">
+            <div className="grid gap-3 sm:grid-cols-[180px_120px_minmax(0,1fr)] sm:items-center lg:grid-cols-[220px_120px_minmax(0,1fr)]">
               <span className="text-[13px]">Làm tròn giờ</span>
               <div className="flex justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px]">
                 <input
@@ -238,7 +238,7 @@ export default function TimePage() {
                 <span className="text-pms-muted">Phút</span>
               </div>
             </div>
-            <div className="grid grid-cols-[220px_120px_1fr] items-center gap-3">
+            <div className="grid gap-3 sm:grid-cols-[180px_120px_minmax(0,1fr)] sm:items-center lg:grid-cols-[220px_120px_minmax(0,1fr)]">
               <span className="text-[13px]">Dọn phòng</span>
               <div className="flex justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px]">
                 <input
@@ -281,10 +281,10 @@ export default function TimePage() {
         )}
       </div>
 
-      <div className="mb-4 rounded-xl bg-white p-6 shadow-card">
+      <div className="mb-4 min-w-0 rounded-xl bg-white p-4 shadow-card sm:p-6">
         <h3 className="mb-[18px] text-[16px] font-bold">Thời gian tiện ích lưu trú ngắn hạn</h3>
         <div className="flex max-w-[700px] flex-col gap-[18px]">
-          <div className="grid grid-cols-[220px_1fr] items-center gap-3">
+          <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center lg:grid-cols-[220px_minmax(0,1fr)]">
             <span className="text-[13px]">Ngày chốt số điện, nước</span>
             <div
               className="flex max-w-[200px] cursor-pointer justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
@@ -293,7 +293,7 @@ export default function TimePage() {
               {form.billingDayOfMonth} 📅
             </div>
           </div>
-          <div className="grid grid-cols-[220px_1fr] items-center gap-3">
+          <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center lg:grid-cols-[220px_minmax(0,1fr)]">
             <span className="text-[13px]">Cắt điện nếu chưa thanh toán vào ngày</span>
             <div
               className="flex max-w-[200px] cursor-pointer justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
@@ -302,7 +302,7 @@ export default function TimePage() {
               {form.cutoffDayOfMonth} 📅
             </div>
           </div>
-          <div className="grid grid-cols-[220px_1fr] gap-3">
+          <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)] lg:grid-cols-[220px_minmax(0,1fr)]">
             <span className="pt-0.5 text-[13px]">Áp dụng dịch vụ trả trước</span>
             <div className="flex flex-col gap-3">
               {form.prepaidServices.map((s) => (
@@ -330,7 +330,7 @@ export default function TimePage() {
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[220px_1fr] items-center gap-4">
+    <div className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center sm:gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
       <span className="text-[13px]">{label}</span>
       {children}
     </div>

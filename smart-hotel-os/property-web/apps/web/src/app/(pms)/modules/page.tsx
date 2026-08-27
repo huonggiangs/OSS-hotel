@@ -33,7 +33,7 @@ export default function ModulesPage() {
       <h1 className="mb-1 text-[22px] font-bold">Module nâng cao</h1>
       <p className="mb-[22px] text-[13px] text-pms-muted">Bật/tắt các module mở rộng cho cơ sở của bạn</p>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {data.items.map((m) => (
           <div key={m.key} className="rounded-xl bg-white px-[18px] pb-3.5 pt-[18px] shadow-card">
             <div className="mb-2.5 flex justify-end">

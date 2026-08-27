@@ -49,6 +49,44 @@ const VALID_GROUPS = new Set([
 
 const putSchema = z.object({ data: z.unknown() });
 
+interface FacilityLanguageSettings {
+  language?: unknown;
+  languageMode?: unknown;
+}
+
+const SUPPORTED_LANGUAGES = new Set(["vi", "en", "ko", "zh", "ja"]);
+const LANGUAGE_BY_COUNTRY: Record<string, string> = {
+  VN: "vi", US: "en", GB: "en", AU: "en", CA: "en", KR: "ko", CN: "zh", TW: "zh", HK: "zh", JP: "ja",
+};
+
+function browserLanguage(req: import("express").Request): string {
+  const raw = req.get("accept-language")?.split(",")[0]?.trim().toLowerCase().split("-")[0] ?? "";
+  return SUPPORTED_LANGUAGES.has(raw) ? raw : "vi";
+}
+
+function isPublicIp(ip: string): boolean {
+  if (!ip || ip === "::1" || ip === "localhost") return false;
+  if (/^(10\.|127\.|192\.168\.|169\.254\.|0\.)/.test(ip)) return false;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return false;
+  return true;
+}
+
+async function languageFromClientIp(ip: string): Promise<string | null> {
+  if (!isPublicIp(ip)) return null;
+  try {
+    const response = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(2_500),
+    });
+    if (!response.ok) return null;
+    const body = await response.json() as { success?: boolean; country_code?: string };
+    const country = typeof body.country_code === "string" ? body.country_code.toUpperCase() : "";
+    return LANGUAGE_BY_COUNTRY[country] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 const floorRoomSchema = z.object({
   id: z.string().min(1).max(100),
   name: z.string().trim().min(1).max(120),
@@ -134,6 +172,27 @@ settingsRouter.get(
   "/security/observed-ip",
   asyncHandler(async (req, res) => {
     res.json({ ip: requestIp(req) });
+  })
+);
+
+// Chọn ngôn ngữ cho client mà không lưu IP khách. Với LAN/private IP không
+// thể suy ra quốc gia đáng tin cậy, nên rơi về Accept-Language của trình duyệt.
+settingsRouter.get(
+  "/language/resolve",
+  asyncHandler(async (req, res) => {
+    const facility = await settingsRepo.get(req.user!.propertyId, "facility") as FacilityLanguageSettings | null;
+    const configured = typeof facility?.language === "string" && SUPPORTED_LANGUAGES.has(facility.language) ? facility.language : "vi";
+    const mode = facility?.languageMode === "BROWSER" || facility?.languageMode === "IP" ? facility.languageMode : "DEFAULT";
+    if (mode === "DEFAULT") {
+      res.json({ language: configured, source: "default" });
+      return;
+    }
+    if (mode === "BROWSER") {
+      res.json({ language: browserLanguage(req), source: "browser" });
+      return;
+    }
+    const fromIp = await languageFromClientIp(requestIp(req));
+    res.json({ language: fromIp ?? browserLanguage(req), source: fromIp ? "ip" : "browser-fallback" });
   })
 );
 

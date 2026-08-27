@@ -84,7 +84,7 @@ export default function NightAuditPage() {
       <h1 className="mb-1 text-[22px] font-bold">Kế toán đêm</h1>
       <p className="mb-[22px] text-[13px] text-pms-muted">Đối soát doanh thu cuối ngày</p>
 
-      <div className="mb-5 grid grid-cols-4 gap-4">
+      <div className="mb-5 grid grid-cols-2 gap-4 xl:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-xl bg-white px-5 py-[18px] shadow-card">
             <span className="text-[12px] text-pms-muted">{s.label}</span>

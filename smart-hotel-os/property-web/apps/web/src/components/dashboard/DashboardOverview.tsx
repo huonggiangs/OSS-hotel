@@ -134,7 +134,7 @@ export function DashboardOverview() {
     <div>
       {error && <p className="mb-3.5 rounded-lg bg-pms-danger-bg px-3 py-2 text-[12.5px] text-pms-danger">{error}</p>}
 
-      <div className="mb-3.5 grid grid-cols-4 gap-3.5">
+      <div className="mb-3.5 grid grid-cols-2 gap-3.5 xl:grid-cols-4">
         {displayedKpis.map((k, index) => (
           <div key={k?.label ?? index} className="rounded-xl bg-white p-3.5 px-4 shadow-card">
             {k ? (
@@ -147,7 +147,7 @@ export function DashboardOverview() {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 items-start gap-4">
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-3">
         <section className="flex flex-col gap-3">
           <div className="text-[11px] font-bold uppercase tracking-wide text-pms-primary">Doanh thu &amp; đặt phòng</div>
           <div className="rounded-xl bg-white p-4 shadow-card">

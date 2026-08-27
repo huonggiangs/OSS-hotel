@@ -132,8 +132,8 @@ export default function AmenitiesPage() {
 
   return <div>
     <Link href="/branches" className="mb-4 flex items-center gap-3 text-[#23262F]"><span className="text-[18px]">←</span><h1 className="m-0 text-[20px] font-bold">Tên cơ sở</h1></Link>
-    <div className="rounded-xl bg-white p-6 shadow-card">
-      <div className="mb-6 flex items-center justify-between border-b border-pms-border"><div className="flex gap-7 text-[14px]">{TABS.map((item) => <button key={item.key} type="button" className="cursor-pointer border-0 bg-transparent pb-3 font-semibold" style={{ color: tab === item.key ? "#284AB1" : "#777E90", borderBottom: `2px solid ${tab === item.key ? "#284AB1" : "transparent"}` }} onClick={() => setTab(item.key)}>{item.label}</button>)}</div><span className="pb-3 text-[12px] text-pms-primary">{saving ? "Đang lưu..." : "Lưu vào server"}</span></div>
+    <div className="min-w-0 rounded-xl bg-white p-4 shadow-card sm:p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-pms-border"><div className="flex flex-wrap gap-x-7 gap-y-1 text-[14px]">{TABS.map((item) => <button key={item.key} type="button" className="cursor-pointer border-0 bg-transparent pb-3 font-semibold" style={{ color: tab === item.key ? "#284AB1" : "#777E90", borderBottom: `2px solid ${tab === item.key ? "#284AB1" : "transparent"}` }} onClick={() => setTab(item.key)}>{item.label}</button>)}</div><span className="pb-3 text-[12px] text-pms-primary">{saving ? "Đang lưu..." : "Lưu vào server"}</span></div>
       {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
       {(error || actionError || iconError) && <p className="text-[12px] text-pms-danger">{actionError ?? iconError ?? error}</p>}
       {!loading && <>

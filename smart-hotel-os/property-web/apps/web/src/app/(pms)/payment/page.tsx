@@ -151,14 +151,14 @@ export default function PaymentPage() {
         <h3 className="mb-0.5 text-[20px] font-bold">Thanh toán</h3>
         <p className="mb-5 text-[13px] text-pms-text">Thanh toán với mọi hình thức</p>
 
-        <div className="mb-6 grid grid-cols-[220px_1fr] gap-4">
+        <div className="mb-6 grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
           <div>
             <div className="text-[13px] font-semibold">Kênh thanh toán</div>
             <div className="max-w-[180px] text-[11px] text-pms-muted">
               Chỉ SePay hiện có tích hợp API thật. Các kênh khác hiển thị để tham khảo, chưa thể sử dụng.
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             {!loadingSettings &&
               settings.channels.map((c) => (
                 <Checkbox key={c} label={c} checked={settings.selectedChannels.includes(c)} disabled={c !== "SePay"} />
@@ -190,7 +190,7 @@ export default function PaymentPage() {
             <div className="text-[13px] text-pms-muted">Đang tải...</div>
           ) : (
             <>
-              <div className="grid grid-cols-[238px_1fr] items-center gap-6">
+              <div className="grid gap-2 md:grid-cols-[238px_minmax(0,1fr)] md:items-center md:gap-6">
                 <span className="text-[13px]">Bật SePay</span>
                 <div
                   className="flex h-6 w-11 cursor-pointer items-center rounded-full p-0.5 transition-colors"
@@ -204,7 +204,7 @@ export default function PaymentPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-[238px_1fr] items-center gap-6">
+              <div className="grid gap-2 md:grid-cols-[238px_minmax(0,1fr)] md:items-center md:gap-6">
                 <span className="text-[13px]">Số tài khoản ngân hàng</span>
                 <input
                   value={form.sepay.bankAccount}
@@ -214,7 +214,7 @@ export default function PaymentPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-[238px_1fr] items-center gap-6">
+              <div className="grid gap-2 md:grid-cols-[238px_minmax(0,1fr)] md:items-center md:gap-6">
                 <div>
                   <div className="text-[13px]">Tên ngân hàng</div>
                   <div className="text-[11px] text-pms-muted">VD: Vietcombank, ACB, MB, Techcombank...</div>
@@ -227,7 +227,7 @@ export default function PaymentPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-[238px_1fr] items-center gap-6">
+              <div className="grid gap-2 md:grid-cols-[238px_minmax(0,1fr)] md:items-center md:gap-6">
                 <span className="text-[13px]">Tên chủ tài khoản</span>
                 <input
                   value={form.sepay.accountHolder}
@@ -237,7 +237,7 @@ export default function PaymentPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-[238px_1fr] items-center gap-6">
+              <div className="grid gap-2 md:grid-cols-[238px_minmax(0,1fr)] md:items-center md:gap-6">
                 <div>
                   <div className="text-[13px]">API Token</div>
                   <div className="text-[11px] text-pms-muted">
@@ -300,7 +300,7 @@ export default function PaymentPage() {
 
         <h3 className="mb-0.5 text-[20px] font-bold">Hình thức thanh toán</h3>
         <p className="mb-5 text-[13px] text-pms-text">Thanh toán với mọi hình thức</p>
-        <div className="grid grid-cols-[220px_1fr] gap-4">
+        <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
           <span />
           <div className="flex flex-col gap-3.5">
             {!loadingSettings &&
@@ -408,7 +408,7 @@ function GatewaySection({
 
 function GatewayField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[238px_1fr] items-center gap-6">
+    <div className="grid gap-2 md:grid-cols-[238px_minmax(0,1fr)] md:items-center md:gap-6">
       <span className="text-[13px]">{label}</span>
       <div className="cursor-not-allowed rounded-lg border border-pms-border bg-pms-divider px-3 py-2.5 text-[13px] text-pms-muted-2">
         {value}

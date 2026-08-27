@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
+import { PmsLocaleProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "ANIO PMS — Property Web",
@@ -14,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider><PmsLocaleProvider>{children}</PmsLocaleProvider></AuthProvider>
       </body>
     </html>
   );

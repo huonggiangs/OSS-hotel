@@ -145,7 +145,7 @@ export default function RoomsPage() {
     <div>
       {error && <p className="mb-3 rounded-lg bg-pms-danger-bg px-3 py-2 text-[12.5px] text-pms-danger">{error}</p>}
       <RoomFilterPanels zoneLegend={breakdown.zoneLegend} floorLegend={breakdown.floorLegend} statusLegend={breakdown.statusLegend} typeLegend={breakdown.typeLegend} roomTotal={breakdown.total} filters={filters} onChange={changeFilters} />
-      <div className="mb-5 grid grid-cols-4 gap-4"><Kpi label="Công suất phòng" value={breakdown.occupancyRate} color="#284AB1" /><Kpi label="Tổng số phòng" value={String(breakdown.total)} /><Kpi label="Chờ dọn phòng" value={String(breakdown.dirtyCount)} color="#B1B5C3" /><Kpi label="Đang bảo trì" value={String(breakdown.maintenanceCount)} color="#FAB505" /></div>
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4"><Kpi label="Công suất phòng" value={breakdown.occupancyRate} color="#284AB1" /><Kpi label="Tổng số phòng" value={String(breakdown.total)} /><Kpi label="Chờ dọn phòng" value={String(breakdown.dirtyCount)} color="#B1B5C3" /><Kpi label="Đang bảo trì" value={String(breakdown.maintenanceCount)} color="#FAB505" /></div>
       <RoomGrid rooms={filteredRooms} onTogglePower={handleTogglePower} onRoomClick={handleRoomClick} />
       {quickCheckinRoom && <QuickCheckinModal room={quickCheckinRoom} onClose={() => setQuickCheckinRoom(null)} onChanged={load} />}
       {stayManageRoom && <StayManageModal room={stayManageRoom} onClose={() => setStayManageRoom(null)} onChanged={load} />}

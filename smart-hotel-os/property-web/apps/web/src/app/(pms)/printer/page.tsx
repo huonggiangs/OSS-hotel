@@ -148,7 +148,7 @@ export default function PrinterPage() {
         <>
           <div className="mb-4 rounded-xl bg-white p-6 shadow-card">
             <h3 className="mb-3.5 text-[15px] font-semibold">Máy in</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-[12px]">Máy in mặc định</label>
                 <input
@@ -249,7 +249,7 @@ export default function PrinterPage() {
                     {expandedId === t.id && (
                       <tr>
                         <td colSpan={5} className="border-b border-pms-divider bg-pms-divider/30 px-2 py-3">
-                          <div className="grid grid-cols-4 gap-3 text-[12px] text-pms-muted">
+                          <div className="grid grid-cols-2 gap-3 text-[12px] text-pms-muted lg:grid-cols-4">
                             <div>
                               <b className="block text-pms-text">Loại chứng từ</b>
                               {t.doc}

@@ -161,7 +161,7 @@ export default function SyncPage() {
 
             <ToggleRow label="Đồng bộ với google hotel" on={form.syncGoogleHotel} onClick={() => saveToggles({ ...form, syncGoogleHotel: !form.syncGoogleHotel })} />
             <ToggleRow label="Đồng bộ website" on={form.syncWebsite} onClick={() => saveToggles({ ...form, syncWebsite: !form.syncWebsite })} />
-            <div className="grid grid-cols-[220px_1fr] items-center gap-4 border-t border-pms-divider py-3">
+            <div className="grid gap-2 border-t border-pms-divider py-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center sm:gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
               <span className="text-[13px]">Thời gian đồng bộ</span>
               <input
                 type="time"
@@ -189,7 +189,7 @@ function Badge({ children }: { children: React.ReactNode }) {
 
 function ToggleRow({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
   return (
-    <div className="grid grid-cols-[220px_1fr] items-center gap-4 border-t border-pms-divider py-3">
+    <div className="grid gap-2 border-t border-pms-divider py-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center sm:gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
       <span className="text-[13px]">{label}</span>
       <div className="relative h-6 w-10 cursor-pointer rounded-full" style={{ background: on ? "#284AB1" : "#E6E8EC" }} onClick={onClick}>
         <div className="absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white" style={{ left: on ? "auto" : 3, right: on ? 3 : "auto" }} />

@@ -31,7 +31,7 @@ export function RoomFilterPanels({
   onChange: (next: RoomFilters) => void;
 }) {
   return (
-    <div className="mb-4 grid grid-cols-4 gap-4">
+    <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Panel title="Khu vực" count={zoneLegend.length} unit="khu vực" total={undefined}>
         <Donut
           gradient={buildConicGradient(zoneLegend)}

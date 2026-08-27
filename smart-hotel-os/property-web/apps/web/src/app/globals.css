@@ -10,6 +10,8 @@
 
 body {
   margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   background: #fafafa;
   color: #23262f;
   font-family:
@@ -21,6 +23,13 @@ body {
     "Helvetica Neue",
     Arial,
     sans-serif;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
 }
 
 ::-webkit-scrollbar {
@@ -74,6 +83,19 @@ a:hover {
   color: #cc2f42;
   font-size: 12px;
   cursor: pointer;
+}
+
+@media (max-width: 639px) {
+  .button,
+  .delete {
+    min-height: 38px;
+  }
+
+  /* Các bảng giữ cấu trúc dữ liệu đầy đủ và cuộn bên trong card thay vì đẩy
+     toàn bộ trang ngang ra ngoài trên điện thoại. */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Biểu đồ tròn dùng cho các panel thống kê (khu vực/tầng/trạng thái/loại phòng ở Rooms,

@@ -177,7 +177,7 @@ export default function ExpensesPage() {
           <p className="mb-4 text-[13px] text-pms-muted">
             Các khoản thu/chi phát sinh trong ngày phải được quản lý phê duyệt trước khi hạch toán
           </p>
-          <div className="mb-5 grid grid-cols-3 gap-4">
+          <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-xl bg-white px-5 py-[18px] shadow-card">
               <span className="text-[12px] text-pms-muted">Tổng thu hôm nay</span>
               <b className="mt-1.5 block text-[22px] text-pms-success">{daily.incomeTotal}</b>

@@ -30,7 +30,7 @@ export default function ChannelPage() {
       {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
       {error && <div className="text-[13px] text-red-500">{error}</div>}
       {!loading && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {data.items.map((ch) => (
             <div key={ch.name} className="flex flex-col gap-2.5 rounded-xl border border-pms-border bg-white p-5">
               <div

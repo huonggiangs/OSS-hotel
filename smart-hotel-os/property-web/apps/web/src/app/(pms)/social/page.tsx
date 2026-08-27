@@ -37,8 +37,8 @@ export default function SocialPage() {
         Kết nối kênh &amp; tự động đăng bán/giới thiệu khi phòng còn trống {saving && <span className="text-[11px]">(đang lưu...)</span>}
       </p>
 
-      <div className="rounded-xl bg-white p-6 shadow-card">
-        <div className="grid grid-cols-[1fr_100px_220px] gap-4 border-b border-pms-divider pb-2.5 text-[11px] uppercase tracking-wide text-pms-muted">
+      <div className="min-w-0 rounded-xl bg-white p-4 shadow-card sm:p-6">
+        <div className="hidden grid-cols-[minmax(0,1fr)_100px_220px] gap-4 border-b border-pms-divider pb-2.5 text-[11px] uppercase tracking-wide text-pms-muted sm:grid">
           <span>Kênh</span>
           <span>Kết nối</span>
           <span>Tự động đăng khi còn phòng trống</span>
@@ -46,7 +46,7 @@ export default function SocialPage() {
         {loading && <div className="py-3 text-[13px] text-pms-muted">Đang tải...</div>}
         {!loading &&
           links.map((s) => (
-            <div key={s.name} className="grid grid-cols-[1fr_100px_220px] items-center gap-4 border-b border-pms-divider py-3.5">
+            <div key={s.name} className="grid gap-3 border-b border-pms-divider py-3.5 sm:grid-cols-[minmax(0,1fr)_100px_220px] sm:items-center sm:gap-4">
               <div>
                 <div className="text-[13px] font-semibold">{s.name}</div>
                 <div className="text-[12px] text-pms-muted">{s.handle}</div>

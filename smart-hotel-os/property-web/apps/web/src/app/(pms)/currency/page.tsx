@@ -299,7 +299,7 @@ export default function CurrencyPage() {
         {showAdd && (
           <div className="mt-4 rounded-lg border border-pms-border p-4">
             <h4 className="mb-3 text-[13px] font-semibold">Thêm tiền tệ mới</h4>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <div>
                 <label className="mb-1 block text-[12px] text-pms-muted">Mã (VD: USD)</label>
                 <input

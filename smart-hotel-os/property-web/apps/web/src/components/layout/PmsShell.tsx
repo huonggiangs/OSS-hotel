@@ -21,20 +21,34 @@ export function PmsShell({ children }: { children: React.ReactNode }) {
   const [settingsOpen, setSettingsOpen] = useState(isSettingsRoute);
   const [fontScale, setFontScale] = useState(1);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen w-full bg-pms-bg text-pms-text">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
-        settingsActive={isSettingsRoute || settingsOpen}
-        onToggleSettings={() => setSettingsOpen((v) => !v)}
-      />
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      <div className="hidden md:flex">
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+          settingsActive={isSettingsRoute || settingsOpen}
+          onToggleSettings={() => setSettingsOpen((v) => !v)}
+        />
+      </div>
+      {mobileNavOpen && <button type="button" aria-label="Đóng menu" className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={() => setMobileNavOpen(false)} />}
+      <div className={`fixed inset-y-0 left-0 z-50 md:hidden ${mobileNavOpen ? "block" : "hidden"}`}>
+        <Sidebar
+          collapsed={false}
+          onToggleCollapsed={() => setMobileNavOpen(false)}
+          settingsActive={isSettingsRoute || settingsOpen}
+          onToggleSettings={() => { setSettingsOpen((v) => !v); setMobileNavOpen(false); }}
+        />
+      </div>
+      {settingsOpen && <div className="hidden md:flex"><SettingsPanel onClose={() => setSettingsOpen(false)} /></div>}
+      {settingsOpen && <><button type="button" aria-label="Đóng cài đặt" className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={() => setSettingsOpen(false)} /><div className="fixed inset-y-0 left-0 z-50 md:hidden"><SettingsPanel onClose={() => setSettingsOpen(false)} /></div></>}
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar fontScale={fontScale} onFontScaleChange={setFontScale} onOpenUserProfile={() => setShowUserProfile(true)} />
+        <div className="flex items-center border-b border-pms-border bg-white md:hidden"><button type="button" aria-label="Mở menu" className="ml-3 rounded-lg bg-pms-divider px-2.5 py-2 text-[16px]" onClick={() => setMobileNavOpen(true)}>☰</button><div className="min-w-0 flex-1"><Topbar fontScale={fontScale} onFontScaleChange={setFontScale} onOpenUserProfile={() => setShowUserProfile(true)} /></div></div>
+        <div className="hidden md:block"><Topbar fontScale={fontScale} onFontScaleChange={setFontScale} onOpenUserProfile={() => setShowUserProfile(true)} /></div>
         {showUserProfile && <UserProfileModal onClose={() => setShowUserProfile(false)} />}
-        <div className="flex-1 overflow-y-auto p-8" style={{ zoom: fontScale } as React.CSSProperties}>
+        <div className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:p-8" style={{ zoom: fontScale } as React.CSSProperties}>
           {children}
         </div>
       </div>

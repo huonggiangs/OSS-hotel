@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { mainNav } from "@/lib/nav";
 import { useAuth } from "@/lib/auth";
+import { usePmsLocale } from "@/lib/i18n";
 
 // Tính chữ viết tắt (initials) từ họ tên đầy đủ — lấy chữ cái đầu của 2 từ cuối
 // (đúng cách hiển thị avatar tròn kiểu "LT" cho "Lê Thảo" trong bản mock cũ).
@@ -29,11 +30,12 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { t } = usePmsLocale();
   const width = collapsed ? 64 : 208;
 
   return (
     <div
-      className="flex flex-shrink-0 flex-col gap-1 border-r border-pms-border bg-white p-3 transition-[width] duration-150"
+      className="flex h-full flex-shrink-0 flex-col gap-1 border-r border-pms-border bg-white p-3 transition-[width] duration-150"
       style={{ width }}
     >
       <div className="mb-4 flex items-center gap-2.5 px-1.5">
@@ -66,7 +68,7 @@ export function Sidebar({
           <Link
             key={item.key}
             href={item.href}
-            title={item.label}
+            title={t(item.label)}
             className="flex h-10 items-center gap-2.5 rounded-[10px] px-2.5"
             style={{ background: active ? "#EEF1FB" : "transparent" }}
           >
@@ -76,7 +78,7 @@ export function Sidebar({
                 className="overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-semibold"
                 style={{ color: active ? "#284AB1" : "#777E90" }}
               >
-                {item.label}
+                {t(item.label)}
               </span>
             )}
           </Link>
@@ -86,14 +88,14 @@ export function Sidebar({
       <div className="mt-auto flex flex-col gap-1">
         <div
           onClick={onToggleSettings}
-          title="Cài đặt"
+          title={t("Cài đặt")}
           className="flex h-10 cursor-pointer items-center gap-2.5 rounded-[10px] px-2.5"
           style={{ background: settingsActive ? "#EEF1FB" : "transparent" }}
         >
           <Icon name="gear" className="h-5 w-5 flex-shrink-0" style={{ color: settingsActive ? "#284AB1" : "#777E90" }} />
           {!collapsed && (
             <span className="text-[13px] font-semibold" style={{ color: settingsActive ? "#284AB1" : "#777E90" }}>
-              Cài đặt
+              {t("Cài đặt")}
             </span>
           )}
         </div>

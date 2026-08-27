@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth, roleLabel } from "@/lib/auth";
+import { usePmsLocale } from "@/lib/i18n";
 
 function initialsOf(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
@@ -28,29 +29,30 @@ export function Topbar({
 }) {
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
   const { user } = useAuth();
+  const { languageName, t } = usePmsLocale();
 
   return (
-    <div className="flex h-20 flex-shrink-0 items-center justify-between border-b border-pms-border bg-white px-8">
-      <div className="flex w-80 items-center gap-2.5 rounded-[10px] bg-pms-divider px-3.5 py-2.5 text-[13px] text-pms-muted">
+    <div className="flex h-16 flex-shrink-0 items-center justify-between gap-3 border-b border-pms-border bg-white px-4 sm:h-20 sm:px-8">
+      <div className="hidden w-80 items-center gap-2.5 rounded-[10px] bg-pms-divider px-3.5 py-2.5 text-[13px] text-pms-muted lg:flex">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <circle cx="11" cy="11" r="7" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
-        Tìm kiếm khách, mã đặt phòng...
+        {t("Tìm kiếm khách, mã đặt phòng...")}
       </div>
-      <div className="relative flex items-center gap-5">
+      <div className="relative ml-auto flex min-w-0 items-center gap-2 sm:gap-5">
         <div className="flex cursor-pointer items-center gap-1.5 text-pms-text">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <circle cx="12" cy="12" r="9" />
             <path d="M3 12h18" />
             <path d="M12 3a15 15 0 010 18a15 15 0 010-18" />
           </svg>
-          <span className="text-[13px] font-semibold">Tiếng Việt</span>
+          <span className="hidden text-[13px] font-semibold sm:inline">{languageName}</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#777E90" strokeWidth={2.5}>
             <path d="M6 9l6 6 6-6" />
           </svg>
         </div>
-        <div className="h-6 w-px bg-pms-border" />
+        <div className="hidden h-6 w-px bg-pms-border sm:block" />
         <div className="relative">
           <div className="flex cursor-pointer items-center gap-1 text-pms-text" onClick={() => setFontMenuOpen((v) => !v)}>
             <span className="text-[13px] font-bold">Aa</span>
@@ -74,13 +76,13 @@ export function Topbar({
                     setFontMenuOpen(false);
                   }}
                 >
-                  {fo.label}
+                  {t(fo.label)}
                 </div>
               ))}
             </div>
           )}
         </div>
-        <div className="h-6 w-px bg-pms-border" />
+        <div className="hidden h-6 w-px bg-pms-border sm:block" />
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#777E90" strokeWidth={2}>
           <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 01-3.46 0" />
@@ -91,9 +93,9 @@ export function Topbar({
             <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-pms-primary text-[13px] font-semibold text-white">
               {initialsOf(user.full_name)}
             </div>
-            <div className="text-[13px]">
+            <div className="hidden text-[13px] sm:block">
               <b>{user.full_name}</b>
-              <div className="text-[12px] text-pms-muted">{roleLabel[user.role]}</div>
+              <div className="text-[12px] text-pms-muted">{t(roleLabel[user.role])}</div>
             </div>
           </div>
         )}

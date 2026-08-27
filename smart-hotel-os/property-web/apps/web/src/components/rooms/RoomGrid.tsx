@@ -17,7 +17,7 @@ export function RoomGrid({
 }) {
   return (
     <div className="rounded-xl bg-white p-6 shadow-card">
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {rooms.map((r) => {
           const powered = r.powered;
           return (
