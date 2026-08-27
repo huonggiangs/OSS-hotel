@@ -91,3 +91,24 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
   }
   return res.blob();
 }
+
+/** Upload nhị phân có JWT. Không dùng api.post vì JSON/base64 sẽ làm phình video
+ * và dễ vượt giới hạn request; server chỉ nhận các loại media đã allowlist. */
+export async function apiUpload<T>(path: string, file: File): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+      "X-File-Name": encodeURIComponent(file.name),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: file,
+  });
+  if (!res.ok) {
+    let body: { error_code?: string; message?: string } = {};
+    try { body = await res.json(); } catch { /* response không có JSON */ }
+    throw new ApiClientError(res.status, body.error_code ?? "UNKNOWN_ERROR", body.message ?? "Tải tệp thất bại.");
+  }
+  return res.json() as Promise<T>;
+}

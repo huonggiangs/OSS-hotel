@@ -19,6 +19,7 @@ export type DeviceControlKind =
   | "LIGHTING_CONTROLLER"
   | "AC_CONTROLLER"
   | "DOOR_LOCK"
+  | "CARD_DISPENSER"
   | "ANNOUNCEMENT_SPEAKER"
   | "SMART_TV"
   | "OTHER";
@@ -161,10 +162,13 @@ export interface Device {
   tenant_id: string;
   room_id: string | null;
   device_type: DeviceType;
+  control_kind: DeviceControlKind;
   name: string;
   external_id: string | null;
   status: DeviceStatus;
   power_on: boolean;
+  location_scope: "ROOM" | "FLOOR" | "ZONE" | "PROPERTY";
+  location_label: string | null;
   // Migration 004: mã thiết bị chung, liên kết logic sang webadmin.hardware_assets.asset_code.
   asset_code: string | null;
   created_at: Date;

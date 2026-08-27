@@ -18,6 +18,7 @@ type DeviceControlKind =
   | "LIGHTING_CONTROLLER"
   | "AC_CONTROLLER"
   | "DOOR_LOCK"
+  | "CARD_DISPENSER"
   | "ANNOUNCEMENT_SPEAKER"
   | "SMART_TV"
   | "OTHER";
@@ -36,6 +37,7 @@ const DEVICE_KINDS: { value: DeviceControlKind; label: string; icon: string }[] 
   { value: "POWER_METER", label: "Công tơ đo điện", icon: "⚡" },
   { value: "LIGHTING_CONTROLLER", label: "Điều khiển ánh sáng", icon: "💡" },
   { value: "DOOR_LOCK", label: "Khóa thông minh", icon: "🔐" },
+  { value: "CARD_DISPENSER", label: "Bộ cấp / thu hồi thẻ", icon: "🪪" },
   { value: "ANNOUNCEMENT_SPEAKER", label: "Loa thông báo", icon: "🔊" },
   { value: "SMART_TV", label: "Smart TV", icon: "📺" },
   { value: "AC_CONTROLLER", label: "Điều khiển điều hòa", icon: "❄️" },

@@ -9,6 +9,8 @@ export interface DeviceInput {
   externalId?: string | null;
   status?: DeviceStatus;
   powerOn?: boolean;
+  locationScope?: "ROOM" | "FLOOR" | "ZONE" | "PROPERTY";
+  locationLabel?: string | null;
 }
 
 export const devicesRepo = {
@@ -33,8 +35,8 @@ export const devicesRepo = {
         `WITH selected_room AS (
            SELECT id FROM rooms WHERE id = $3 AND property_id = $1 FOR KEY SHARE
          )
-         INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, control_kind, name, external_id, status, power_on)
-         SELECT gen_random_uuid()::text, $1, $2, selected_room.id, $4, $5, $6, $7, $8, $9
+         INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, control_kind, name, external_id, status, power_on, location_scope, location_label)
+         SELECT gen_random_uuid()::text, $1, $2, selected_room.id, $4, $5, $6, $7, $8, $9, $10, $11
          FROM selected_room
          RETURNING *`,
         [
@@ -47,14 +49,16 @@ export const devicesRepo = {
           input.externalId ?? null,
           input.status ?? "OFFLINE",
           input.powerOn ?? false,
+          input.locationScope ?? "ROOM",
+          input.locationLabel ?? null,
         ]
       );
       return rows[0] ?? null;
     }
 
     const { rows } = await pool.query<Device>(
-      `INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, control_kind, name, external_id, status, power_on)
-       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9)
+      `INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, control_kind, name, external_id, status, power_on, location_scope, location_label)
+       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING *`,
       [
         propertyId,
@@ -66,6 +70,8 @@ export const devicesRepo = {
         input.externalId ?? null,
         input.status ?? "OFFLINE",
         input.powerOn ?? false,
+        input.locationScope ?? (input.roomId ? "ROOM" : "PROPERTY"),
+        input.locationLabel ?? null,
       ]
     );
     return rows[0] ?? null;

@@ -21,8 +21,15 @@ export function QuickCheckinModal({ room, onClose, onChanged }: { room: RoomCard
   const [nationality, setNationality] = useState("Việt Nam");
   const [identityType, setIdentityType] = useState("CCCD/CMND");
   const [identityNumber, setIdentityNumber] = useState("");
+  const [identityIssuedDate, setIdentityIssuedDate] = useState("");
   const [identityIssuedPlace, setIdentityIssuedPlace] = useState("");
+  const [identityExpiryDate, setIdentityExpiryDate] = useState("");
+  const [temporaryResidenceExpiresAt, setTemporaryResidenceExpiresAt] = useState("");
+  const [placeOfBirth, setPlaceOfBirth] = useState("");
   const [permanentAddress, setPermanentAddress] = useState("");
+  const [currentResidenceAddress, setCurrentResidenceAddress] = useState("");
+  const [arrivalFrom, setArrivalFrom] = useState("");
+  const [vehiclePlate, setVehiclePlate] = useState("");
   const [occupation, setOccupation] = useState("");
   const [stayPurpose, setStayPurpose] = useState("Lưu trú");
   const [stayType, setStayType] = useState<StayType>("DAILY");
@@ -95,8 +102,15 @@ export function QuickCheckinModal({ room, onClose, onChanged }: { room: RoomCard
           nationality: nationality.trim(),
           identityType: identityType.trim(),
           identityNumber: identityNumber.trim(),
+          identityIssuedDate: identityIssuedDate || null,
           identityIssuedPlace: identityIssuedPlace.trim() || null,
+          identityExpiryDate: identityExpiryDate || null,
+          temporaryResidenceExpiresAt: temporaryResidenceExpiresAt || null,
+          placeOfBirth: placeOfBirth.trim() || null,
           permanentAddress: permanentAddress.trim(),
+          currentResidenceAddress: currentResidenceAddress.trim() || null,
+          arrivalFrom: arrivalFrom.trim() || null,
+          vehiclePlate: vehiclePlate.trim() || null,
           occupation: occupation.trim() || null,
           stayPurpose: stayPurpose.trim() || null,
           expectedCheckoutAt: localTimestamp(checkout),
@@ -118,7 +132,7 @@ export function QuickCheckinModal({ room, onClose, onChanged }: { room: RoomCard
       <div className="flex max-h-[72vh] flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-6">
         {error && <p className="m-0 rounded-lg bg-pms-danger-bg px-3 py-2 text-[12.5px] text-pms-danger">{error}</p>}
         <div className="rounded-lg bg-pms-primary-soft px-3 py-2 text-[12.5px] text-pms-primary">{room.type} · Giá hiện tại {room.price} {stayType === "DAILY" ? "(đã áp dụng giá linh hoạt nếu có)" : ""}</div>
-        <section><b className="mb-2 block text-[13.5px]">1. Thông tin khai báo lưu trú</b><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <section><b className="mb-2 block text-[13.5px]">1. Thông tin khai báo lưu trú</b><p className="m-0 mb-3 rounded-lg bg-[#FFF7E6] px-3 py-2 text-[11.5px] text-[#7A5200]">Hồ sơ được chuẩn bị để thông báo lưu trú khi ở qua đêm. PMS chỉ gửi tự động sau khi cơ sở được Bộ Công an cấp tài khoản/API chính thức; các trường có dấu * là tối thiểu để không thiếu hồ sơ.</p><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Họ và tên khách *" value={fullName} onChange={setFullName} placeholder="Theo giấy tờ tùy thân" />
           <Field label="Số điện thoại *" value={phone} onChange={setPhone} placeholder="Số điện thoại liên hệ" inputMode="tel" />
           <Field label="Ngày sinh *" value={dateOfBirth} onChange={setDateOfBirth} type="date" />
@@ -126,15 +140,22 @@ export function QuickCheckinModal({ room, onClose, onChanged }: { room: RoomCard
           <Field label="Quốc tịch *" value={nationality} onChange={setNationality} placeholder="Việt Nam" />
           <Field label="Loại giấy tờ" value={identityType} onChange={setIdentityType} placeholder="CCCD/CMND/Hộ chiếu" />
           <Field label="Số giấy tờ *" value={identityNumber} onChange={setIdentityNumber} placeholder="Nhập số giấy tờ" />
+          <Field label="Ngày cấp" value={identityIssuedDate} onChange={setIdentityIssuedDate} type="date" />
           <Field label="Nơi cấp" value={identityIssuedPlace} onChange={setIdentityIssuedPlace} placeholder="Nơi cấp giấy tờ" />
+          <Field label="Ngày hết hạn" value={identityExpiryDate} onChange={setIdentityExpiryDate} type="date" />
+          <Field label="Nơi sinh" value={placeOfBirth} onChange={setPlaceOfBirth} placeholder="Theo giấy tờ (nếu có)" />
+          {nationality.trim().toLocaleLowerCase("vi-VN") !== "việt nam" && <Field label="Hạn chứng nhận/thẻ tạm trú" value={temporaryResidenceExpiresAt} onChange={setTemporaryResidenceExpiresAt} type="date" />}
           <div className="sm:col-span-2"><Field label="Địa chỉ thường trú *" value={permanentAddress} onChange={setPermanentAddress} placeholder="Địa chỉ theo giấy tờ" /></div>
+          <div className="sm:col-span-2"><Field label="Địa chỉ đang cư trú" value={currentResidenceAddress} onChange={setCurrentResidenceAddress} placeholder="Nếu khác địa chỉ thường trú" /></div>
+          <Field label="Đến từ" value={arrivalFrom} onChange={setArrivalFrom} placeholder="Tỉnh/thành hoặc cơ sở trước" />
+          <Field label="Biển số xe" value={vehiclePlate} onChange={setVehiclePlate} placeholder="Nếu có" />
           <Field label="Nghề nghiệp" value={occupation} onChange={setOccupation} placeholder="Không bắt buộc" />
           <Field label="Mục đích lưu trú" value={stayPurpose} onChange={setStayPurpose} placeholder="Công tác, du lịch..." />
         </div></section>
         <section className="border-t border-pms-divider pt-4"><b className="mb-2 block text-[13.5px]">2. Hình thức lưu trú và tiền phòng</b><div className="grid grid-cols-3 gap-2">
           {([['HOURLY', 'Theo giờ'], ['OVERNIGHT', 'Qua đêm'], ['DAILY', 'Theo ngày']] as [StayType, string][]).map(([key, label]) => <button key={key} type="button" onClick={() => changeStayType(key)} className="rounded-lg border px-2 py-2 text-[12px] font-semibold" style={{ borderColor: stayType === key ? '#284AB1' : '#E6E8EC', background: stayType === key ? '#EEF2FF' : '#fff', color: stayType === key ? '#284AB1' : '#252733' }}>{label}</button>)}
         </div><div className="mt-3 grid grid-cols-1 items-end gap-3 sm:grid-cols-3"><div><label className="mb-1.5 block text-[12px]">Số {unitLabel}</label><input type="number" min={minUnits} value={units} onChange={(event) => setUnits(Math.max(minUnits, Number(event.target.value) || minUnits))} className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" /></div><div className="text-[12px] text-pms-muted">Đơn giá: <b className="text-pms-text">{money(unitPrice)}/{unitLabel}</b><br />Tối thiểu: {minUnits} {unitLabel}</div><div className="rounded-lg bg-pms-primary-soft px-3 py-2 text-[12.5px]">Dự kiến trả: <b>{localTimestamp(expectedCheckout(new Date())).slice(0, 16).replace('T', ' ')}</b><br />Tạm tính: <b className="text-pms-primary">{money(totalPrice)}</b></div></div></section>
-        <div className="flex items-center justify-between gap-3 border-t border-pms-divider pt-3.5"><div><b className="text-[13.5px]">Bật nguồn điện phòng</b><p className="m-0 mt-1 text-[11.5px] text-pms-muted">Đồng bộ với công tơ và các thiết bị đã gán cho phòng.</p></div><button aria-label="Bật nguồn điện phòng" type="button" className="relative h-5 w-9 rounded-full" style={{ background: powerOn ? "#284AB1" : "#E6E8EC" }} onClick={() => setPowerOn((value) => !value)}><span className="absolute top-0.5 h-4 w-4 rounded-full bg-white" style={{ left: powerOn ? "18px" : "2px" }} /></button></div>
+        <div className="flex items-center justify-between gap-3 border-t border-pms-divider pt-3.5"><div><b className="text-[13.5px]">Cấp điện khi nhận phòng</b><p className="m-0 mt-1 text-[11.5px] text-pms-muted">Chỉ tác động công tắc nguồn, đèn, điều hòa, TV/loa đã gán. Công tơ, khóa và bộ cấp thẻ không bị bật/tắt ở bước này.</p></div><button aria-label="Cấp điện phòng" type="button" className="relative h-5 w-9 rounded-full" style={{ background: powerOn ? "#284AB1" : "#E6E8EC" }} onClick={() => setPowerOn((value) => !value)}><span className="absolute top-0.5 h-4 w-4 rounded-full bg-white" style={{ left: powerOn ? "18px" : "2px" }} /></button></div>
       </div>
     </Modal>
   );

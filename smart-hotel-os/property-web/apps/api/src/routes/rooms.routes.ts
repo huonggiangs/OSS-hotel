@@ -8,6 +8,9 @@ import { requireRole } from "../middleware/rbac";
 import { writeAuditLog } from "../middleware/audit";
 import { roomsRepo } from "../repositories/rooms.repo";
 import { roomTypesRepo } from "../repositories/roomTypes.repo";
+import { bookingsRepo } from "../repositories/bookings.repo";
+import { pool } from "../lib/db";
+import { setRoomEnergyState } from "../repositories/roomControl.repo";
 
 // URL công khai của web khách (property-web/apps/web) — dùng để dựng link
 // /guest/room/:token nhúng vào mã QR. Tài liệu ở .env.example.
@@ -151,7 +154,14 @@ roomsRouter.patch(
     if (!existing) throw Errors.notFound("phòng");
     const parsed = powerSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
-    const room = await roomsRepo.setPower(req.user!.propertyId, req.params.id, parsed.data.powerOn);
+    await pool.transaction((tx) => setRoomEnergyState(tx, {
+      propertyId: req.user!.propertyId,
+      tenantId: req.user!.tenantId,
+      roomId: req.params.id,
+      powerOn: parsed.data.powerOn,
+      requestedBy: req.user!.id,
+    }));
+    const room = await roomsRepo.findById(req.user!.propertyId, req.params.id);
     await writeAuditLog({
       req,
       action: "TOGGLE_ROOM_POWER",
@@ -160,6 +170,20 @@ roomsRouter.patch(
       beforeData: { power_on: existing.power_on },
       afterData: { power_on: parsed.data.powerOn },
     });
+    res.json(room);
+  })
+);
+
+// Hoàn tất một công việc buồng phòng. Đây là điểm chuyển trạng thái duy nhất từ
+// DIRTY sang VACANT; không cho sửa trực tiếp để tránh mất yêu cầu đã đẩy cho bộ
+// phận dọn phòng sau khi khách trả.
+roomsRouter.post(
+  "/:id/housekeeping-complete",
+  requireRole("OWNER", "MANAGER", "HOUSEKEEPING"),
+  asyncHandler(async (req, res) => {
+    await bookingsRepo.completeHousekeeping(req.user!.propertyId, req.user!.tenantId, req.user!.id, req.params.id);
+    const room = await roomsRepo.findById(req.user!.propertyId, req.params.id);
+    await writeAuditLog({ req, action: "COMPLETE_HOUSEKEEPING", entityType: "room", entityId: req.params.id, afterData: { status: "VACANT" } });
     res.json(room);
   })
 );
