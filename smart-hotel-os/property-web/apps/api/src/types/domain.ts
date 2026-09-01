@@ -171,6 +171,7 @@ export interface Device {
   location_label: string | null;
   // Migration 004: mã thiết bị chung, liên kết logic sang webadmin.hardware_assets.asset_code.
   asset_code: string | null;
+  iot_device_id: string | null;
   created_at: Date;
   updated_at: Date;
 }

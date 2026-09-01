@@ -14,6 +14,7 @@ import { auditLogsRouter } from "./routes/audit-logs.routes";
 import { usersRouter } from "./routes/users.routes";
 import { releasesRouter } from "./routes/releases.routes";
 import { purchaseOrdersRouter } from "./routes/purchase-orders.routes";
+import { internalRouter } from "./routes/internal.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { pool, DB_MODE, embeddedDb } from "./lib/db";
@@ -34,6 +35,7 @@ app.use(express.json());
 app.get("/health", (_req, res) => res.json({ status: "ok", db_mode: DB_MODE }));
 
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/internal", internalRouter);
 app.get("/api/v1/me", requireAuth, (req, res) => res.json(req.user));
 app.use("/api/v1/partners", partnersRouter);
 app.use("/api/v1/suppliers", suppliersRouter);

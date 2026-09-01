@@ -18,6 +18,8 @@ import { bootstrapEmbeddedDb } from "./lib/embeddedBootstrap";
 import { commandsRepo } from "./repositories/commands.repo";
 import { outboxRepo } from "./repositories/outbox.repo";
 import { checkCloudReachable, getLastSyncAt, runSyncCycle } from "./lib/sync";
+import { getLastEdgeHeartbeatAt, sendEdgeHeartbeat } from "./lib/edgeHeartbeat";
+import { internalRouter } from "./routes/internal.routes";
 
 const app = express();
 
@@ -49,6 +51,7 @@ app.get("/health", async (_req, res) => {
     cloud_reachable: cloudReachable,
     pending_outbox_count: pendingOutboxCount,
     last_sync_at: getLastSyncAt()?.toISOString() ?? null,
+    last_heartbeat_sent_at: getLastEdgeHeartbeatAt()?.toISOString() ?? null,
     edge_node_id: EDGE_NODE_ID,
   });
 });
@@ -61,6 +64,7 @@ app.use("/api/v1/bookings", bookingsRouter);
 app.use("/api/v1/devices", devicesRouter);
 // commandsRouter cùng tiếp đầu ngữ /devices/:id vì lệnh luôn gắn với 1 thiết bị.
 app.use("/api/v1/devices", commandsRouter);
+app.use("/api/v1/internal", internalRouter);
 app.use("/api/v1/sync", syncRouter);
 
 app.use((_req, res) => {
@@ -138,7 +142,15 @@ if (process.env.DISABLE_SYNC_JOB !== "1") {
   syncTimer.unref?.();
 }
 
+const heartbeatIntervalMs = Number(process.env.EDGE_HEARTBEAT_INTERVAL_MS) || 30_000;
+const heartbeatTimer = setInterval(() => {
+  sendEdgeHeartbeat().catch((err) => console.error("[edge-heartbeat] lỗi:", err));
+}, heartbeatIntervalMs);
+heartbeatTimer.unref?.();
+void sendEdgeHeartbeat();
+
 process.on("SIGTERM", async () => {
+  clearInterval(heartbeatTimer);
   if (DB_MODE === "embedded" && embeddedDb) {
     await embeddedDb.close();
   } else {

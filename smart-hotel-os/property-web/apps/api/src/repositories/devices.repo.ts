@@ -7,6 +7,7 @@ export interface DeviceInput {
   controlKind?: DeviceControlKind;
   name: string;
   externalId?: string | null;
+  assetCode?: string | null;
   status?: DeviceStatus;
   powerOn?: boolean;
   locationScope?: "ROOM" | "FLOOR" | "ZONE" | "PROPERTY";
@@ -35,8 +36,8 @@ export const devicesRepo = {
         `WITH selected_room AS (
            SELECT id FROM rooms WHERE id = $3 AND property_id = $1 FOR KEY SHARE
          )
-         INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, control_kind, name, external_id, status, power_on, location_scope, location_label)
-         SELECT gen_random_uuid()::text, $1, $2, selected_room.id, $4, $5, $6, $7, $8, $9, $10, $11
+         INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, control_kind, name, external_id, asset_code, status, power_on, location_scope, location_label)
+         SELECT gen_random_uuid()::text, $1, $2, selected_room.id, $4, $5, $6, $7, $8, $9, $10, $11, $12
          FROM selected_room
          RETURNING *`,
         [
@@ -47,6 +48,7 @@ export const devicesRepo = {
           input.controlKind ?? "POWER_SWITCH",
           input.name,
           input.externalId ?? null,
+          input.assetCode ?? null,
           input.status ?? "OFFLINE",
           input.powerOn ?? false,
           input.locationScope ?? "ROOM",
@@ -57,8 +59,8 @@ export const devicesRepo = {
     }
 
     const { rows } = await pool.query<Device>(
-      `INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, control_kind, name, external_id, status, power_on, location_scope, location_label)
-       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      `INSERT INTO devices (id, property_id, tenant_id, room_id, device_type, control_kind, name, external_id, asset_code, status, power_on, location_scope, location_label)
+       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING *`,
       [
         propertyId,
@@ -68,6 +70,7 @@ export const devicesRepo = {
         input.controlKind ?? "POWER_SWITCH",
         input.name,
         input.externalId ?? null,
+        input.assetCode ?? null,
         input.status ?? "OFFLINE",
         input.powerOn ?? false,
         input.locationScope ?? (input.roomId ? "ROOM" : "PROPERTY"),
@@ -81,6 +84,15 @@ export const devicesRepo = {
     const { rows } = await pool.query<Device>(
       `UPDATE devices SET power_on = $1, updated_at = now() WHERE property_id = $2 AND id = $3 RETURNING *`,
       [powerOn, propertyId, id]
+    );
+    return rows[0] ?? null;
+  },
+
+  async setIotLink(propertyId: string, id: string, assetCode: string, iotDeviceId: string): Promise<Device | null> {
+    const { rows } = await pool.query<Device>(
+      `UPDATE devices SET asset_code = $1, iot_device_id = $2, updated_at = now()
+       WHERE property_id = $3 AND id = $4 RETURNING *`,
+      [assetCode, iotDeviceId, propertyId, id]
     );
     return rows[0] ?? null;
   },

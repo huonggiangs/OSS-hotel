@@ -61,6 +61,7 @@ services:
       JWT_SECRET: "${PROPERTY_JWT_SECRET:?PROPERTY_JWT_SECRET phải được đặt trong ops/.env}"
       SETTINGS_ENCRYPTION_KEY: "${SETTINGS_ENCRYPTION_KEY:?SETTINGS_ENCRYPTION_KEY phải được đặt trong ops/.env}"
       INTERNAL_SERVICE_KEY: "${INTERNAL_SERVICE_KEY:?INTERNAL_SERVICE_KEY phải được đặt trong ops/.env}"
+      EDGE_NODE_URL: "http://host.docker.internal:4200"
       PORT: "4100"
       WEB_ORIGIN: "*"
     ports:

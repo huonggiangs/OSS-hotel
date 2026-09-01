@@ -69,7 +69,7 @@ function defaultRates(basePrice: number, pricingMethod: "PER_NIGHT" | "PER_HOUR"
   }));
 }
 
-export function AddRoomTypeModal({ onClose, onSaved, initial }: { onClose: () => void; onSaved: () => void; initial?: ApiRoomType }) {
+export function AddRoomTypeModal({ onClose, onSaved, initial, assignedRoomCount = 0 }: { onClose: () => void; onSaved: () => void; initial?: ApiRoomType; assignedRoomCount?: number }) {
   const isEdit = !!initial;
   const [name, setName] = useState(initial?.name ?? "");
   const [basePrice, setBasePrice] = useState(initial ? Number(initial.base_price) : 0);
@@ -83,6 +83,7 @@ export function AddRoomTypeModal({ onClose, onSaved, initial }: { onClose: () =>
   const [ratesLoading, setRatesLoading] = useState(Boolean(initial));
   const [dynamicPricing, setDynamicPricing] = useState<DynamicPricing>(DEFAULT_DYNAMIC_PRICING);
   const [dynamicPricingLoading, setDynamicPricingLoading] = useState(Boolean(initial));
+  const [applyRoomPrices, setApplyRoomPrices] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -148,10 +149,17 @@ export function AddRoomTypeModal({ onClose, onSaved, initial }: { onClose: () =>
     setSaving(true);
     setError(null);
     try {
-      const body = { name: name.trim(), basePrice, capacity, bedsBig, bedsSmall, areaM2: areaM2 === "" ? null : Number(areaM2), pricingMethod, discountPercent };
+      // Giá loại phòng là nguồn chung. Bỏ chọn nghĩa là chỉ lưu mô tả, không
+      // được âm thầm thay bảng giá hoặc quy tắc đang dùng của các phòng cũ.
+      const body = {
+        name: name.trim(), capacity, bedsBig, bedsSmall, areaM2: areaM2 === "" ? null : Number(areaM2),
+        ...(!isEdit || applyRoomPrices ? { basePrice, pricingMethod, discountPercent } : {}),
+      };
       const roomType = isEdit && initial ? await api.patch<ApiRoomType>(`/api/v1/room-types/${initial.id}`, body) : await api.post<ApiRoomType>("/api/v1/room-types", body);
-      await api.put(`/api/v1/room-types/${roomType.id}/rates`, { items: rates });
-      await api.put(`/api/v1/room-types/${roomType.id}/dynamic-pricing`, dynamicPricing);
+      if (!isEdit || applyRoomPrices) {
+        await api.put(`/api/v1/room-types/${roomType.id}/rates`, { items: rates });
+        await api.put(`/api/v1/room-types/${roomType.id}/dynamic-pricing`, dynamicPricing);
+      }
       onSaved();
       onClose();
     } catch (err) {
@@ -170,6 +178,7 @@ export function AddRoomTypeModal({ onClose, onSaved, initial }: { onClose: () =>
         <div className="grid grid-cols-2 gap-4"><Stepper label="Sức chứa tối đa (người)" value={capacity} onChange={setCapacity} min={1} /><NumberField label="Diện tích (m²)" value={areaM2} onChange={setAreaM2} placeholder="VD: 25" /></div>
         <div className="grid grid-cols-2 gap-4"><NumberField label="Giá cơ bản (tương thích báo giá cũ)" required value={String(basePrice)} onChange={(value) => setBasePrice(Number(value) || 0)} placeholder="0" /><div><label className="mb-1.5 block text-[12px]">Loại giá cơ bản</label><select className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" value={pricingMethod} onChange={(event) => setPricingMethod(event.target.value as "PER_NIGHT" | "PER_HOUR")}><option value="PER_NIGHT">Theo đêm</option><option value="PER_HOUR">Theo giờ</option></select></div></div>
         <NumberField label="Giảm giá mặc định (%)" value={String(discountPercent)} onChange={(value) => setDiscountPercent(Math.max(0, Math.min(100, Number(value) || 0)))} placeholder="0" />
+        {isEdit && assignedRoomCount > 0 && <label className="flex items-start gap-2 rounded-xl border border-pms-primary-soft bg-pms-primary-soft/25 p-3 text-[12px] text-pms-text"><input className="mt-0.5" type="checkbox" checked={applyRoomPrices} onChange={(event) => setApplyRoomPrices(event.target.checked)} /><span><b className="block text-[13px] text-pms-primary">Áp dụng bảng giá mới cho tất cả {assignedRoomCount} phòng cùng loại</b>{applyRoomPrices ? "Các mức giá linh hoạt và quy tắc giá động sẽ có hiệu lực ngay với các phòng đang dùng loại này." : "Chỉ lưu tên và thông tin mô tả loại phòng; bảng giá và giá động hiện tại được giữ nguyên."}</span></label>}
         <div className="rounded-xl border border-pms-border p-3.5"><div className="mb-1"><b className="text-[13px]">Bảng giá linh hoạt</b></div><p className="m-0 mb-3 text-[11.5px] text-pms-muted">Bật các mức giá áp dụng cho loại phòng. Chi tiết giá được lưu riêng theo từng loại phòng.</p>{ratesLoading ? <p className="m-0 text-[12px] text-pms-muted">Đang tải bảng giá...</p> : <div className="space-y-2">{rates.map((rate) => <div key={rate.rateKey} className="grid grid-cols-[24px_1fr_130px_100px] items-center gap-2"><input type="checkbox" checked={rate.active} onChange={(event) => updateRate(rate.rateKey, { active: event.target.checked })} /><input value={rate.label} onChange={(event) => updateRate(rate.rateKey, { label: event.target.value })} className="rounded-md border border-pms-border px-2.5 py-2 text-[12.5px]" /><input type="number" min="0" value={rate.amount} onChange={(event) => updateRate(rate.rateKey, { amount: Number(event.target.value) || 0 })} className="rounded-md border border-pms-border px-2.5 py-2 text-[12.5px]" aria-label={`Giá ${rate.label}`} /><input type="number" min="1" value={rate.minimumUnits} onChange={(event) => updateRate(rate.rateKey, { minimumUnits: Math.max(1, Number(event.target.value) || 1) })} className="rounded-md border border-pms-border px-2.5 py-2 text-[12.5px]" aria-label={`Đơn vị tối thiểu ${rate.label}`} /></div>)}</div>}<div className="mt-2 grid grid-cols-[24px_1fr_130px_100px] gap-2 text-[10.5px] text-pms-muted"><span /><span>Loại giá</span><span>Đơn giá (VND)</span><span>Đơn vị tối thiểu</span></div></div>
         <div className="rounded-xl border border-pms-primary-soft bg-pms-primary-soft/25 p-3.5">
           <label className="flex items-center gap-2 text-[13px] font-semibold text-pms-primary"><input type="checkbox" checked={dynamicPricing.enabled} onChange={(event) => setDynamicPricing((current) => ({ ...current, enabled: event.target.checked }))} />Bật giá động cho phòng đang trống</label>

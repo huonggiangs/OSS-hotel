@@ -17,6 +17,10 @@ services:
       PROPERTY_ID: "${PROPERTY_ID:?PROPERTY_ID phải được đặt trong ops/.env}"
       EDGE_NODE_ID: "${EDGE_NODE_ID:?EDGE_NODE_ID phải được đặt trong ops/.env}"
       JWT_SECRET: "${EDGE_JWT_SECRET:?EDGE_JWT_SECRET phải được đặt trong ops/.env}"
+      INTERNAL_SERVICE_KEY: "${INTERNAL_SERVICE_KEY:?INTERNAL_SERVICE_KEY phải được đặt trong ops/.env}"
+      SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong ops/.env}"
+      IOT_SERVICE_URL: "http://host.docker.internal:4103"
+      HQ_CONSOLE_API_URL: "http://host.docker.internal:4000"
       WEB_ORIGIN: "${EDGE_WEB_ORIGIN:-*}"
       SYNC_INTERVAL_MS: "15000"
     ports:

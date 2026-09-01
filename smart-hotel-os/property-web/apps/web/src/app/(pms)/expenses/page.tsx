@@ -104,21 +104,21 @@ export default function ExpensesPage() {
         Ghi nhận các chi phí phát sinh hàng ngày ngoài dịch vụ lưu trú (điện, nước, vệ sinh, mua đồ...)
       </p>
 
-      <div className="mb-5 flex gap-7 border-b border-pms-border text-[14px]">
-        <div
+      <div className="mb-5 flex gap-5 border-b border-pms-border text-[14px] sm:gap-7">
+        <button type="button"
           className="cursor-pointer pb-3 font-semibold"
           style={{ color: tab === "expenses" ? "#284AB1" : "#777E90", borderBottom: `2px solid ${tab === "expenses" ? "#284AB1" : "transparent"}` }}
           onClick={() => setTab("expenses")}
         >
           Chi phí
-        </div>
-        <div
+        </button>
+        <button type="button"
           className="cursor-pointer pb-3 font-semibold"
           style={{ color: tab === "daily" ? "#284AB1" : "#777E90", borderBottom: `2px solid ${tab === "daily" ? "#284AB1" : "transparent"}` }}
           onClick={() => setTab("daily")}
         >
           Thu chi trong ngày
-        </div>
+        </button>
       </div>
 
       {tab === "expenses" && (
@@ -127,15 +127,15 @@ export default function ExpensesPage() {
             <span className="text-[12px] text-pms-muted">Tổng chi phí tháng này</span>
             <b className="mt-1.5 block text-[22px] text-pms-danger">{formatVnd(expenseTotal)}</b>
           </div>
-          <div className="rounded-xl bg-white p-6 shadow-card">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="rounded-xl bg-white p-4 shadow-card sm:p-6">
+            <div className="mb-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="m-0 text-[15px] font-semibold">Danh sách chi phí</h3>
-              <div
+              <button type="button"
                 className="cursor-pointer rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
                 onClick={() => setShowAdd(true)}
               >
                 + Thêm chi phí
-              </div>
+              </button>
             </div>
             {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
             {error && (
@@ -144,7 +144,10 @@ export default function ExpensesPage() {
               </div>
             )}
             {!loading && !error && (
-              <table className="w-full border-collapse text-[13px]">
+              <>
+              <div className="space-y-3 md:hidden">
+                {expenses.map((e) => <article key={e.id} className="rounded-lg border border-pms-divider p-3"><div className="flex items-start justify-between gap-3"><b className="break-words text-[13px]">{e.category}</b><b className="shrink-0 text-[13px] text-pms-danger">{formatVnd(e.amount)}</b></div><p className="mt-1 break-words text-[12px] text-pms-muted">{e.description || "Không có nội dung"}</p><p className="mt-2 text-[11.5px] text-pms-muted">{formatDate(e.expense_date)} · Mã {e.id.slice(0, 8)}</p></article>)}{expenses.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có chi phí.</p>}</div>
+              <table className="hidden w-full border-collapse text-[13px] md:table">
                 <thead>
                   <tr>
                     {["Mã", "Ngày", "Loại chi phí", "Nội dung", "Số tiền", "Người ghi nhận"].map((h) => (
@@ -167,6 +170,7 @@ export default function ExpensesPage() {
                   ))}
                 </tbody>
               </table>
+              </>
             )}
           </div>
         </>
@@ -191,11 +195,14 @@ export default function ExpensesPage() {
               <b className="mt-1.5 block text-[22px] text-pms-warning">{dailyPendingCount}</b>
             </div>
           </div>
-          <div className="rounded-xl bg-white p-6 shadow-card">
+          <div className="rounded-xl bg-white p-4 shadow-card sm:p-6">
             <h3 className="m-0 mb-4 text-[15px] font-semibold">Sổ thu chi trong ngày</h3>
             {loadingDaily && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
             {!loadingDaily && (
-              <table className="w-full border-collapse text-[13px]">
+              <>
+              <div className="space-y-3 md:hidden">
+                {daily.items.map((d) => { const s = STATUS_INFO[d.status]; return <article key={d.id} className="rounded-lg border border-pms-divider p-3"><div className="flex items-start justify-between gap-3"><b className="break-words text-[13px]" style={{ color: d.typeColor }}>{d.type} · {d.amount}</b><span className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: s.bg, color: s.color }}>{s.label}</span></div><p className="mt-1 break-words text-[12px] text-pms-muted">{d.desc}</p><p className="mt-2 text-[11.5px] text-pms-muted">Đề xuất: {d.by}</p>{d.status === "pending" && <div className="mt-3 flex gap-4 text-[12px]"><button type="button" className="font-semibold text-pms-success" onClick={() => setDailyStatus(d.id, "approved")}>Duyệt</button><button type="button" className="font-semibold text-pms-danger" onClick={() => setDailyStatus(d.id, "rejected")}>Từ chối</button></div>}</article>; })}{daily.items.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có khoản thu chi.</p>}</div>
+              <table className="hidden w-full border-collapse text-[13px] md:table">
                 <thead>
                   <tr>
                     {["Mã", "Loại", "Nội dung", "Số tiền", "Người đề xuất", "Trạng thái", "Phê duyệt"].map((h) => (
@@ -241,6 +248,7 @@ export default function ExpensesPage() {
                   })}
                 </tbody>
               </table>
+              </>
             )}
           </div>
         </>

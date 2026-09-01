@@ -26,19 +26,29 @@ export default function MarketingPage() {
       <h1 className="mb-1 text-[22px] font-bold">Marketing</h1>
       <p className="mb-[22px] text-[13px] text-pms-muted">Chiến dịch email/SMS gửi tới khách hàng</p>
 
-      <div className="rounded-xl bg-white p-6 shadow-card">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="rounded-xl bg-white p-4 shadow-card sm:p-6">
+        <div className="mb-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="m-0 text-[15px] font-semibold">Chiến dịch</h3>
-          <div
+          <button type="button"
             className="cursor-pointer rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
             onClick={() => setShowAdd(true)}
           >
             + Tạo chiến dịch
-          </div>
+          </button>
         </div>
         {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
         {!loading && (
-          <table className="w-full border-collapse text-[13px]">
+          <>
+          <div className="space-y-3 md:hidden">
+            {data.campaigns.map((c, i) => (
+              <article key={c.name + i} className="rounded-lg border border-pms-divider p-3">
+                <div className="flex items-start justify-between gap-3"><b className="break-words text-[13px]">{c.name}</b><StatusPill bg={c.bg} fg={c.fg}>{c.status}</StatusPill></div>
+                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[12px] text-pms-muted"><span>{c.channel}</span><span className="text-right">Đã gửi: {c.sent}</span><span>{c.start} – {c.end}</span><span className="text-right">Mở: {c.opened}</span></div>
+              </article>
+            ))}
+            {data.campaigns.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có chiến dịch.</p>}
+          </div>
+          <table className="hidden w-full border-collapse text-[13px] md:table">
             <thead>
               <tr>
                 {["Chiến dịch", "Kênh", "Bắt đầu", "Kết thúc", "Đã gửi", "Tỷ lệ mở", "Trạng thái"].map((h) => (
@@ -66,6 +76,7 @@ export default function MarketingPage() {
               ))}
             </tbody>
           </table>
+          </>
         )}
       </div>
 

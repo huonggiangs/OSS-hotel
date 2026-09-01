@@ -96,23 +96,23 @@ export default function BookingPage() {
       <h1 className="mb-1 text-[22px] font-bold">Quản lý hợp đồng / đặt phòng</h1>
       <p className="mb-[22px] text-[13px] text-pms-muted">{bookings.length} hợp đồng</p>
 
-      <div className="rounded-xl bg-white p-6 shadow-card">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="rounded-xl bg-white p-4 shadow-card sm:p-6">
+        <div className="mb-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="m-0 text-[15px] font-semibold">Danh sách hợp đồng</h3>
-          <div className="flex gap-2">
-            <div className="flex items-center gap-2 rounded-[10px] bg-pms-divider px-3.5 py-2.5 text-[13px] text-pms-muted">Tìm kiếm</div>
-            <div
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <div className="col-span-2 hidden items-center gap-2 rounded-[10px] bg-pms-divider px-3.5 py-2.5 text-[13px] text-pms-muted sm:flex">Tìm kiếm</div>
+            <button type="button"
               className="cursor-pointer whitespace-nowrap rounded-[10px] border border-pms-border px-[18px] py-2.5 text-[13px] font-semibold"
               onClick={() => setShowContract(true)}
             >
               🖨 Mẫu hợp đồng
-            </div>
-            <div
+            </button>
+            <button type="button"
               className="cursor-pointer whitespace-nowrap rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
               onClick={() => setShowAdd(true)}
             >
               + Thêm mới
-            </div>
+            </button>
           </div>
         </div>
 
@@ -123,7 +123,10 @@ export default function BookingPage() {
             {error} <span className="cursor-pointer font-semibold text-pms-primary" onClick={load}>Thử lại</span>
           </div>
         ) : (
-          <table className="w-full border-collapse text-[13px]">
+          <>
+          <div className="space-y-3 md:hidden">
+            {bookings.map((b) => <article key={b.id} className="rounded-lg border border-pms-divider p-3"><div className="flex items-start justify-between gap-3"><div><b className="block text-[13px]">{b.guest}</b><span className="text-[11.5px] text-pms-muted">{b.id} · {b.room}</span></div><StatusPill bg={b.bg} fg={b.fg}>{b.status}</StatusPill></div><p className="mt-2 text-[12px] text-pms-muted">{b.checkin} → {b.checkout} · {b.channel}</p><div className="mt-3 flex gap-4 text-[12px]"><button type="button" className="font-semibold text-pms-primary" onClick={() => setViewBooking(b)}>Xem</button><button type="button" className="font-semibold text-pms-muted" onClick={() => setEditBooking(b)}>Sửa</button></div></article>)}{bookings.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có hợp đồng.</p>}</div>
+          <table className="hidden w-full border-collapse text-[13px] md:table">
             <thead>
               <tr>
                 {COLUMNS.map((c) => (
@@ -159,6 +162,7 @@ export default function BookingPage() {
               ))}
             </tbody>
           </table>
+          </>
         )}
       </div>
 

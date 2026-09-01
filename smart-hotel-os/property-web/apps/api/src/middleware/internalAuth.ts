@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { requireAuth } from "./auth";
+import { Errors } from "../utils/errors";
 
 // ============================================================================
 // Middleware TỐI GIẢN cho phép gọi nội bộ giữa 2 hệ thống công ty tự làm
@@ -31,4 +32,13 @@ export function requireAuthOrInternalKey(req: Request, res: Response, next: Next
     return next();
   }
   return requireAuth(req, res, next);
+}
+
+/** Chỉ dành cho endpoint máy-tới-máy có ghi dữ liệu, không rơi về JWT người dùng. */
+export function requireInternalServiceKey(req: Request, _res: Response, next: NextFunction) {
+  const key = req.headers["x-internal-service-key"];
+  if (typeof key === "string" && typeof INTERNAL_SERVICE_KEY === "string" && key.length > 0 && key === INTERNAL_SERVICE_KEY) {
+    return next();
+  }
+  return next(Errors.unauthorized());
 }

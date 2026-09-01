@@ -137,6 +137,9 @@ commandsRouter.post(
       if (command.command_type === "POWER_ON") await devicesRepo.updatePowerState(device.id, "ON");
       if (command.command_type === "POWER_OFF") await devicesRepo.updatePowerState(device.id, "OFF");
     }
+    // ACK là bằng chứng thiết bị vừa liên lạc, nên đồng thời làm mới heartbeat
+    // để HQ/PMS không báo offline sai trong lúc thiết bị đang thực thi lệnh.
+    await devicesRepo.touchHeartbeat(device.id);
 
     res.status(200).json({ command: acked });
   })

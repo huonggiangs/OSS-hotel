@@ -477,12 +477,19 @@ export const bookingsRepo = {
       booking.room_id
         ? pool.query<DeviceControlResult>(
             `SELECT d.id AS "deviceId", d.name AS "deviceName", d.control_kind AS "controlKind",
-                    CASE WHEN d.external_id IS NOT NULL AND d.status = 'ONLINE' THEN 'QUEUED' ELSE 'NOT_CONFIGURED' END AS "deliveryStatus"
+                    COALESCE(last_event.delivery_status,
+                      CASE WHEN d.asset_code IS NOT NULL AND d.iot_device_id IS NOT NULL THEN 'QUEUED' ELSE 'NOT_CONFIGURED' END
+                    ) AS "deliveryStatus"
              FROM devices d
+             LEFT JOIN LATERAL (
+               SELECT delivery_status FROM device_control_events e
+                WHERE e.property_id = d.property_id AND e.device_id = d.id AND e.booking_id = $3
+                ORDER BY e.created_at DESC LIMIT 1
+             ) last_event ON true
              WHERE d.property_id = $1 AND d.room_id = $2
                AND d.control_kind IN ('POWER_SWITCH', 'LIGHTING_CONTROLLER', 'AC_CONTROLLER', 'SMART_TV', 'ANNOUNCEMENT_SPEAKER', 'CARD_DISPENSER')
              ORDER BY d.created_at`,
-            [propertyId, booking.room_id]
+            [propertyId, booking.room_id, id]
           )
         : Promise.resolve({ rows: [] as DeviceControlResult[] }),
     ]);

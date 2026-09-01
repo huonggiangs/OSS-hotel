@@ -36,6 +36,7 @@ export function QuickCheckinModal({ room, onClose, onChanged }: { room: RoomCard
   const [units, setUnits] = useState(1);
   const [powerOn, setPowerOn] = useState(true);
   const [rates, setRates] = useState<Rate[]>([]);
+  const [showAdditional, setShowAdditional] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -132,26 +133,26 @@ export function QuickCheckinModal({ room, onClose, onChanged }: { room: RoomCard
       <div className="flex max-h-[72vh] flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-6">
         {error && <p className="m-0 rounded-lg bg-pms-danger-bg px-3 py-2 text-[12.5px] text-pms-danger">{error}</p>}
         <div className="rounded-lg bg-pms-primary-soft px-3 py-2 text-[12.5px] text-pms-primary">{room.type} · Giá hiện tại {room.price} {stayType === "DAILY" ? "(đã áp dụng giá linh hoạt nếu có)" : ""}</div>
-        <section><b className="mb-2 block text-[13.5px]">1. Thông tin khai báo lưu trú</b><p className="m-0 mb-3 rounded-lg bg-[#FFF7E6] px-3 py-2 text-[11.5px] text-[#7A5200]">Hồ sơ được chuẩn bị để thông báo lưu trú khi ở qua đêm. PMS chỉ gửi tự động sau khi cơ sở được Bộ Công an cấp tài khoản/API chính thức; các trường có dấu * là tối thiểu để không thiếu hồ sơ.</p><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Họ và tên khách *" value={fullName} onChange={setFullName} placeholder="Theo giấy tờ tùy thân" />
-          <Field label="Số điện thoại *" value={phone} onChange={setPhone} placeholder="Số điện thoại liên hệ" inputMode="tel" />
-          <Field label="Ngày sinh *" value={dateOfBirth} onChange={setDateOfBirth} type="date" />
-          <SelectField label="Giới tính" value={gender} onChange={setGender} options={[["MALE", "Nam"], ["FEMALE", "Nữ"], ["OTHER", "Khác"]]} />
-          <Field label="Quốc tịch *" value={nationality} onChange={setNationality} placeholder="Việt Nam" />
-          <Field label="Loại giấy tờ" value={identityType} onChange={setIdentityType} placeholder="CCCD/CMND/Hộ chiếu" />
-          <Field label="Số giấy tờ *" value={identityNumber} onChange={setIdentityNumber} placeholder="Nhập số giấy tờ" />
-          <Field label="Ngày cấp" value={identityIssuedDate} onChange={setIdentityIssuedDate} type="date" />
-          <Field label="Nơi cấp" value={identityIssuedPlace} onChange={setIdentityIssuedPlace} placeholder="Nơi cấp giấy tờ" />
-          <Field label="Ngày hết hạn" value={identityExpiryDate} onChange={setIdentityExpiryDate} type="date" />
-          <Field label="Nơi sinh" value={placeOfBirth} onChange={setPlaceOfBirth} placeholder="Theo giấy tờ (nếu có)" />
-          {nationality.trim().toLocaleLowerCase("vi-VN") !== "việt nam" && <Field label="Hạn chứng nhận/thẻ tạm trú" value={temporaryResidenceExpiresAt} onChange={setTemporaryResidenceExpiresAt} type="date" />}
-          <div className="sm:col-span-2"><Field label="Địa chỉ thường trú *" value={permanentAddress} onChange={setPermanentAddress} placeholder="Địa chỉ theo giấy tờ" /></div>
-          <div className="sm:col-span-2"><Field label="Địa chỉ đang cư trú" value={currentResidenceAddress} onChange={setCurrentResidenceAddress} placeholder="Nếu khác địa chỉ thường trú" /></div>
-          <Field label="Đến từ" value={arrivalFrom} onChange={setArrivalFrom} placeholder="Tỉnh/thành hoặc cơ sở trước" />
-          <Field label="Biển số xe" value={vehiclePlate} onChange={setVehiclePlate} placeholder="Nếu có" />
-          <Field label="Nghề nghiệp" value={occupation} onChange={setOccupation} placeholder="Không bắt buộc" />
-          <Field label="Mục đích lưu trú" value={stayPurpose} onChange={setStayPurpose} placeholder="Công tác, du lịch..." />
-        </div></section>
+        <section><b className="mb-2 block text-[13.5px]">1. Thông tin khai báo lưu trú</b><p className="m-0 mb-3 rounded-lg bg-[#FFF7E6] px-3 py-2 text-[11.5px] text-[#7A5200]">Hồ sơ được chuẩn bị để thông báo lưu trú khi ở qua đêm. PMS chỉ gửi tự động sau khi cơ sở được Bộ Công an cấp tài khoản/API chính thức; các trường có dấu <span className="font-bold text-red-600">*</span> là tối thiểu để không thiếu hồ sơ.</p><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Họ và tên khách" required value={fullName} onChange={setFullName} placeholder="Theo giấy tờ tùy thân" />
+          <Field label="Số điện thoại" required value={phone} onChange={setPhone} placeholder="Số điện thoại liên hệ" inputMode="tel" />
+          <Field label="Ngày sinh" required value={dateOfBirth} onChange={setDateOfBirth} type="date" />
+          <SelectField label="Giới tính" value={gender} onChange={setGender} options={[["MALE", "Nam"], ["FEMALE", "Nữ"], ["OTHER", "Khác"]]} hidden={!showAdditional} />
+          <Field label="Quốc tịch" required value={nationality} onChange={setNationality} placeholder="Việt Nam" />
+          <Field label="Loại giấy tờ" value={identityType} onChange={setIdentityType} placeholder="CCCD/CMND/Hộ chiếu" hidden={!showAdditional} />
+          <Field label="Số giấy tờ" required value={identityNumber} onChange={setIdentityNumber} placeholder="Nhập số giấy tờ" />
+          <Field label="Ngày cấp" value={identityIssuedDate} onChange={setIdentityIssuedDate} type="date" hidden={!showAdditional} />
+          <Field label="Nơi cấp" value={identityIssuedPlace} onChange={setIdentityIssuedPlace} placeholder="Nơi cấp giấy tờ" hidden={!showAdditional} />
+          <Field label="Ngày hết hạn" value={identityExpiryDate} onChange={setIdentityExpiryDate} type="date" hidden={!showAdditional} />
+          <Field label="Nơi sinh" value={placeOfBirth} onChange={setPlaceOfBirth} placeholder="Theo giấy tờ (nếu có)" hidden={!showAdditional} />
+          {nationality.trim().toLocaleLowerCase("vi-VN") !== "việt nam" && <Field label="Hạn chứng nhận/thẻ tạm trú" value={temporaryResidenceExpiresAt} onChange={setTemporaryResidenceExpiresAt} type="date" hidden={!showAdditional} />}
+          <div className="sm:col-span-2"><Field label="Địa chỉ thường trú" required value={permanentAddress} onChange={setPermanentAddress} placeholder="Địa chỉ theo giấy tờ" /></div>
+          <div className="sm:col-span-2"><Field label="Địa chỉ đang cư trú" value={currentResidenceAddress} onChange={setCurrentResidenceAddress} placeholder="Nếu khác địa chỉ thường trú" hidden={!showAdditional} /></div>
+          <Field label="Đến từ" value={arrivalFrom} onChange={setArrivalFrom} placeholder="Tỉnh/thành hoặc cơ sở trước" hidden={!showAdditional} />
+          <Field label="Biển số xe" value={vehiclePlate} onChange={setVehiclePlate} placeholder="Nếu có" hidden={!showAdditional} />
+          <Field label="Nghề nghiệp" value={occupation} onChange={setOccupation} placeholder="Không bắt buộc" hidden={!showAdditional} />
+          <Field label="Mục đích lưu trú" value={stayPurpose} onChange={setStayPurpose} placeholder="Công tác, du lịch..." hidden={!showAdditional} />
+        </div><button type="button" className="mt-3 text-[12.5px] font-semibold text-pms-primary" onClick={() => setShowAdditional((visible) => !visible)}>{showAdditional ? "Ẩn thông tin bổ sung" : "Hiện thêm thông tin không bắt buộc"}</button></section>
         <section className="border-t border-pms-divider pt-4"><b className="mb-2 block text-[13.5px]">2. Hình thức lưu trú và tiền phòng</b><div className="grid grid-cols-3 gap-2">
           {([['HOURLY', 'Theo giờ'], ['OVERNIGHT', 'Qua đêm'], ['DAILY', 'Theo ngày']] as [StayType, string][]).map(([key, label]) => <button key={key} type="button" onClick={() => changeStayType(key)} className="rounded-lg border px-2 py-2 text-[12px] font-semibold" style={{ borderColor: stayType === key ? '#284AB1' : '#E6E8EC', background: stayType === key ? '#EEF2FF' : '#fff', color: stayType === key ? '#284AB1' : '#252733' }}>{label}</button>)}
         </div><div className="mt-3 grid grid-cols-1 items-end gap-3 sm:grid-cols-3"><div><label className="mb-1.5 block text-[12px]">Số {unitLabel}</label><input type="number" min={minUnits} value={units} onChange={(event) => setUnits(Math.max(minUnits, Number(event.target.value) || minUnits))} className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" /></div><div className="text-[12px] text-pms-muted">Đơn giá: <b className="text-pms-text">{money(unitPrice)}/{unitLabel}</b><br />Tối thiểu: {minUnits} {unitLabel}</div><div className="rounded-lg bg-pms-primary-soft px-3 py-2 text-[12.5px]">Dự kiến trả: <b>{localTimestamp(expectedCheckout(new Date())).slice(0, 16).replace('T', ' ')}</b><br />Tạm tính: <b className="text-pms-primary">{money(totalPrice)}</b></div></div></section>
@@ -161,9 +162,9 @@ export function QuickCheckinModal({ room, onClose, onChanged }: { room: RoomCard
   );
 }
 
-function Field({ label, value, onChange, placeholder, type = "text", inputMode }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string; inputMode?: "tel" }) {
-  return <div><label className="mb-1.5 block text-[12px]">{label}</label><input type={type} inputMode={inputMode} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px] outline-none focus:border-pms-primary" /></div>;
+function Field({ label, required, hidden, value, onChange, placeholder, type = "text", inputMode }: { label: string; required?: boolean; hidden?: boolean; value: string; onChange: (value: string) => void; placeholder?: string; type?: string; inputMode?: "tel" }) {
+  return <div className={hidden ? "hidden" : undefined}><label className="mb-1.5 block text-[12px]">{label}{required && <span className="ml-1 font-bold text-red-600">*</span>}</label><input type={type} inputMode={inputMode} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px] outline-none focus:border-pms-primary" /></div>;
 }
-function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: [string, string][] }) {
-  return <div><label className="mb-1.5 block text-[12px]">{label}</label><select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]">{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></div>;
+function SelectField({ label, hidden, value, onChange, options }: { label: string; hidden?: boolean; value: string; onChange: (value: string) => void; options: [string, string][] }) {
+  return <div className={hidden ? "hidden" : undefined}><label className="mb-1.5 block text-[12px]">{label}</label><select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]">{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></div>;
 }

@@ -19,6 +19,7 @@ import { auditLogRouter } from "./routes/auditLog.routes";
 import { propertyImagesRouter } from "./routes/propertyImages.routes";
 import { locationRouter } from "./routes/location.routes";
 import { publicRoomsRouter } from "./routes/publicRooms.routes";
+import { internalRouter } from "./routes/internal.routes";
 import { sepayRouter, sepayWebhookRouter, publicSepayRouter } from "./routes/sepayPayments.routes";
 import { dataExportRouter } from "./routes/dataExport.routes";
 import { maintenanceRouter } from "./routes/maintenance.routes";
@@ -28,6 +29,7 @@ import { pool, DB_MODE, embeddedDb } from "./lib/db";
 import { bootstrapEmbeddedDb } from "./lib/embeddedBootstrap";
 import { ensureDefaultSettings } from "./lib/settingsBootstrap";
 import { settingsRepo } from "./repositories/settings.repo";
+import { runDeviceCommandBridge } from "./repositories/deviceCommandBridge.repo";
 
 const app = express();
 // API Docker chỉ nhận request từ Next.js proxy/loopback. Tin đúng một proxy để
@@ -48,6 +50,7 @@ app.use(express.json({ limit: "2mb" }));
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/internal", internalRouter);
 app.get("/api/v1/me", requireAuth, (req, res) => res.json(req.user));
 app.use("/api/v1/room-types", roomTypesRouter);
 app.use("/api/v1/rooms", roomsRouter);
@@ -100,6 +103,15 @@ async function start() {
     // eslint-disable-next-line no-console
     console.log(`Property Web API đang chạy tại http://localhost:${PORT} (DB_MODE=${DB_MODE})`);
   });
+
+  if (process.env.DISABLE_DEVICE_COMMAND_BRIDGE !== "1") {
+    const bridgeIntervalMs = Number(process.env.DEVICE_COMMAND_BRIDGE_INTERVAL_MS) || 5_000;
+    const bridgeTimer = setInterval(() => {
+      runDeviceCommandBridge().catch((err) => console.error("[device-command-bridge] lỗi:", err));
+    }, bridgeIntervalMs);
+    bridgeTimer.unref?.();
+    void runDeviceCommandBridge().catch((err) => console.error("[device-command-bridge] lỗi khởi tạo:", err));
+  }
 }
 
 start().catch((err) => {

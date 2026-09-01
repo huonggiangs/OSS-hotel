@@ -28,6 +28,8 @@ interface RoomDevice {
   id: string;
   name: string;
   external_id: string | null;
+  asset_code: string | null;
+  iot_device_id: string | null;
   control_kind: DeviceControlKind;
   status: DeviceStatus;
   power_on: boolean;
@@ -78,6 +80,7 @@ export function AddRoomModal({
   const [deviceKind, setDeviceKind] = useState<DeviceControlKind>("POWER_METER");
   const [deviceName, setDeviceName] = useState("");
   const [deviceExternalId, setDeviceExternalId] = useState("");
+  const [deviceAssetCode, setDeviceAssetCode] = useState("");
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>("OFFLINE");
   const [devicePowerOn, setDevicePowerOn] = useState(false);
   const [savingDevice, setSavingDevice] = useState(false);
@@ -148,18 +151,37 @@ export function AddRoomModal({
         controlKind: deviceKind,
         name: deviceName.trim(),
         externalId: deviceExternalId.trim() || undefined,
+        assetCode: deviceAssetCode.trim().toUpperCase() || undefined,
         status: deviceStatus,
         powerOn: devicePowerOn,
       });
       setDevices((current) => [...current, device]);
       setDeviceName("");
       setDeviceExternalId("");
+      setDeviceAssetCode("");
       setDeviceStatus("OFFLINE");
       setDevicePowerOn(false);
     } catch (err) {
       setDeviceError(isApiError(err) ? err.message : "Không gán được thiết bị.");
     } finally {
       setSavingDevice(false);
+    }
+  }
+
+  async function linkDevice(device: RoomDevice, assetCode: string) {
+    if (!/^AST-\d+$/i.test(assetCode.trim())) {
+      setDeviceError("Nhập asset_code từ HQ theo dạng AST-000001 trước khi ghép IoT.");
+      return;
+    }
+    setChangingDeviceId(device.id);
+    setDeviceError(null);
+    try {
+      const updated = await api.post<RoomDevice>(`/api/v1/devices/${device.id}/iot-link`, { assetCode: assetCode.trim().toUpperCase() });
+      setDevices((current) => current.map((item) => (item.id === device.id ? updated : item)));
+    } catch (err) {
+      setDeviceError(isApiError(err) ? err.message : "Không ghép được tài sản HQ với Edge/IoT.");
+    } finally {
+      setChangingDeviceId(null);
     }
   }
 
@@ -226,8 +248,8 @@ export function AddRoomModal({
         <section className="rounded-xl border border-pms-border p-3.5">
           <div className="mb-1 flex items-center justify-between"><b className="text-[13px]">Thiết bị điều khiển trong phòng</b>{isEdit && <span className="text-[11.5px] text-pms-muted">Gán riêng cho phòng {initial?.number}</span>}</div>
           {!isEdit ? <p className="m-0 text-[12px] text-pms-muted">Lưu phòng trước, sau đó mở “Sửa phòng” để gán công tơ, đèn, khóa, loa hoặc TV.</p> : <>
-            {loadingDevices ? <p className="m-0 text-[12px] text-pms-muted">Đang tải thiết bị...</p> : <div className="space-y-2">{devices.length ? devices.map((device) => { const kind = kindLabel(device.control_kind); const busy = changingDeviceId === device.id; return <div key={device.id} className="flex items-center gap-2 rounded-lg bg-pms-divider/60 px-3 py-2"><span>{kind.icon}</span><div className="min-w-0 flex-1"><div className="truncate text-[12.5px] font-semibold">{device.name}</div><div className="text-[11px] text-pms-muted">{kind.label} · {DEVICE_STATUS_LABEL[device.status]}{device.external_id ? ` · ${device.external_id}` : ""}</div></div><button type="button" disabled={busy} onClick={() => void toggleDevicePower(device)} className={`rounded-md px-2 py-1 text-[11px] font-semibold ${device.power_on ? "bg-pms-primary text-white" : "border border-pms-border text-pms-muted"}`}>{device.power_on ? "Bật" : "Tắt"}</button><button type="button" disabled={busy} onClick={() => void removeDevice(device)} className="text-[11px] font-semibold text-pms-danger disabled:opacity-50">Gỡ</button></div>; }) : <p className="m-0 text-[12px] text-pms-muted">Chưa gán thiết bị nào.</p>}</div>}
-            <div className="mt-3 rounded-lg border border-dashed border-pms-border p-3"><b className="text-[12px] text-pms-primary">Gán thiết bị</b><div className="mt-2 grid grid-cols-2 gap-2"><select value={deviceKind} onChange={(event) => changeDeviceKind(event.target.value as DeviceControlKind)} className="rounded-md border border-pms-border bg-white px-2.5 py-2 text-[12px]">{DEVICE_KINDS.map((item) => <option key={item.value} value={item.value}>{item.icon} {item.label}</option>)}</select><input value={deviceName} onChange={(event) => setDeviceName(event.target.value)} className="rounded-md border border-pms-border px-2.5 py-2 text-[12px]" placeholder="Tên / mã thiết bị" /><input value={deviceExternalId} onChange={(event) => setDeviceExternalId(event.target.value)} className="rounded-md border border-pms-border px-2.5 py-2 text-[12px]" placeholder="Mã kết nối (tuỳ chọn)" /><select value={deviceStatus} onChange={(event) => setDeviceStatus(event.target.value as DeviceStatus)} className="rounded-md border border-pms-border bg-white px-2.5 py-2 text-[12px]">{Object.entries(DEVICE_STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div><label className="mt-2 flex items-center gap-2 text-[12px]"><input type="checkbox" checked={devicePowerOn} onChange={(event) => setDevicePowerOn(event.target.checked)} />Bật nguồn khi gán</label><button type="button" disabled={savingDevice} onClick={() => void addDevice()} className="mt-2 rounded-md bg-pms-primary px-3 py-2 text-[12px] font-semibold text-white disabled:opacity-60">{savingDevice ? "Đang gán..." : "+ Gán thiết bị"}</button></div>
+            {loadingDevices ? <p className="m-0 text-[12px] text-pms-muted">Đang tải thiết bị...</p> : <div className="space-y-2">{devices.length ? devices.map((device) => { const kind = kindLabel(device.control_kind); const busy = changingDeviceId === device.id; const canLink = ["POWER_SWITCH", "LIGHTING_CONTROLLER", "AC_CONTROLLER", "SMART_TV", "ANNOUNCEMENT_SPEAKER"].includes(device.control_kind); return <div key={device.id} className="rounded-lg bg-pms-divider/60 px-3 py-2"><div className="flex items-center gap-2"><span>{kind.icon}</span><div className="min-w-0 flex-1"><div className="truncate text-[12.5px] font-semibold">{device.name}</div><div className="break-words text-[11px] text-pms-muted">{kind.label} · {DEVICE_STATUS_LABEL[device.status]}{device.asset_code ? ` · ${device.asset_code}` : " · Chưa có asset_code"}</div></div><button type="button" disabled={busy} onClick={() => void toggleDevicePower(device)} className={`rounded-md px-2 py-1 text-[11px] font-semibold ${device.power_on ? "bg-pms-primary text-white" : "border border-pms-border text-pms-muted"}`}>{device.power_on ? "Bật" : "Tắt"}</button><button type="button" disabled={busy} onClick={() => void removeDevice(device)} className="text-[11px] font-semibold text-pms-danger disabled:opacity-50">Gỡ</button></div>{canLink && !device.iot_device_id && <div className="mt-2 flex gap-2"><input defaultValue={device.asset_code ?? ""} id={`asset-${device.id}`} className="min-w-0 flex-1 rounded-md border border-pms-border bg-white px-2 py-1.5 text-[11px]" placeholder="AST-000001 từ HQ" /><button type="button" disabled={busy} onClick={() => { const input = document.getElementById(`asset-${device.id}`) as HTMLInputElement | null; void linkDevice(device, input?.value ?? ""); }} className="shrink-0 rounded-md border border-pms-primary px-2 py-1 text-[11px] font-semibold text-pms-primary">Ghép IoT</button></div>}{device.iot_device_id && <p className="mb-0 mt-1 text-[11px] text-pms-success">Đã ghép Edge/IoT · {device.iot_device_id.slice(0, 8)}</p>}</div>; }) : <p className="m-0 text-[12px] text-pms-muted">Chưa gán thiết bị nào.</p>}</div>}
+            <div className="mt-3 rounded-lg border border-dashed border-pms-border p-3"><b className="text-[12px] text-pms-primary">Gán thiết bị</b><div className="mt-2 grid grid-cols-2 gap-2"><select value={deviceKind} onChange={(event) => changeDeviceKind(event.target.value as DeviceControlKind)} className="rounded-md border border-pms-border bg-white px-2.5 py-2 text-[12px]">{DEVICE_KINDS.map((item) => <option key={item.value} value={item.value}>{item.icon} {item.label}</option>)}</select><input value={deviceName} onChange={(event) => setDeviceName(event.target.value)} className="rounded-md border border-pms-border px-2.5 py-2 text-[12px]" placeholder="Tên / mã thiết bị" /><input value={deviceExternalId} onChange={(event) => setDeviceExternalId(event.target.value)} className="rounded-md border border-pms-border px-2.5 py-2 text-[12px]" placeholder="Mã kết nối (tuỳ chọn)" /><input value={deviceAssetCode} onChange={(event) => setDeviceAssetCode(event.target.value)} className="rounded-md border border-pms-border px-2.5 py-2 text-[12px]" placeholder="asset_code HQ (AST-...)" /><select value={deviceStatus} onChange={(event) => setDeviceStatus(event.target.value as DeviceStatus)} className="rounded-md border border-pms-border bg-white px-2.5 py-2 text-[12px]">{Object.entries(DEVICE_STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div><label className="mt-2 flex items-center gap-2 text-[12px]"><input type="checkbox" checked={devicePowerOn} onChange={(event) => setDevicePowerOn(event.target.checked)} />Bật nguồn khi gán</label><button type="button" disabled={savingDevice} onClick={() => void addDevice()} className="mt-2 rounded-md bg-pms-primary px-3 py-2 text-[12px] font-semibold text-white disabled:opacity-60">{savingDevice ? "Đang gán..." : "+ Gán thiết bị"}</button><p className="mb-0 mt-2 text-[11px] text-pms-muted">Sau khi gán, bấm “Ghép IoT”. Mã phải là tài sản đúng cơ sở đã khai báo trên HQ; hệ thống không cho ghép mã KIOSK hoặc mã thuộc cơ sở khác.</p></div>
             {deviceError && <p className="mb-0 mt-2 text-[12px] text-pms-danger">{deviceError}</p>}
           </>}
         </section>

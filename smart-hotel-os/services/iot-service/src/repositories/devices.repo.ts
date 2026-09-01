@@ -33,7 +33,7 @@ export const devicesRepo = {
   }): Promise<Device> {
     const { rows } = await pool.query<Device>(
       `INSERT INTO devices (id, tenant_id, property_id, room_id, device_type, name, status, power_state)
-       VALUES ($1,$2,$3,$4,$5,$6,'ONLINE','OFF')
+       VALUES ($1,$2,$3,$4,$5,$6,'OFFLINE','OFF')
        ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, updated_at = now()
        RETURNING *`,
       [input.id, input.tenantId, input.propertyId, input.roomId, input.deviceType, input.name]

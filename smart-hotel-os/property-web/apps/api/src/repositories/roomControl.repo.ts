@@ -13,7 +13,7 @@ export interface DeviceControlResult {
   deviceId: string;
   deviceName: string;
   controlKind: string;
-  deliveryStatus: "QUEUED" | "NOT_CONFIGURED";
+  deliveryStatus: "QUEUED" | "NOT_CONFIGURED" | "ACKNOWLEDGED" | "FAILED";
 }
 
 /**
@@ -21,9 +21,9 @@ export interface DeviceControlResult {
  * là thiết bị đọc số liệu; khóa cửa và bộ cấp thẻ có nghiệp vụ riêng, tuyệt đối
  * không bị bật/tắt cùng nguồn điện phòng.
  *
- * `QUEUED` nghĩa là PMS đã ghi lệnh bền vững cho thiết bị có external_id và
- * trạng thái ONLINE; bộ điều phối Edge/IoT phải ACK riêng trước khi coi đó là
- * tác động phần cứng thật. Thiết bị chưa map phần cứng được ghi rõ
+ * `QUEUED` nghĩa là PMS đã ghi lệnh bền vững cho thiết bị có asset_code và
+ * iot_device_id đã ghép; bộ điều phối Edge/IoT phải ACK riêng trước khi coi
+ * đó là tác động phần cứng thật. Thiết bị chưa map phần cứng được ghi rõ
  * `NOT_CONFIGURED` để tránh UI báo sai là đã điều khiển thành công.
  */
 export async function setRoomEnergyState(
@@ -46,10 +46,11 @@ export async function setRoomEnergyState(
     id: string;
     name: string;
     control_kind: string;
-    external_id: string | null;
+    asset_code: string | null;
+    iot_device_id: string | null;
     status: "ONLINE" | "OFFLINE" | "ERROR";
   }>(
-    `SELECT id, name, control_kind, external_id, status
+    `SELECT id, name, control_kind, asset_code, iot_device_id, status
      FROM devices
      WHERE property_id = $1 AND room_id = $2 AND control_kind = ANY($3::text[])`,
     [input.propertyId, input.roomId, ENERGY_CONTROL_KINDS]
@@ -65,7 +66,7 @@ export async function setRoomEnergyState(
   const action = input.powerOn ? "POWER_ON" : "POWER_OFF";
   const result: DeviceControlResult[] = [];
   for (const device of devices) {
-    const deliveryStatus = device.external_id && device.status === "ONLINE" ? "QUEUED" : "NOT_CONFIGURED";
+    const deliveryStatus = device.asset_code && device.iot_device_id ? "QUEUED" : "NOT_CONFIGURED";
     await db.query(
       `INSERT INTO device_control_events
        (id, property_id, tenant_id, room_id, booking_id, device_id, action, delivery_status, payload, requested_by)
@@ -87,13 +88,15 @@ export async function createDeviceControlEvent(
     tenantId: string;
     roomId: string;
     bookingId: string;
-    device: { id: string; external_id: string | null; status: "ONLINE" | "OFFLINE" | "ERROR" };
+    device: { id: string; external_id?: string | null; asset_code?: string | null; iot_device_id?: string | null; status: "ONLINE" | "OFFLINE" | "ERROR" };
     action: "ISSUE_CARD" | "RECLAIM_CARD";
     requestedBy?: string;
     payload: Record<string, unknown>;
   }
 ): Promise<"QUEUED" | "NOT_CONFIGURED"> {
-  const deliveryStatus = input.device.external_id && input.device.status === "ONLINE" ? "QUEUED" : "NOT_CONFIGURED";
+  // Bộ cấp/thu thẻ chưa có adapter giao thức trong iot-service; giữ rõ là
+  // NOT_CONFIGURED thay vì giả báo đã cấp thẻ thành công như lệnh điện.
+  const deliveryStatus = "NOT_CONFIGURED";
   await db.query(
     `INSERT INTO device_control_events
      (id, property_id, tenant_id, room_id, booking_id, device_id, action, delivery_status, payload, requested_by)

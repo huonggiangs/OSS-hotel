@@ -86,8 +86,24 @@ export default function CustomersPage() {
       <h1 className="mb-1 text-[22px] font-bold">Khách hàng</h1>
       <p className="mb-[22px] text-[13px] text-pms-muted">{customers.length} khách hàng đã lưu trú</p>
 
-      <div className="rounded-xl bg-white p-6 shadow-card">
-        <table className="w-full border-collapse text-[13px]">
+      <div className="rounded-xl bg-white p-4 shadow-card sm:p-6">
+        <div className="space-y-3 md:hidden">
+          {customers.map((c) => {
+            const segColor = customerSegmentColors[c.segment] ?? customerSegmentColors["Mới"];
+            return (
+              <button key={c.key} type="button" onClick={() => setSelectedKey(c.key)} className="block w-full rounded-lg border border-pms-divider p-3 text-left">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="font-semibold text-pms-primary">{c.name}</span>
+                  <span className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: segColor.bg, color: segColor.fg }}>{c.segment}</span>
+                </div>
+                <p className="mt-2 break-words text-[12px] text-pms-muted">{c.phone} · {c.email}</p>
+                {c.note && <p className="mt-1 line-clamp-2 text-[12px] text-pms-muted">{c.note}</p>}
+              </button>
+            );
+          })}
+          {customers.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có khách hàng.</p>}
+        </div>
+        <table className="hidden w-full border-collapse text-[13px] md:table">
           <thead>
             <tr>
               {["Khách hàng", "Số điện thoại", "Email", "Số lần đặt", "Đặt lại", "Chăm sóc sau lưu trú", "Tổng chi tiêu", "Phân khúc", "Ghi chú"].map(

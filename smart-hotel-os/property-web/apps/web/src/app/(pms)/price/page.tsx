@@ -305,6 +305,7 @@ export default function PricePage() {
           onClose={() => setShowAddRoomType(false)}
           onSaved={load}
           initial={editingRoomType ?? undefined}
+          assignedRoomCount={editingRoomType ? rooms.filter((room) => room.room_type_id === editingRoomType.id).length : 0}
         />
       )}
       {showAddRoom && (
