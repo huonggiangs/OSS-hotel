@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đánh giá ứng dụng theo mong muốn của chủ cơ sở lưu trú</title>
+  <style>
+    :root { --ink:#172033; --muted:#62708a; --line:#d9e1ec; --bg:#f3f6fa; --blue:#155eef; --green:#067647; --amber:#b54708; --red:#b42318; --slate:#475467; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 Arial, Helvetica, sans-serif; }
+    main { max-width:1200px; margin:28px auto; padding:44px; background:#fff; box-shadow:0 4px 24px rgba(16,24,40,.1); }
+    h1 { margin:0 0 6px; font-size:28px; line-height:1.24; }
+    h2 { margin:36px 0 12px; padding-bottom:8px; border-bottom:2px solid #dbe8ff; font-size:21px; }
+    h3 { margin:22px 0 8px; font-size:17px; }
+    p { margin:8px 0; }
+    a { color:#155eef; }
+    .muted { color:var(--muted); }
+    .meta { display:flex; gap:14px 24px; flex-wrap:wrap; margin:20px 0; padding:13px 16px; background:#eff6ff; border-left:4px solid var(--blue); }
+    .verdict { padding:18px 20px; margin:20px 0; border:1px solid #fecdca; border-radius:10px; background:#fff6f5; }
+    .verdict strong { color:#912018; }
+    .cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:16px 0; }
+    .card { padding:15px; border:1px solid var(--line); border-radius:9px; }
+    .card b { display:block; font-size:25px; }
+    table { width:100%; border-collapse:collapse; margin:12px 0; }
+    th, td { padding:11px 12px; border:1px solid var(--line); vertical-align:top; text-align:left; }
+    th { background:#f1f5f9; font-size:13px; }
+    .badge { display:inline-block; min-width:48px; padding:3px 8px; border-radius:999px; color:#fff; font-size:12px; font-weight:700; text-align:center; white-space:nowrap; }
+    .g0 { background:var(--red); } .g1 { background:var(--amber); } .g2 { background:#175cd3; } .g3 { background:var(--green); } .g4 { background:#344054; }
+    .ok { color:var(--green); font-weight:700; } .warn { color:var(--amber); font-weight:700; } .no { color:var(--red); font-weight:700; }
+    .callout { padding:14px 16px; margin:16px 0; background:#fffaeb; border:1px solid #fedf89; border-radius:8px; }
+    .steps { counter-reset:step; list-style:none; padding:0; }
+    .steps li { position:relative; margin:11px 0; padding:12px 12px 12px 48px; border:1px solid var(--line); border-radius:8px; }
+    .steps li::before { counter-increment:step; content:counter(step); position:absolute; top:12px; left:14px; width:23px; height:23px; border-radius:50%; background:#155eef; color:#fff; text-align:center; font-weight:700; line-height:23px; }
+    code { padding:2px 4px; border-radius:4px; background:#eef2f6; font-family:Consolas, monospace; font-size:.9em; }
+    .footer { margin-top:34px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+    @media print { body { background:#fff; } main { max-width:none; margin:0; padding:0; box-shadow:none; } }
+    @media (max-width:720px) { main { margin:0; padding:20px 14px; } .cards { grid-template-columns:1fr; } table { display:block; overflow-x:auto; } th,td { min-width:150px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Đánh giá hiện trạng ứng dụng theo mong muốn của chủ cơ sở lưu trú</h1>
+    <p class="muted">Đối chiếu với cuộc trao đổi “Mong muốn của chủ cơ sở lưu trú”: quản lý từ xa, giảm điện, giảm downtime, bảo trì chủ động, AI cảnh báo, dashboard lợi nhuận, AI giá phòng và camera AI.</p>
+
+    <section class="meta">
+      <span><strong>Ngày đánh giá:</strong> 01/09/2026</span>
+      <span><strong>Phiên bản đã kiểm tra:</strong> <code>eab3721</code></span>
+      <span><strong>Nguồn mong muốn:</strong> <a href="https://chatgpt.com/share/6a325a65-cf14-83ec-9452-81e8549e9c21">đoạn chat được chia sẻ</a></span>
+    </section>
+
+    <section class="verdict">
+      <strong>Kết luận thẳng thắn:</strong> Ứng dụng hiện là <strong>PMS MVP có nền tảng liên thông HQ–PMS–Edge–IoT</strong>, phù hợp để chạy thử nghiệp vụ cơ sở và pilot thiết bị. Ứng dụng <strong>chưa</strong> đạt mức “Remote Hospitality Operating System” có thể cam kết giảm điện, giảm downtime hoặc dùng AI tạo lợi nhuận theo tháng. Những giá trị đó chỉ nên được chào bán sau khi có thiết bị thật, số đo nền, cảnh báo vận hành và KPI đã được nghiệm thu.
+    </section>
+
+    <h2>Thang đánh giá</h2>
+    <table>
+      <thead><tr><th>Mức</th><th>Ý nghĩa</th><th>Có thể cam kết với chủ cơ sở?</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge g0">G0</span></td><td>Chưa có chức năng vận hành tương ứng.</td><td class="no">Không</td></tr>
+        <tr><td><span class="badge g1">G1</span></td><td>Có dữ liệu, cấu hình hoặc giao diện, nhưng chưa có luồng tự động hoàn chỉnh.</td><td class="no">Không</td></tr>
+        <tr><td><span class="badge g2">G2</span></td><td>Luồng phần mềm chạy trong Docker/LAN hoặc có kiểm thử kỹ thuật; chưa có bằng chứng vận hành thiết bị thực và KPI tiền.</td><td class="warn">Chỉ pilot có điều kiện</td></tr>
+        <tr><td><span class="badge g3">G3</span></td><td>Pilot tại cơ sở thật, có người dùng, thiết bị thật và số liệu trước/sau.</td><td class="ok">Có, phạm vi pilot</td></tr>
+        <tr><td><span class="badge g4">G4</span></td><td>Chuẩn hóa, giám sát SLA, có báo cáo ROI lặp lại và triển khai được nhiều cơ sở.</td><td class="ok">Có, dịch vụ thương mại</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Tóm tắt mức sẵn sàng</h2>
+    <div class="cards">
+      <div class="card"><b>G2</b><span>Vận hành PMS và nền tảng điều khiển thiết bị</span></div>
+      <div class="card"><b>0</b><span>Giá trị hiện có mức G4 để bán và cam kết ROI</span></div>
+      <div class="card"><b>Ưu tiên 1</b><span>Đo điện thật + pilot 10 phòng + cảnh báo lỗi</span></div>
+    </div>
+
+    <h2>Đối soát 8 dịch vụ chủ cơ sở sẵn sàng trả tiền</h2>
+    <table>
+      <thead><tr><th>Dịch vụ chủ cơ sở coi trọng</th><th>Mức hiện tại</th><th>Những gì ứng dụng đang có</th><th>Khoảng thiếu để trở thành dịch vụ trả phí</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Giảm điện</strong><br><span class="muted">Mức sẵn sàng trả: rất cao</span></td>
+          <td><span class="badge g2">G2</span></td>
+          <td>PMS tạo lệnh điện, Edge chuyển lệnh tới IoT Service; có hàng đợi, chống gửi trùng, ACK/FAILED và mapping <code>asset_code</code>. Đã kiểm thử chuỗi phần mềm với một công tắc mẫu.</td>
+          <td>Chưa có công tơ điện thực/telemetry kWh, đường cơ sở tiêu thụ, quy tắc tiết kiệm đã nghiệm thu, hoặc báo cáo tiền điện trước/sau. Chưa thể tuyên bố “giảm X% điện”.</td>
+        </tr>
+        <tr>
+          <td><strong>Giảm downtime</strong><br><span class="muted">Mức sẵn sàng trả: rất cao</span></td>
+          <td><span class="badge g2">G2</span></td>
+          <td>Edge gửi heartbeat định kỳ; PMS lưu trạng thái thiết bị/lệnh; HQ có danh mục tài sản và cảnh báo tài sản. Lệnh lỗi được lưu để truy vết.</td>
+          <td>Chưa có quy tắc cảnh báo chủ động theo ngưỡng, phân loại severity, gửi Zalo/SMS/email, SLA, leo thang và dashboard độ sẵn sàng. Chưa đo được MTTR/uptime.</td>
+        </tr>
+        <tr>
+          <td><strong>Bảo trì</strong><br><span class="muted">Mức sẵn sàng trả: cao</span></td>
+          <td><span class="badge g2">G2</span></td>
+          <td>PMS có phiếu báo hỏng nhiều lỗi, mô tả, ảnh/video, trạng thái phòng bảo trì và danh sách đối tác theo nhóm sửa chữa. HQ có tài sản, nhà cung cấp và thông tin bảo hành.</td>
+          <td>Chưa có điều phối kỹ thuật tự động, lịch bảo trì định kỳ, SLA, chi phí/linh kiện theo work order, đánh giá đối tác hoặc cảnh báo dự báo hỏng.</td>
+        </tr>
+        <tr>
+          <td><strong>AI cảnh báo</strong><br><span class="muted">Mức sẵn sàng trả: cao</span></td>
+          <td><span class="badge g1">G1</span></td>
+          <td>Có dữ liệu trạng thái, heartbeat và cảnh báo tài sản làm đầu vào cho rule engine.</td>
+          <td>Chưa có mô hình/rule phát hiện bất thường theo dữ liệu thời gian, không có luồng thông báo tự động hay trợ lý AI phân tích sự cố. Hiện không nên tiếp thị là “AI cảnh báo”.</td>
+        </tr>
+        <tr>
+          <td><strong>Quản lý từ xa</strong><br><span class="muted">Mức sẵn sàng trả: cao</span></td>
+          <td><span class="badge g2">G2</span></td>
+          <td>Có HQ Console, PMS theo cơ sở, Edge Node, phân quyền và giám sát trạng thái cơ bản. Các web Docker/LAN đang hoạt động.</td>
+          <td>Hiện vận hành LAN; chưa triển khai Internet công khai/VPN an toàn, MFA, cảnh báo từ xa, màn hình CEO hợp nhất nhiều cơ sở hoặc quy trình hỗ trợ 24/7.</td>
+        </tr>
+        <tr>
+          <td><strong>Dashboard lợi nhuận</strong><br><span class="muted">Mức sẵn sàng trả: cao</span></td>
+          <td><span class="badge g2">G2</span></td>
+          <td>Dashboard PMS có công suất phòng, doanh thu, chi phí và lợi nhuận ước tính từ dữ liệu PMS; có đối soát cuối ngày.</td>
+          <td>Chưa là P&amp;L/EBITDA đáng tin cậy: thiếu tích hợp điện/nước thực, OTA commission thực, lương, khấu hao và dashboard tập đoàn đa cơ sở. Cần đối soát kế toán trước khi dùng để ra quyết định lớn.</td>
+        </tr>
+        <tr>
+          <td><strong>AI tối ưu giá phòng</strong><br><span class="muted">Mức sẵn sàng trả: cao</span></td>
+          <td><span class="badge g2">G2</span></td>
+          <td>Đã có giá linh hoạt theo tỷ lệ lấp đầy, giá sàn, ngày/loại phòng; service định giá hiện là rule-based và giữ giá đề xuất không tự ghi đè giá bán.</td>
+          <td>Chưa có dự báo demand/occupancy học từ lịch sử, giá đối thủ, đánh giá độ chính xác, A/B test hoặc tự đồng bộ giá OTA có phê duyệt. Đây là “dynamic pricing theo quy tắc”, chưa phải AI revenue management.</td>
+        </tr>
+        <tr>
+          <td><strong>Camera AI</strong><br><span class="muted">Mức sẵn sàng trả: trung bình–cao</span></td>
+          <td><span class="badge g0">G0</span></td>
+          <td>Chỉ có loại tài sản IP camera và hạng mục bảo trì camera; chưa có stream video, lưu trữ, phân tích hình ảnh hay cảnh báo sự kiện.</td>
+          <td>Cần tích hợp RTSP/NVR, chính sách bảo vệ dữ liệu cá nhân, engine vision, lưu trữ video, mô hình sự kiện và quy trình người trực xử lý. Không nên triển khai trước khi ba giá trị ROI cao hơn đạt G3.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Những mong muốn của chủ cơ sở mà hệ thống đã đáp ứng một phần</h2>
+    <table>
+      <thead><tr><th>Mong muốn</th><th>Đánh giá hiện tại</th><th>Giới hạn cần nói rõ</th></tr></thead>
+      <tbody>
+        <tr><td>Biết phòng trống, khách check-in/check-out, phòng bẩn/bảo trì</td><td class="ok">Có trong PMS, dùng dữ liệu cơ sở dữ liệu thay cho hardcode ở các luồng đã rà soát.</td><td>Chưa thay thế hoàn toàn một trung tâm điều hành đa cơ sở.</td></tr>
+        <tr><td>Ghi nhận doanh thu, dịch vụ, chi phí và thanh toán</td><td class="ok">Có PMS booking, dịch vụ phát sinh, thanh toán hai bước/QR và báo cáo cơ bản.</td><td>Chưa thay thế phần mềm kế toán hoặc báo cáo P&amp;L kiểm toán.</td></tr>
+        <tr><td>Điều khiển điện theo nghiệp vụ phòng</td><td class="warn">Chuỗi lệnh phần mềm đã có ACK; phòng mẫu đã được ghép tài sản thử nghiệm.</td><td>Chưa chứng minh relay/công tơ vật lý tại cơ sở hoạt động liên tục.</td></tr>
+        <tr><td>Giảm phụ thuộc nhân sự</td><td class="warn">Có nhận phòng nhanh, trạng thái phòng, thanh toán và báo hỏng.</td><td>Chưa có tự check-in hoàn chỉnh, cấp quyền khóa/thẻ thực, workflow cảnh báo và điều phối tự động.</td></tr>
+        <tr><td>Chủ ở xa chỉ dùng một app</td><td class="warn">Có HQ và PMS trên web; có phân quyền cơ bản.</td><td>Chưa có app/CEO dashboard duy nhất, truy cập Internet an toàn và cảnh báo push từ xa.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Bằng chứng kiểm tra hiện có</h2>
+    <ul>
+      <li>Typecheck đạt cho PMS Web/API, Edge Node, IoT Service và HQ API.</li>
+      <li>Docker health đạt; HQ, PMS và Edge phản hồi HTTP 200 qua LAN.</li>
+      <li>Luồng thử nghiệm phần mềm: tài sản HQ <code>AST-000010</code> → PMS phòng 101 → Edge → IoT; lệnh <code>POWER_ON</code> được ACK rồi đồng bộ trạng thái về HQ.</li>
+      <li>Không coi ACK thử nghiệm là bằng chứng một relay hay công tơ vật lý đã được điều khiển tại cơ sở.</li>
+    </ul>
+
+    <div class="callout"><strong>Điều không nên hứa với chủ cơ sở lúc này:</strong> “giảm 20% điện”, “AI phát hiện mọi sự cố”, “camera AI”, “quản lý từ xa không gián đoạn” hoặc “lợi nhuận realtime chính xác” — vì chưa có thiết bị thật, số liệu baseline, hệ thống cảnh báo/SLA và nghiệm thu thực địa tương ứng.</div>
+
+    <h2>Đề xuất điều chỉnh sản phẩm và thứ tự triển khai</h2>
+    <ol class="steps">
+      <li><strong>Pilot giá trị cao nhất: giảm điện.</strong> Chọn 10 phòng mẫu, lắp/ghép relay và công tơ thật, ghi dữ liệu kWh theo phòng tối thiểu 2–4 tuần làm baseline. Bật quy tắc an toàn “trả phòng → tắt tải không thiết yếu sau thời gian chờ”; luôn giữ thao tác tay và nhật ký.</li>
+      <li><strong>Biến heartbeat thành giảm downtime.</strong> Đặt ngưỡng Edge/thiết bị offline, lệnh thất bại, hàng đợi tồn; tạo ticket, phân mức nghiêm trọng và gửi thông báo. Đo uptime, số phút downtime và MTTR cho từng cơ sở.</li>
+      <li><strong>Chuẩn hóa bảo trì.</strong> Gắn tài sản–phòng–nhà cung cấp–bảo hành; bổ sung người nhận việc, hẹn xử lý, SLA, chi phí và kết quả. Đây là nền tảng trước khi làm AI dự báo hỏng.</li>
+      <li><strong>Làm CEO Dashboard tối giản.</strong> Một màn hình di động chỉ gồm: công suất, doanh thu đã xác nhận, tiền điện đo thực, sự cố mở, phòng chưa dọn và trạng thái Edge. Chỉ đưa chỉ tiêu có nguồn dữ liệu rõ ràng.</li>
+      <li><strong>Phát triển giá phòng theo từng tầng.</strong> Giữ rule-based có phê duyệt trước; sau khi thu đủ lịch sử mới thêm forecast, giá đối thủ và gợi ý AI. Không cho mô hình tự đẩy giá OTA ở giai đoạn đầu.</li>
+      <li><strong>Để Camera AI ở giai đoạn sau.</strong> Chỉ khởi động khi pilot điện/downtime có ROI; cần phê duyệt riêng về quyền riêng tư, lưu trữ hình ảnh và thiết bị NVR/camera.</li>
+    </ol>
+
+    <h2>Đề xuất cách chào dịch vụ ở thời điểm hiện tại</h2>
+    <p>Không nên chào bán “IoT platform” hoặc một bộ tính năng AI lớn. Nên chào <strong>pilot Vận hành từ xa &amp; Tiết kiệm điện</strong> có phạm vi đo được: PMS phòng, thiết bị được ghép, điều khiển điện có xác nhận, theo dõi Edge, bảo trì và báo cáo trước/sau. Sau khi chứng minh kWh tiết kiệm, uptime và thời gian xử lý sự cố, mới nâng lên gói dịch vụ định kỳ.</p>
+
+    <p class="footer">Báo cáo phản ánh mã nguồn và môi trường Docker/LAN được kiểm tra ngày 01/09/2026; không thay thế nghiệm thu thiết bị vật lý, tích hợp đối tác thanh toán/camera hoặc kiểm toán kế toán. Báo cáo trước về các yêu cầu PMS/Edge/IoT chi tiết: <code>ops/BAO_CAO_RA_SOAT_YEU_CAU_CHU_CO_SO_2026-09-01.html</code>.</p>
+  </main>
+</body>
+</html>
