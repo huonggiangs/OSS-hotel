@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Báo cáo rà soát yêu cầu PMS, Edge và IoT</title>
+  <style>
+    :root { --ink:#14213d; --muted:#5f6b7a; --line:#dce3ec; --bg:#f5f7fb; --ok:#087f5b; --partial:#a56200; --todo:#b42318; --blue:#175cd3; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--bg); font:15px/1.55 Arial, Helvetica, sans-serif; }
+    main { max-width:1180px; margin:32px auto; padding:42px; background:#fff; box-shadow:0 4px 22px rgba(25,43,72,.10); }
+    h1 { margin:0 0 6px; font-size:27px; line-height:1.25; }
+    h2 { margin:34px 0 12px; padding-bottom:8px; border-bottom:2px solid #d8e6fb; font-size:20px; }
+    h3 { margin:24px 0 8px; font-size:16px; }
+    p { margin:8px 0; }
+    .muted { color:var(--muted); }
+    .meta { display:flex; gap:20px; flex-wrap:wrap; padding:12px 16px; margin:22px 0; border-left:4px solid var(--blue); background:#eff6ff; }
+    .summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:16px 0; }
+    .metric { padding:16px; border:1px solid var(--line); border-radius:8px; }
+    .metric strong { display:block; font-size:25px; }
+    table { width:100%; border-collapse:collapse; margin:14px 0; }
+    th, td { padding:12px; border:1px solid var(--line); vertical-align:top; text-align:left; }
+    th { background:#f1f5f9; font-size:13px; }
+    .status { display:inline-block; min-width:92px; padding:3px 8px; border-radius:999px; color:#fff; text-align:center; white-space:nowrap; font-size:12px; font-weight:700; }
+    .ok { background:var(--ok); } .partial { background:var(--partial); } .todo { background:var(--todo); }
+    .callout { margin:16px 0; padding:14px 16px; border-radius:8px; background:#fff7ed; border:1px solid #fed7aa; }
+    ul, ol { padding-left:22px; }
+    code { padding:2px 4px; border-radius:4px; background:#eef2f7; font-family:Consolas, monospace; font-size:.91em; }
+    .footer { margin-top:34px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+    @media print { body { background:#fff; } main { max-width:none; margin:0; padding:0; box-shadow:none; } }
+    @media (max-width:700px) { main { margin:0; padding:20px 14px; } .summary { grid-template-columns:1fr; } table { display:block; overflow-x:auto; white-space:normal; } th, td { min-width:160px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Báo cáo rà soát yêu cầu PMS, Edge Node và IoT</h1>
+    <p class="muted">Phạm vi: các yêu cầu trong cuộc trao đổi về nhận phòng nhanh, loại phòng &amp; giá linh hoạt, điều khiển điện, heartbeat Edge, liên thông HQ–PMS–IoT và tối ưu giao diện PMS trên điện thoại.</p>
+
+    <section class="meta">
+      <span><strong>Ngày đối soát:</strong> 01/09/2026</span>
+      <span><strong>Phiên bản mã:</strong> <code>eab3721</code> (đã đẩy GitHub nhánh <code>main</code>)</span>
+      <span><strong>Trạng thái triển khai:</strong> Docker watcher đã cập nhật thành công</span>
+    </section>
+
+    <h2>Kết luận điều hành</h2>
+    <p>Các yêu cầu giao diện và luồng phần mềm cốt lõi trong phạm vi này đã được xử lý. PMS hiện không chỉ ghi trạng thái <code>power_on</code> vào cơ sở dữ liệu: lệnh điện đi qua Edge Node đến IoT Service, có cơ chế chống gửi trùng, xác nhận thành công/thất bại và ghi nhận trạng thái để truy vết.</p>
+    <p>Để điều khiển điện, khóa hoặc bộ cấp thẻ <em>vật lý</em>, cơ sở vẫn cần khai báo từng thiết bị thực tế và kết nối adapter/giao thức của nhà cung cấp tại Edge. Hệ thống không đánh dấu thành công nếu thiết bị chưa phản hồi xác nhận.</p>
+
+    <div class="summary">
+      <div class="metric"><strong>5/5</strong>trang PMS đã kiểm tra giao diện di động</div>
+      <div class="metric"><strong>5/5</strong>gói phần mềm typecheck đạt</div>
+      <div class="metric"><strong>3/3</strong>dịch vụ web LAN phản hồi HTTP 200</div>
+    </div>
+
+    <h2>Bảng đối soát yêu cầu</h2>
+    <table>
+      <thead>
+        <tr><th>Yêu cầu của chủ cơ sở</th><th>Kết quả đã thực hiện</th><th>Trạng thái</th><th>Điểm cần lưu ý / bước tiếp theo</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Nhận phòng nhanh</strong>: ẩn trường không bắt buộc, có nút hiện thêm; dấu <strong>*</strong> màu đỏ.</td>
+          <td>Chỉ hiển thị các trường bắt buộc khi mở biểu mẫu; bổ sung nút Hiện thêm/Ẩn; các trường bắt buộc có dấu sao màu đỏ.</td>
+          <td><span class="status ok">Đã đáp ứng</span></td>
+          <td>Nên thống nhất danh sách trường bắt buộc theo quy định vận hành và quy định khai báo lưu trú của từng cơ sở trước khi đưa vào sử dụng chính thức.</td>
+        </tr>
+        <tr>
+          <td><strong>Sửa loại phòng &amp; giá linh hoạt</strong>: cho chọn áp dụng giá mới cho toàn bộ phòng cùng loại hoặc không.</td>
+          <td>Khi sửa loại phòng, hệ thống hiện lựa chọn “Áp dụng bảng giá mới cho tất cả N phòng cùng loại”. Nếu không chọn, chỉ sửa thông tin loại phòng và giữ nguyên bảng giá hiện hành.</td>
+          <td><span class="status ok">Đã đáp ứng</span></td>
+          <td>Nên bổ sung lịch sử thay đổi giá và bước phê duyệt nếu cơ sở có nhiều người quản lý giá.</td>
+        </tr>
+        <tr>
+          <td><strong>Lệnh điện thật</strong>: không chỉ đổi <code>power_on</code> trong PMS.</td>
+          <td>Lệnh PMS được ghi thành sự kiện, chuyển tới Edge Node, tạo lệnh IoT và chỉ chuyển sang <code>ACKNOWLEDGED</code> khi nhận phản hồi. Có trạng thái <code>QUEUED</code>, <code>FAILED</code>, mã lệnh IoT và lỗi để truy vết.</td>
+          <td><span class="status partial">Đạt phần mềm</span></td>
+          <td>Đã kiểm thử end-to-end với tài sản <code>AST-000010</code> ghép phòng 101. Cần nối adapter/giao thức thiết bị thực (relay, MQTT hoặc API nhà cung cấp) để tạo tác động vật lý.</td>
+        </tr>
+        <tr>
+          <td><strong>Heartbeat / giám sát Edge trực tiếp</strong>.</td>
+          <td>Edge gửi heartbeat định kỳ về PMS, lưu thời điểm thấy cuối, khả năng kết nối cloud, hàng đợi và trạng thái đồng bộ. Endpoint health Edge cũng trả về thời điểm heartbeat gần nhất.</td>
+          <td><span class="status ok">Đã đáp ứng</span></td>
+          <td>Nên bổ sung màn hình vận hành hiển thị Edge offline và cảnh báo qua email/Zalo/SMS khi mất heartbeat quá ngưỡng quy định.</td>
+        </tr>
+        <tr>
+          <td><strong>Hoàn chỉnh luồng nghiệp vụ</strong>, không chỉ là các service/cấu hình rời rạc.</td>
+          <td>Đã hoàn chỉnh luồng điều khiển điện có hàng đợi, chống trùng lệnh, xác nhận thiết bị và đồng bộ trạng thái HQ. Quyền liên kết thiết bị được giới hạn cho Owner/Manager.</td>
+          <td><span class="status partial">Đạt một phần</span></td>
+          <td>Các luồng vật lý khác (cấp/thu hồi thẻ, khóa thông minh, điều hòa, công tơ) cần adapter riêng và kịch bản nghiệp vụ được phê duyệt trước khi tự động hóa.</td>
+        </tr>
+        <tr>
+          <td><strong>Ghép asset_code HQ–PMS–IoT</strong> và nối PMS/Edge tới IoT Service.</td>
+          <td>Đã thêm liên kết <code>asset_code</code> và <code>iot_device_id</code>; Edge kiểm tra tài sản HQ đúng cơ sở và đúng nhóm thiết bị trước khi ghép. Đã có tài sản thử nghiệm mã <code>AST-000010</code> được liên kết xuyên hệ thống.</td>
+          <td><span class="status partial">Đạt nền tảng</span></td>
+          <td>Cần lập danh mục tài sản thực tế theo từng phòng/tầng/khu vực và ghép lần lượt. Không nên ghép khóa hoặc máy cấp thẻ vào lệnh điện khi chưa có driver tương ứng.</td>
+        </tr>
+        <tr>
+          <td><strong>Tối ưu mobile PMS</strong>: <code>/customers</code>, <code>/marketing</code>, <code>/expenses</code>, <code>/booking</code>, <code>/modules</code>.</td>
+          <td>Các bảng rộng đã có bố cục thẻ gọn trên điện thoại; nút thao tác và nội dung dài tự co/bao dòng. Đã kiểm tra ở chiều rộng 390px, không còn tràn ngang.</td>
+          <td><span class="status ok">Đã đáp ứng</span></td>
+          <td>Nên thực hiện UAT trên điện thoại Android/iPhone thực tế trước ngày khai trương để rà thao tác nhập liệu, bàn phím và máy in.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Kiểm thử và vận hành đã xác nhận</h2>
+    <ul>
+      <li>Typecheck đạt: PMS Web, PMS API, Edge Node, IoT Service và HQ API.</li>
+      <li>Docker health đạt cho HQ API, PMS API, các dịch vụ IoT và Edge Node.</li>
+      <li>Kiểm tra LAN đạt HTTP 200 cho HQ Console, PMS và Edge Node.</li>
+      <li>Source watcher đang hoạt động: khi mã nguồn thay đổi, chỉ triển khai Docker sau khi typecheck thành công; migration mới được backup trước khi áp dụng.</li>
+    </ul>
+
+    <div class="callout">
+      <strong>Điểm vận hành cần xử lý ngay:</strong> Máy chủ chưa có Windows Firewall rule mở cho thiết bị khác trong LAN. Quản trị viên Windows cần chạy <code>.\ops\scripts\Enable-OssLanAccess.ps1</code> bằng PowerShell Administrator. Sau đó, thiết bị cùng Wi-Fi nên dùng tên máy cố định thay vì IP DHCP: <code>http://SONANIO25:3000</code>, <code>http://SONANIO25:3100</code>, <code>http://SONANIO25:4200</code>.
+    </div>
+
+    <h2>Đề xuất điều chỉnh trước khi nghiệm thu với chủ cơ sở</h2>
+    <ol>
+      <li><strong>Kiểm kê và ghép thiết bị:</strong> lập danh sách chuẩn gồm mã tài sản, phòng/khu vực, loại thiết bị, serial, giao thức và nhà cung cấp; sau đó ghép từng thiết bị vào HQ–PMS–IoT.</li>
+      <li><strong>Triển khai adapter Edge thực tế:</strong> chọn một chuẩn kết nối cho từng nhóm thiết bị (ví dụ MQTT, Modbus, API khóa/relay). Chỉ bật tự động hóa sau khi thiết bị có heartbeat và ACK thực.</li>
+      <li><strong>Thiết lập chính sách an toàn:</strong> quy định rõ thời điểm cấp điện, ngắt điện, giữ điện cho thiết bị thiết yếu; luôn có thao tác thủ công và nhật ký người thực hiện.</li>
+      <li><strong>Giám sát vận hành:</strong> bổ sung cảnh báo Edge/thiết bị offline, lệnh thất bại, mất đồng bộ HQ–PMS–IoT và bảng theo dõi xử lý sự cố.</li>
+      <li><strong>Nghiệm thu thực địa:</strong> kiểm thử ít nhất một phòng mẫu với các tình huống nhận phòng, trả phòng, mất mạng Edge, mất điện và thao tác thủ công trước khi nhân rộng toàn cơ sở.</li>
+      <li><strong>Đối với tính năng pháp lý hoặc thanh toán:</strong> chỉ tích hợp dịch vụ khai báo lưu trú/cổng thanh toán chính thức sau khi cơ sở có hợp đồng, tài khoản và tài liệu API do đơn vị cung cấp cấp quyền.</li>
+    </ol>
+
+    <h2>Phạm vi chưa thể coi là hoàn tất</h2>
+    <p>Chưa có bằng chứng điều khiển một relay, khóa, máy cấp thẻ hay công tơ <em>vật lý</em> tại cơ sở, vì chưa có thông tin/giao thức thiết bị thực tế được cung cấp. Tình trạng hiện tại là luồng phần mềm đã sẵn sàng, không phải xác nhận đã tác động vật lý. Việc tích hợp khai báo lưu trú với cơ quan công an hoặc thanh toán QR chính thức cũng cần tài khoản, hợp đồng và quyền truy cập từ đối tác ngoài hệ thống.</p>
+
+    <p class="footer">Báo cáo này phản ánh trạng thái mã nguồn, môi trường Docker/LAN và kiểm thử vào ngày 01/09/2026. Khuyến nghị chủ cơ sở ký nghiệm thu theo từng nhóm: giao diện PMS, luồng phần mềm, thiết bị vật lý và tích hợp đối tác ngoài.</p>
+  </main>
+</body>
+</html>
