@@ -53,7 +53,7 @@
       <tr><td>Phòng & doanh thu</td><td>PMS</td><td><code>property_id, room_id, booking_id, invoice_id</code></td><td>Check-in/out, gia hạn, chuyển phòng, dịch vụ, thanh toán</td><td>State machine + audit + đối soát cuối ngày</td></tr>
       <tr><td>Thiết bị</td><td>HQ asset registry</td><td><code>asset_code, property_id</code>; PMS/IoT lưu mã tham chiếu</td><td>Gán/sửa/kích hoạt/báo lỗi; command + ACK/FAILED</td><td>Thiết bị chưa map không nhận lệnh; không tin trạng thái giả</td></tr>
       <tr><td>Giám sát Edge</td><td>Edge/PMS</td><td><code>edge_node_id, property_id, tenant_id</code></td><td>Heartbeat, cloud reachability, outbox, last_sync</td><td>Ngưỡng cảnh báo, retry, offline-first, SLA</td></tr>
-      <tr><td>Giá trị tài chính</td><td>Value layer mới</td><td><code>period + property_id + source_event_id</code></td><td>Doanh thu, chi phí, kWh, downtime, labor saved</td><td>Không ghi nhận trùng; có nguồn và thời điểm</td></tr>
+      <tr><td>Giá trị tài chính</td><td>Value layer mới</td><td><code>property_id + source_type/source_id + idempotency_key</code></td><td>Doanh thu, chi phí, kWh, downtime, labor saved</td><td>Không ghi nhận trùng; có nguồn và thời điểm</td></tr>
     </tbody>
   </table></div>
 
