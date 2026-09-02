@@ -163,7 +163,7 @@ export function DashboardOverview() {
       </div>
 
       <div className="mb-4 rounded-xl border border-pms-primary/10 bg-[#F6F8FF] p-4 shadow-card">
-        <div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-[11px] font-bold uppercase tracking-wide text-pms-primary">Money → Problem → Action</div><h2 className="m-0 mt-1 text-[14px] font-bold">Giá trị đang tạo ra</h2></div><a href="/value-dashboard" className="text-[11px] font-semibold text-pms-primary no-underline">Mở Value Dashboard →</a></div>
+        <div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-[11px] font-bold uppercase tracking-wide text-pms-primary">Tiền → Vấn đề → Hành động</div><h2 className="m-0 mt-1 text-[14px] font-bold">Giá trị đang tạo ra</h2></div><a href="/value-dashboard" className="text-[11px] font-semibold text-pms-primary no-underline">Mở bảng giá trị →</a></div>
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-5"><QuickValue label="CVG kỳ này" value={formatVnd(valueSnapshot?.cvg_vnd ?? 0)} /><QuickValue label="Tiết kiệm điện" value={formatVnd(valueSnapshot?.energy_savings_vnd ?? 0)} /><QuickValue label="Cảnh báo mở" value={String(valueSnapshot?.open_alerts ?? 0)} tone={valueSnapshot?.overdue_alerts ? "text-pms-danger" : undefined} /><QuickValue label="Bảo trì mở" value={String(valueSnapshot?.open_maintenance ?? 0)} /><QuickValue label="Tự động hóa" value={`${valueSnapshot?.automation_actions ?? 0} lần`} /></div>
       </div>
 

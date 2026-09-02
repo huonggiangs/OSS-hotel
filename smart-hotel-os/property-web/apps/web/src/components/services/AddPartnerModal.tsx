@@ -1,11 +1,21 @@
 "use client";
 
-import { Modal, ButtonGhost, ButtonPrimary, FieldBox } from "@/components/ui/Modal";
+import { Modal, ButtonGhost, ButtonPrimary } from "@/components/ui/Modal";
+import { useState } from "react";
+
+export interface NewPartnerForm {
+  name: string;
+  category: string;
+  distance: string;
+  commission: string;
+}
 
 // Modal "Thêm đối tác mới" — pixel-perfect theo khối `showAddPartner` (dòng 2215-2244
 // bản gốc). Bản gốc để các trường là placeholder tĩnh (nút "Thêm đối tác" chỉ đóng
 // modal, không lưu dữ liệu thật) — giữ nguyên hành vi đó.
-export function AddPartnerModal({ onClose }: { onClose: () => void }) {
+export function AddPartnerModal({ onClose, onSave }: { onClose: () => void; onSave: (value: NewPartnerForm) => Promise<void> | void }) {
+  const [form, setForm] = useState<NewPartnerForm>({ name: "", category: "Ẩm thực", distance: "", commission: "" });
+  const set = (key: keyof NewPartnerForm, value: string) => setForm((current) => ({ ...current, [key]: value }));
   return (
     <Modal
       title="Thêm đối tác mới"
@@ -14,7 +24,7 @@ export function AddPartnerModal({ onClose }: { onClose: () => void }) {
       footer={
         <>
           <ButtonGhost onClick={onClose}>Hủy</ButtonGhost>
-          <ButtonPrimary onClick={onClose}>Thêm đối tác</ButtonPrimary>
+          <ButtonPrimary onClick={() => form.name.trim() && void onSave(form)}>Thêm đối tác</ButtonPrimary>
         </>
       }
     >
@@ -25,22 +35,20 @@ export function AddPartnerModal({ onClose }: { onClose: () => void }) {
         </label>
         <div>
           <label className="mb-1.5 block text-[12px]">Tên đối tác</label>
-          <FieldBox placeholder>VD: Spa Hương Sen</FieldBox>
+          <input autoFocus value={form.name} onChange={(event) => set("name", event.target.value)} placeholder="VD: Spa Hương Sen" className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" />
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Loại hình dịch vụ</label>
-          <div className="flex justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted-2">
-            Chọn loại hình <span>⌄</span>
-          </div>
+          <select value={form.category} onChange={(event) => set("category", event.target.value)} className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"><option>Ẩm thực</option><option>Spa &amp; chăm sóc sức khỏe</option><option>Tour &amp; trải nghiệm</option><option>Di chuyển</option><option>Thể thao</option><option>Dịch vụ khác</option></select>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="mb-1.5 block text-[12px]">Khoảng cách</label>
-            <FieldBox placeholder>VD: 150m</FieldBox>
+            <input value={form.distance} onChange={(event) => set("distance", event.target.value)} placeholder="VD: 150m" className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" />
           </div>
           <div>
             <label className="mb-1.5 block text-[12px]">Hoa hồng</label>
-            <FieldBox placeholder>VD: 10%</FieldBox>
+            <input value={form.commission} onChange={(event) => set("commission", event.target.value)} placeholder="VD: 10%" className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" />
           </div>
         </div>
         <div className="border-t border-pms-divider pt-3.5">
@@ -48,21 +56,21 @@ export function AddPartnerModal({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Địa chỉ</label>
-          <FieldBox placeholder>Nhập địa chỉ đối tác</FieldBox>
+          <input placeholder="Nhập địa chỉ đối tác" className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="mb-1.5 block text-[12px]">Số điện thoại</label>
-            <FieldBox placeholder>Số điện thoại</FieldBox>
+            <input placeholder="Số điện thoại" className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" />
           </div>
           <div>
             <label className="mb-1.5 block text-[12px]">Email</label>
-            <FieldBox placeholder>email@doitac.vn</FieldBox>
+            <input placeholder="email@doitac.vn" className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" />
           </div>
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Người liên hệ</label>
-          <FieldBox placeholder>Họ tên người phụ trách</FieldBox>
+          <input placeholder="Họ tên người phụ trách" className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" />
         </div>
       </div>
     </Modal>

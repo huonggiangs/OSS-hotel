@@ -13,7 +13,7 @@ export interface NavItem {
 
 export const mainNav: NavItem[] = [
   { key: "dashboard", label: "Tổng quan", icon: "grid", href: "/dashboard" },
-  { key: "value-dashboard", label: "Giá trị / CVG", icon: "wallet", href: "/value-dashboard" },
+  { key: "value-dashboard", label: "Giá trị tạo ra", icon: "wallet", href: "/value-dashboard" },
   { key: "alerts", label: "Cảnh báo / SLA", icon: "megaphone", href: "/alerts" },
   { key: "booking", label: "Đặt phòng / Hợp đồng", icon: "calendar", href: "/booking" },
   { key: "rooms", label: "Trạng thái phòng", icon: "bed", href: "/rooms" },

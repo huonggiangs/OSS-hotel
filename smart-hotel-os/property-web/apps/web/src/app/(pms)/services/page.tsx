@@ -4,7 +4,8 @@ import { useState } from "react";
 import type { OwnServiceRow, PartnerServiceRow } from "@/lib/mock-data";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { EditServiceModal, type EditServiceForm } from "@/components/services/EditServiceModal";
-import { AddPartnerModal } from "@/components/services/AddPartnerModal";
+import { AddPartnerModal, type NewPartnerForm } from "@/components/services/AddPartnerModal";
+import { AddServiceModal, type NewServiceForm } from "@/components/services/AddServiceModal";
 import { useSettings } from "@/lib/useSettings";
 
 const TH = "border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted";
@@ -25,8 +26,12 @@ export default function ServicesPage() {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showAddPartner, setShowAddPartner] = useState(false);
+  const [showAddService, setShowAddService] = useState(false);
+  const [search, setSearch] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
 
   const ownServices = data.own
+    .filter((service) => !search.trim() || `${service.name} ${service.category}`.toLowerCase().includes(search.trim().toLowerCase()))
     .map((s) => {
       const statusLabel = (s as OwnServiceRow & { statusLabel?: string }).statusLabel ?? (s.linked ? "Đã xuất bản" : "Chưa xuất bản");
       return { ...s, statusLabel, fg: statusLabel === "Đã xuất bản" ? "#00C853" : "#CC2F42" };
@@ -47,6 +52,18 @@ export default function ServicesPage() {
       own: data.own.map((s) => (s.id === editingId ? { ...s, ...form, linked: form.statusLabel === "Đã xuất bản" } : s)),
     });
     setEditingId(null);
+    setNotice("Đã cập nhật dịch vụ.");
+  }
+
+  async function handleAddService(form: NewServiceForm) {
+    const nextId = data.own.reduce((max, service) => Math.max(max, Number(service.id) || 0), -1) + 1;
+    await save({ ...data, own: [...data.own, { ...form, id: nextId, linked: false }] });
+    setShowAddService(false); setNotice("Đã thêm dịch vụ. Hãy mở menu để công khai trước khi nhận yêu cầu.");
+  }
+
+  async function handleAddPartner(form: NewPartnerForm) {
+    await save({ ...data, partners: [...data.partners, { ...form, linked: false }] });
+    setShowAddPartner(false); setNotice("Đã thêm đối tác. Bạn có thể bật liên kết sau khi xác nhận thông tin.");
   }
 
   if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
@@ -54,18 +71,21 @@ export default function ServicesPage() {
   return (
     <div>
       <h1 className="mb-1 text-[22px] font-bold">Dịch vụ</h1>
-      <p className="mb-[22px] text-[13px] text-pms-muted">Liên kết các cơ sở xung quanh để bán chéo sản phẩm cho khách lưu trú</p>
+      <p className="mb-2 text-[13px] text-pms-muted">Tạo dịch vụ → công khai → ghi nhận sử dụng vào đúng phòng và hóa đơn</p>
+      {notice && <p className="mb-3 rounded-lg bg-[#E9FBEF] px-3 py-2 text-[12px] text-pms-success">{notice}</p>}
+
+      <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-pms-primary/10 bg-[#F6F8FF] p-4 text-[12px] sm:grid-cols-3"><div><b>1. Tạo dịch vụ</b><p className="m-0 mt-1 text-[11px] text-pms-muted">Tên, giá, thời gian và nơi cung cấp.</p></div><div><b>2. Công khai</b><p className="m-0 mt-1 text-[11px] text-pms-muted">Chỉ dịch vụ đã công khai mới đưa cho khách chọn.</p></div><div><b>3. Ghi nhận và thu tiền</b><p className="m-0 mt-1 text-[11px] text-pms-muted">Mở phòng đang ở để thêm số lượng vào hóa đơn.</p></div></div>
 
       <div className="mb-4 rounded-xl bg-white p-6 shadow-card">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="m-0 text-[15px] font-semibold">Gói dịch vụ của cơ sở</h3>
-          <div className="flex items-center gap-2.5">
-            <div className="flex min-w-[200px] items-center gap-2 rounded-lg border border-pms-border px-3 py-2 text-[13px] text-pms-muted-2">
-              Tìm kiếm <span className="ml-auto text-pms-muted">🔍</span>
-            </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo tên hoặc nhóm" className="w-full rounded-lg border border-pms-border px-3 py-2 text-[12px] sm:w-[220px]" />
+            <button type="button" className="rounded-[10px] bg-pms-primary px-3 py-2 text-[12px] font-semibold text-white" onClick={() => setShowAddService(true)}>+ Thêm dịch vụ</button>
           </div>
         </div>
-        <table className="w-full min-w-[1100px] border-collapse whitespace-nowrap text-[13px]">
+        <div className="space-y-3 md:hidden">{ownServices.map((s) => <article key={s.id} className="rounded-lg border border-pms-divider p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><b className="block break-words text-[13px]">{s.name}</b><span className="text-[11px] text-pms-muted">{s.category} · {s.unit}</span></div><StatusPill bg={s.fg === "#00C853" ? "#E9FBEF" : "#FDECEC"} fg={s.fg}>{s.statusLabel}</StatusPill></div><p className="m-0 mt-2 break-words text-[12px] text-pms-muted">{s.price} · {s.schedule} · {s.location}</p><div className="mt-3 flex flex-wrap gap-3 text-[11px] font-semibold"><button type="button" onClick={() => setEditingId(s.id)} className="text-pms-primary">Sửa</button><button type="button" onClick={() => void handleDelete(s.id)} className="text-pms-danger">Xóa</button><a href="/rooms" className="text-pms-primary no-underline">Ghi nhận tại phòng →</a></div></article>)}{ownServices.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có dịch vụ phù hợp.</p>}</div>
+        <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[980px] border-collapse whitespace-nowrap text-[13px]">
           <thead>
             <tr>
               <th className={`${TH} w-7`}>
@@ -113,7 +133,7 @@ export default function ServicesPage() {
                         Sửa dịch vụ
                       </div>
                       <div className="cursor-pointer px-3.5 py-2.5 text-[12.5px] text-pms-danger" onClick={() => handleDelete(s.id)}>
-                        Xoá
+                        Xóa
                       </div>
                     </div>
                   )}
@@ -121,9 +141,9 @@ export default function ServicesPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
         <div className="mt-3.5 flex items-center justify-between">
-          <span className="text-[12px] text-pms-muted">Hiển thị {ownServices.length}/{ownServices.length} dịch vụ</span>
+          <span className="text-[12px] text-pms-muted">Hiển thị {ownServices.length}/{data.own.length} dịch vụ</span>
         </div>
       </div>
 
@@ -172,7 +192,8 @@ export default function ServicesPage() {
           onSave={handleSaveEdit}
         />
       )}
-      {showAddPartner && <AddPartnerModal onClose={() => setShowAddPartner(false)} />}
+      {showAddPartner && <AddPartnerModal onClose={() => setShowAddPartner(false)} onSave={handleAddPartner} />}
+      {showAddService && <AddServiceModal onClose={() => setShowAddService(false)} onSave={handleAddService} />}
     </div>
   );
 }

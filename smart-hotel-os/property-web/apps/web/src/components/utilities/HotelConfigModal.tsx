@@ -1,6 +1,7 @@
 "use client";
 
 import { Modal, ButtonGhost, ButtonPrimary } from "@/components/ui/Modal";
+import { useState } from "react";
 
 // Modal "Cấu hình Google Hotel" — pixel-perfect theo khối `showHotelConfig` (dòng
 // 2309-2331 bản gốc): 2 công tắc bật/tắt thật (đồng bộ trạng thái phòng / khuyến mãi)
@@ -8,16 +9,21 @@ import { Modal, ButtonGhost, ButtonPrimary } from "@/components/ui/Modal";
 export function HotelConfigModal({
   syncAvail,
   syncPromo,
+  hotelId,
   onToggleAvail,
   onTogglePromo,
+  onSaveHotelId,
   onClose,
 }: {
   syncAvail: boolean;
   syncPromo: boolean;
+  hotelId?: string;
   onToggleAvail: () => void;
   onTogglePromo: () => void;
+  onSaveHotelId: (value: string) => Promise<void> | void;
   onClose: () => void;
 }) {
+  const [draftHotelId, setDraftHotelId] = useState(hotelId ?? "");
   return (
     <Modal
       title="Cấu hình Google Hotel"
@@ -26,7 +32,7 @@ export function HotelConfigModal({
       footer={
         <>
           <ButtonGhost onClick={onClose}>Hủy</ButtonGhost>
-          <ButtonPrimary onClick={onClose}>Lưu &amp; gắn lên Google Hotel</ButtonPrimary>
+          <ButtonPrimary onClick={() => void onSaveHotelId(draftHotelId.trim())}>Lưu kết nối kênh đặt phòng</ButtonPrimary>
         </>
       }
     >
@@ -51,7 +57,7 @@ export function HotelConfigModal({
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Mã liên kết Google Hotel Center</label>
-          <div className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted-2">Nhập Hotel ID / mã đối tác</div>
+          <input value={draftHotelId} onChange={(event) => setDraftHotelId(event.target.value)} placeholder="Mã cơ sở trên kênh đặt phòng" className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" />
         </div>
       </div>
     </Modal>
