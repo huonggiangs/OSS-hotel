@@ -12,7 +12,8 @@ Mỗi feature mới phải có mã `F#`, `Need refs`, KPI, owner, trạng thái 
 | F-HQ-ONBOARD-001 | N3,N4,N5 | Setup nhanh cơ sở mới | HQ `/customers`, bàn giao credential, email trạng thái | Không dùng AI | property + owner + asset assignment | MVP/pilot (SMTP cần cấu hình) |
 | F-HQ-ASSET-001 | N2,N3,N4,N5 | Vòng đời tài sản HQ | HQ `/hardware-assets/[id]`: sửa, gán cơ sở, kích hoạt/ngừng, báo lỗi/xử lý | Rule alert; AI chưa bật | `asset_code`, `property_id`, vị trí, lifecycle, alert | MVP/pilot |
 | F-COMMISSION-001 | N1,N4 | Đối soát hoa hồng đối tác | HQ `/commissions`: tạo, sửa/xóa trước duyệt, chi tiết, duyệt, thanh toán | Không dùng AI | Không bắt buộc | MVP |
-| F-ALERT-001 | N2,N4,N5 | Alert và SLA | HQ alert list, notification center (cần bổ sung) | Rule trước, AI sau | offline/fault/energy telemetry | Backlog ưu tiên |
+| F-VALUE-001 | N1,N2,N3,N4,N5 | Value Dashboard + CVG ledger | PMS `/value-dashboard`, KPI trên `/dashboard` | Chưa dùng AI; chỉ ghi nhận nguồn thật | meter/room/asset_code khi có telemetry | MVP · READY_FOR_PILOT |
+| F-ALERT-001 | N2,N4,N5 | Alert và SLA | PMS `/alerts`, severity, due_at, ACK/resolve | Rule trước, AI sau | offline/fault/energy telemetry | MVP · READY_FOR_PILOT |
 | F-AI-REV-001 | N1,N4 | Trợ lý lợi nhuận | CEO dashboard/chat (cần bổ sung) | RAG + tool calling có nguồn | Revenue/expense/OTA/energy data | Backlog |
 | F-AI-ENERGY-001 | N2,N4 | Tối ưu năng lượng | Value Dashboard (cần bổ sung) | anomaly/time-series | meter + occupancy + power switch | Backlog sau pilot |
 | F-AI-CAMERA-001 | N4,N5 | Camera AI | camera events (chưa có) | YOLO/vision (chưa có) | RTSP/NVR/IP camera | Out of scope |

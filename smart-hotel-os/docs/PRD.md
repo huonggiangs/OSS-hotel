@@ -33,6 +33,13 @@ Giúp chủ cơ sở lưu trú vận hành hiệu quả hơn, ít phụ thuộc 
 4. 100% thiết bị được khai báo `asset_code` và gán một cơ sở trước khi kích hoạt.
 5. Pilot 10 phòng có baseline kWh và báo cáo tiền tiết kiệm trước/sau; chưa cam kết tỷ lệ cho tới khi đo xong.
 
+## Đã cập nhật sau khi duyệt P0/P1/P2
+
+- **N1,N2,N3,N4,N5 · F-VALUE-001:** PMS có `/value-dashboard`, API tổng hợp doanh thu/chi phí/kWh/CVG, sổ `value_ledger` và form ghi nhận baseline/after pilot có idempotency + audit.
+- **N2,N4,N5 · F-ALERT-001:** PMS có `/alerts`, bảng `operational_alerts`, severity/due_at, ACK/resolve; Edge stale và maintenance đang mở tự tạo hàng đợi cảnh báo.
+- **N2,N3,N4,N5 · F-IOT-CTRL-001:** Luồng phần mềm giữ nguyên `asset_code → iot_device_id → Edge`; checklist nghiệm thu thật nằm ở [REAL_HARDWARE_ACCEPTANCE.md](REAL_HARDWARE_ACCEPTANCE.md).
+- **Trạng thái:** phần mềm đã sẵn sàng kiểm thử/pilot; ROI, ACK thiết bị thật và baseline 30 ngày chưa được gọi là hoàn tất cho tới khi có bằng chứng thực địa.
+
 ## Ngoài phạm vi MVP
 
 Camera AI, predictive maintenance, LLM query dữ liệu, Data Lake/Kafka/Qdrant, tự động đẩy giá OTA và public Internet multi-property chỉ triển khai sau khi MVP có dữ liệu và KPI pilot.

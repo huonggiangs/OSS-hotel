@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rà soát nhu cầu khách hàng và mapping Smart Hotel OS</title>
+  <style>
+    :root{--ink:#172033;--muted:#5b6578;--line:#dfe5ef;--brand:#165dce;--good:#087443;--warn:#a35a00;--bad:#b42318;--soft:#f5f7fb}
+    *{box-sizing:border-box} body{margin:0;background:#f1f4f9;color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{max-width:1240px;margin:0 auto;padding:32px 20px 60px} h1{font-size:30px;line-height:1.2;margin:0 0 8px} h2{margin:32px 0 12px;font-size:22px} h3{margin:20px 0 8px;font-size:17px} p{margin:8px 0} .lead{font-size:17px;color:var(--muted);max-width:980px}
+    .meta,.card,.callout{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:16px;box-shadow:0 2px 8px #15264d0a}.meta{display:flex;gap:20px;flex-wrap:wrap;color:var(--muted);font-size:13px}.callout{border-left:5px solid var(--brand)}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.grid .card{margin-top:0}.metric{font-size:25px;font-weight:700;color:var(--brand)}.small{font-size:13px;color:var(--muted)}
+    table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden} th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top} th{background:#eef3fb;font-size:13px} tr:last-child td{border-bottom:0}.wide{overflow-x:auto}
+    .status{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700;white-space:nowrap}.done{background:#dff7ea;color:var(--good)}.pilot{background:#fff0d8;color:var(--warn)}.backlog{background:#e9edf4;color:#48556b}.blocked{background:#fee4e2;color:var(--bad)}
+    .flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}.step{background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-weight:600}.arrow{color:var(--brand);font-weight:800}.kpi{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#f7f9fc;border:1px solid var(--line);padding:2px 5px;border-radius:4px;font-size:12px}
+    ul,ol{margin:8px 0 8px 22px;padding:0} li{margin:4px 0}.priority{font-weight:700;color:var(--brand)} footer{margin-top:34px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:14px}
+    @media(max-width:760px){main{padding:22px 12px 40px}h1{font-size:24px}h2{font-size:19px}.grid{grid-template-columns:1fr}.meta{display:block}.meta span{display:block;margin:3px 0}th,td{padding:9px;font-size:13px}.lead{font-size:15px}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Rà soát <code>nhucau.md</code> với dự án hiện tại</h1>
+  <p class="lead">Tài liệu này là bản đề xuất để chủ cơ sở duyệt phạm vi tiếp theo. Mục tiêu không phải thêm thật nhiều module, mà chứng minh Smart Hotel OS giúp <strong>tăng tiền giữ lại, giảm chi phí, giảm phụ thuộc nhân sự và kiểm soát cơ sở từ xa</strong>.</p>
+  <div class="meta"><span><strong>Nguồn:</strong> <code>nhucau.md</code></span><span><strong>Ngày rà soát:</strong> 02/09/2026</span><span><strong>Phạm vi:</strong> HQ Console · PMS · Edge Node · IoT Service</span><span><strong>Quyết định cần duyệt:</strong> thứ tự P0/P1/P2</span></div>
+
+  <h2>1. Kết luận điều hành</h2>
+  <div class="callout"><strong>Đề xuất:</strong> khóa MVP theo một vòng đo giá trị 10 phòng trong 30 ngày. Trước khi mở rộng AI/camera, hệ thống phải trả lời được trên một màn hình: <strong>hôm nay kiếm bao nhiêu, đang lãng phí ở đâu, có vấn đề gì, hệ thống đã tự xử lý gì, chủ cơ sở cần quyết định gì</strong>.</div>
+  <div class="grid">
+    <div class="card"><div class="metric">Đã có</div><p>PMS lõi, trạng thái phòng, giá linh hoạt, maintenance, HQ asset registry, asset_code, Edge heartbeat, Value Dashboard, CVG ledger và Alert/SLA Center ở mức MVP/pilot.</p></div>
+    <div class="card"><div class="metric">Cần chứng minh</div><p>Tiền điện tiết kiệm thật, downtime tránh được, lợi nhuận hợp nhất, SLA và thiết bị vật lý ACK/heartbeat qua nghiệm thu 10 phòng.</p></div>
+    <div class="card"><div class="metric">Chưa nên làm ngay</div><p>Camera AI, AI tự đổi giá, trợ lý LLM toàn hệ thống và public Internet khi chưa có baseline, quyền riêng tư, MFA/TLS và quy trình xử lý.</p></div>
+  </div>
+
+  <h2>2. Mapping nhu cầu N# → dự án</h2>
+  <div class="wide"><table>
+    <thead><tr><th>Nhu cầu trong nhucau.md</th><th>Ứng dụng hiện có</th><th>Đánh giá hiện tại</th><th>Khoảng trống cần tối ưu</th><th>Lợi ích/KPI khách hàng</th></tr></thead>
+    <tbody>
+      <tr><td><strong>N1</strong><br>Kiếm nhiều tiền hơn</td><td>PMS doanh thu/phòng; <code>/price</code> giá linh hoạt; HQ <code>/commissions</code>; booking, invoice, dịch vụ và Value Dashboard/CVG.</td><td><span class="status done">ĐÃ CẬP NHẬT</span><br>Đã có màn hình Money → Problem → Action và sổ giá trị có nguồn/audit.</td><td>Tiếp tục bổ sung ADR/RevPAR, chi phí OTA/nhân sự và export báo cáo trước/sau; AI giá vẫn cần phê duyệt.</td><td><span class="kpi">Revenue</span> <span class="kpi">Profit</span> <span class="kpi">CVG</span> <span class="kpi">ADR</span> <span class="kpi">RevPAR</span> <span class="kpi">Upsell</span></td></tr>
+      <tr><td><strong>N2</strong><br>Giảm chi phí</td><td>Power control PMS → Edge → IoT; asset_code; thiết bị công tơ/công tắc; trạng thái phòng; form ghi nhận energy readings.</td><td><span class="status done">ĐÃ CẬP NHẬT · PILOT</span><br>Đã có sổ kWh/chi phí, CVG tiết kiệm điện và hướng dẫn pilot; chưa thể gọi là tiết kiệm thật nếu chưa nối meter.</td><td>Ghi baseline 10 phòng/30 ngày; so sánh occupied/vacant; cảnh báo bất thường; kiểm thử override an toàn.</td><td><span class="kpi">kWh/phòng</span> <span class="kpi">VND_saved</span> <span class="kpi">payback</span> <span class="kpi">power_command_success</span></td></tr>
+      <tr><td><strong>N3</strong><br>Giảm phụ thuộc con người</td><td>Nhận phòng nhanh; check-out/dirty; dịch vụ; thanh toán; maintenance nhiều lỗi; cấp lệnh điện; Edge outbox; bộ đếm automation.</td><td><span class="status done">ĐÃ CẬP NHẬT · PILOT</span><br>Luồng phần mềm và audit đã có; thiết bị cấp thẻ/khóa/relay vẫn chờ nghiệm thu thật.</td><td>Đo số thao tác/phút lao động; tự tạo ticket từ từng loại thiết bị; phân quyền ca và escalation theo SLA.</td><td><span class="kpi">minutes_saved</span> <span class="kpi">touches_per_checkin</span> <span class="kpi">rooms_per_staff</span></td></tr>
+      <tr><td><strong>N4</strong><br>Quản lý từ bất kỳ đâu</td><td>HQ customer/asset; PMS dashboard/Value Dashboard; Edge heartbeat; connection status; audit log; LAN Docker ports; Alert/SLA Center.</td><td><span class="status done">ĐÃ CẬP NHẬT</span><br>Cảnh báo Edge stale và maintenance quá hạn được tự tạo, có ACK/resolve; public Internet an toàn vẫn là bước triển khai riêng.</td><td>Notification đa kênh; assignee/escalation; VPN/TLS/MFA và checklist public deployment.</td><td><span class="kpi">uptime</span> <span class="kpi">MTTR</span> <span class="kpi">open_incidents</span> <span class="kpi">owner_response_time</span></td></tr>
+      <tr><td><strong>N5</strong><br>Sự yên tâm, giảm rủi ro</td><td>RBAC/audit; backup; asset lifecycle; fault report; maintenance partner; dirty/maintenance; Alert/SLA; runbook nghiệm thu phần cứng.</td><td><span class="status done">ĐÃ CẬP NHẬT · PILOT</span><br>Nền tảng kiểm soát và quy trình nghiệm thu đã có; cam kết zero-downtime chỉ xác nhận sau test thực địa.</td><td>Backup/restore định kỳ; vendor SLA/escalation; lịch sử nguyên nhân/chi phí; báo cáo downtime tránh được và thông báo chủ cơ sở.</td><td><span class="kpi">downtime_avoided</span> <span class="kpi">SLA_breach</span> <span class="kpi">loss_prevented</span> <span class="kpi">calls_avoided</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>3. Mapping dữ liệu xuyên HQ · PMS · Edge · IoT</h2>
+  <p>Không tạo foreign-key xuyên database. Dùng mã chuẩn và event có idempotency để mọi công cụ (Claude, Codex, Cursor hoặc agent khác) cùng cập nhật đúng bản ghi.</p>
+  <div class="flow"><span class="step">HQ customer.id = tenant_id</span><span class="arrow">→</span><span class="step">PMS property.id = property_id</span><span class="arrow">→</span><span class="step">PMS room.id / booking.id / invoice.id</span><span class="arrow">→</span><span class="step">HQ asset_code</span><span class="arrow">→</span><span class="step">PMS iot_device_id</span><span class="arrow">→</span><span class="step">Edge device / IoT driver</span></div>
+  <div class="wide"><table>
+    <thead><tr><th>Đối tượng chuẩn</th><th>Sổ gốc</th><th>Khóa liên kết</th><th>Luồng cần ghi nhận</th><th>Kiểm soát</th></tr></thead>
+    <tbody>
+      <tr><td>Cơ sở/khách hàng</td><td>HQ + PMS</td><td><code>customer.id ↔ property.tenant_id</code>, lưu <code>pms_property_id</code> ở HQ</td><td>Provision idempotent, OWNER, settings mặc định</td><td>Không tạo property mồ côi; retry có trạng thái</td></tr>
+      <tr><td>Phòng & doanh thu</td><td>PMS</td><td><code>property_id, room_id, booking_id, invoice_id</code></td><td>Check-in/out, gia hạn, chuyển phòng, dịch vụ, thanh toán</td><td>State machine + audit + đối soát cuối ngày</td></tr>
+      <tr><td>Thiết bị</td><td>HQ asset registry</td><td><code>asset_code, property_id</code>; PMS/IoT lưu mã tham chiếu</td><td>Gán/sửa/kích hoạt/báo lỗi; command + ACK/FAILED</td><td>Thiết bị chưa map không nhận lệnh; không tin trạng thái giả</td></tr>
+      <tr><td>Giám sát Edge</td><td>Edge/PMS</td><td><code>edge_node_id, property_id, tenant_id</code></td><td>Heartbeat, cloud reachability, outbox, last_sync</td><td>Ngưỡng cảnh báo, retry, offline-first, SLA</td></tr>
+      <tr><td>Giá trị tài chính</td><td>Value layer mới</td><td><code>period + property_id + source_event_id</code></td><td>Doanh thu, chi phí, kWh, downtime, labor saved</td><td>Không ghi nhận trùng; có nguồn và thời điểm</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>4. Đề xuất ưu tiên để lợi ích khách hàng cao nhất</h2>
+  <div class="wide"><table>
+    <thead><tr><th>Ưu tiên</th><th>Việc đề xuất</th><th>Vì sao khách hàng được lợi</th><th>Điều kiện nghiệm thu</th></tr></thead>
+    <tbody>
+      <tr><td class="priority">P0 · bắt buộc</td><td><strong>Value Dashboard MVP</strong>: 5 câu hỏi, Money → Problem → Action; doanh thu + chi phí + sự cố + việc tự động đã xử lý.</td><td><span class="status done">ĐÃ XONG PHẦN MỀM</span><br>Chủ cơ sở đã có màn hình CVG và sổ giá trị có nguồn/audit; xuất CSV và ADR/RevPAR là phần mở rộng.</td><td>Dashboard theo cơ sở/kỳ; mọi số có nguồn; tiếp tục thêm export; công thức <code>CVG = Cost Saved + Additional Profit + Loss Prevented</code>.</td></tr>
+      <tr><td class="priority">P0 · bắt buộc</td><td><strong>Pilot năng lượng 10 phòng / 30 ngày</strong>: meter, occupied/vacant, power command, baseline trước/sau.</td><td><span class="status done">ĐÃ SẴN SÀNG PILOT</span><br>Đã có bảng energy readings, ledger CVG và form nhập số đo; cần lắp meter thật để chốt KPI.</td><td>≥90% telemetry hợp lệ; kWh/phòng; đồng tiết kiệm ước tính; có override an toàn; báo cáo trước/sau.</td></tr>
+      <tr><td class="priority">P0 · bắt buộc</td><td><strong>Alert + SLA center</strong>: Edge offline, thiết bị lỗi, phòng hỏng/bẩn, ticket quá hạn; người phụ trách và thời hạn.</td><td><span class="status done">ĐÃ XONG PHẦN MỀM</span><br>Đã có dedupe, severity, due_at, ACK/resolve và cảnh báo tự sinh từ Edge/maintenance.</td><td>Bổ sung assignee/escalation, notification đa kênh, MTTR/SLA breach và cảnh báo lỗi thiết bị vật lý.</td></tr>
+      <tr><td class="priority">P1 · cao</td><td><strong>Hoàn thiện thiết bị thật</strong>: relay điện, khóa/thẻ, công tơ, Edge heartbeat/ACK; mapping asset_code theo phòng/khu/tầng.</td><td>Biến phần mềm đã có thành kết quả vận hành thật, giảm điện và thao tác lễ tân.</td><td>Test ma trận thiết bị; command success/failed; mất mạng và retry; nhật ký lệnh; không điều khiển nhầm phòng.</td></tr>
+      <tr><td class="priority">P1 · cao</td><td><strong>Maintenance zero-downtime</strong>: đối tác, SLA, linh kiện, lịch định kỳ, nguyên nhân gốc, chi phí và downtime.</td><td>Giảm phòng không khai thác được và giảm chi phí sửa chữa khẩn cấp.</td><td>Ticket tự tạo từ alert; escalation; lịch sử; báo cáo downtime tránh được và chi phí.</td></tr>
+      <tr><td class="priority">P1 · cao</td><td><strong>Pricing có kiểm soát</strong>: giá trống theo thời gian/lấp đầy, giá sàn, lịch sử, phê duyệt; AI chỉ đề xuất.</td><td>Tăng occupancy/doanh thu mà không để thuật toán tự gây rủi ro giá.</td><td>So sánh before/after; người duyệt; rollback; ADR/RevPAR tăng nhưng không giảm biên lợi nhuận.</td></tr>
+      <tr><td class="priority">P2 · sau dữ liệu</td><td>AI Operations Assistant, anomaly năng lượng, predictive maintenance, Camera AI.</td><td>AI trả lời dựa trên dữ liệu thật, tránh “AI trình diễn” không tạo lợi ích.</td><td>Tối thiểu 30–90 ngày dữ liệu sạch; câu trả lời có nguồn; human approval; đo precision/false positive.</td></tr>
+      <tr><td class="priority">P2 · thương mại</td><td>BUY / RENT / HaaS: thiết bị + phần mềm + monitoring + bảo trì + đổi lỗi.</td><td>Giảm vốn đầu tư ban đầu, khách thử giá trị trước khi mở rộng.</td><td>Gói giá theo phòng; payback; SLA; quy định thay thế và hoàn trả rõ ràng.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>5. Những gì nên khóa lại trong MVP</h2>
+  <div class="grid">
+    <div class="card"><h3>Giữ trong MVP</h3><ul><li>Phòng, booking, nhận/trả/gia hạn/chuyển phòng, dịch vụ, thanh toán, housekeeping.</li><li>Giá linh hoạt có phê duyệt.</li><li>Asset registry + asset_code + property/room mapping.</li><li>Điều khiển có ACK/FAILED, Edge heartbeat, fault/maintenance, audit.</li><li>Mobile-first cho luồng lễ tân và chủ cơ sở.</li></ul></div>
+    <div class="card"><h3>Chỉ làm pilot có đo lường</h3><ul><li>Công tơ điện và tự động hóa điện.</li><li>Khóa thông minh/cấp thẻ/relay thật.</li><li>Alert/SLA và báo cáo downtime.</li><li>Value Dashboard với dữ liệu doanh thu–chi phí.</li><li>Pricing recommendation có người duyệt.</li></ul></div>
+    <div class="card"><h3>Chưa mở rộng</h3><ul><li>AI tự ra lệnh nguy hiểm hoặc tự đổi giá không phê duyệt.</li><li>Camera AI khi chưa có chính sách riêng tư và NVR.</li><li>Public Internet khi chưa có TLS/VPN/MFA/backup/monitoring.</li><li>Data lake/Kafka/Qdrant trước khi chứng minh KPI 10 phòng.</li></ul></div>
+  </div>
+
+  <h2>6. Definition of Done mới</h2>
+  <div class="callout"><code>DONE = Need refs (N#) + source + typecheck + migration/backup + API/UI test + dữ liệu thật/pilot + KPI before/after + runbook bàn giao.</code></div>
+  <ol><li>Mỗi PR/commit/feature ghi <strong>Need refs: N#</strong>, KPI, owner và bằng chứng.</li><li>Mỗi event xuyên hệ thống có <code>source_event_id</code>, <code>idempotency_key</code>, timestamp và trạng thái.</li><li>Mỗi UI chính phải trả lời “tiền → vấn đề → hành động”, không bắt chủ cơ sở đọc thông số kỹ thuật trước.</li><li>Mọi AI phải trích nguồn dữ liệu, nêu độ tin cậy và yêu cầu người duyệt trước hành động ảnh hưởng tiền/thiết bị.</li><li>Chỉ gọi là “đã tạo giá trị” sau khi có số đo trước/sau; nếu chưa có thì gắn nhãn <span class="status pilot">READY_FOR_PILOT</span>.</li></ol>
+
+  <h2>7. Quyết định cần chủ cơ sở duyệt</h2>
+  <div class="card"><ol><li>Chọn <strong>P0: Value Dashboard + pilot điện 10 phòng + Alert/SLA</strong> làm gói tiếp theo.</li><li>Cho phép kết nối 1 bộ relay, 1 công tơ, 1 khóa/thẻ và 1 Edge Node để nghiệm thu thiết bị thật.</li><li>Chọn mô hình thương mại thử nghiệm: <strong>BUY</strong> hay <strong>RENT/HaaS</strong>.</li><li>Xác nhận ngưỡng an toàn: không tự ngắt tải critical; mọi lệnh điện/khóa phải có log và override.</li><li>Xác nhận dữ liệu được phép dùng cho AI và camera; chưa bật AI tự động trước khi có baseline.</li></ol></div>
+
+  <h2>8. Nhật ký cập nhật sau khi duyệt P0/P1/P2</h2>
+  <div class="card"><ul><li><span class="status done">ĐÃ XONG</span> PMS migration <code>014_value_energy_alerts.sql</code>: <code>energy_readings</code>, <code>value_ledger</code>, <code>operational_alerts</code>, index và idempotency.</li><li><span class="status done">ĐÃ XONG</span> API: <code>/api/v1/value/dashboard</code>, energy readings, CVG events, alerts và ACK/resolve; audit log cho mọi thay đổi.</li><li><span class="status done">ĐÃ XONG</span> UI: <code>/value-dashboard</code>, <code>/alerts</code>, KPI CVG trên <code>/dashboard</code>, responsive cho mobile và menu PMS.</li><li><span class="status done">ĐÃ XONG</span> Cảnh báo hệ thống tự tạo từ Edge mất heartbeat và maintenance quá SLA.</li><li><span class="status done">ĐÃ XONG</span> Kiểm tra Docker/health/LAN: HQ 3000, PMS 3100, Edge 4200 đều phản hồi; watcher tự build sau typecheck.</li><li><span class="status pilot">READY_FOR_PILOT</span> Nghiệm thu thiết bị thật, 10 phòng/30 ngày và số liệu before/after: phụ thuộc lắp đặt meter/relay/khóa/Edge thực tế.</li><li><span class="status backlog">P2</span> AI Operations, AI giá và Camera AI: chưa bật; chỉ triển khai sau khi có baseline sạch và chính sách phê duyệt/quyền riêng tư.</li><li><span class="status pilot">CẦN QUYỀN ADMIN</span> Windows Firewall chưa có rule OSS LAN; chạy <code>Enable-OssLanAccess.ps1</code> bằng PowerShell Administrator trước khi truy cập từ máy khác.</li></ul></div>
+
+  <footer>Đối chiếu từ <code>nhucau.md</code>, mã nguồn HQ Console/PMS/Edge/IoT và tài liệu truy vết. Trạng thái “ĐÃ XONG” chỉ áp dụng phần mềm đã kiểm thử; trạng thái “READY_FOR_PILOT” cần dữ liệu/thiết bị thực địa để nghiệm thu giá trị.</footer>
+</main>
+</body>
+</html>

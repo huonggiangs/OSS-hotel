@@ -13,13 +13,15 @@
 | Điều khiển điện có xác nhận | N2,N3,N4 | Có hàng đợi, idempotency, retry, ACK/FAILED; thiết bị chưa map không nhận lệnh |
 | Báo hỏng/bảo trì | N3,N4,N5 | Nhiều lỗi, mô tả, ảnh/video, trạng thái, đối tác và audit |
 | HQ customer onboarding và bàn giao tài khoản | N3,N4,N5 | Tạo property/OWNER, hiển thị credential một lần, email có trạng thái thật |
+| Value Dashboard và CVG ledger | N1,N2,N3,N4,N5 | 5 câu hỏi Money → Problem → Action; doanh thu/chi phí/kWh/CVG có nguồn, idempotency và audit |
+| Alert/SLA Center | N2,N4,N5 | Severity, due_at, dedupe, ACK/resolve; tự tạo cảnh báo Edge stale và maintenance đang mở |
 | Mobile-first cho các luồng vận hành | N3,N4,N5 | Không tràn ngang ở 390px; hành động chính nằm trong một màn hình |
 
 ## Out of scope cho tới khi có bằng chứng KPI
 
 - AI cảnh báo/predictive maintenance không có dữ liệu lịch sử.
 - Camera AI khi chưa có camera/NVR, chính sách riêng tư và người trực xử lý.
-- Dashboard lợi nhuận hợp nhất khi chưa có dữ liệu kế toán, OTA, điện thật.
+- AI/dashboard lợi nhuận hợp nhất và ROI production khi chưa có dữ liệu kế toán, OTA, điện thật; Value Dashboard MVP được phép chạy ở trạng thái `READY_FOR_PILOT`.
 - Public Internet không có TLS/VPN/MFA/backup/monitoring.
 - Tự động ngắt tải an toàn-critical mà không có chính sách và override thủ công.
 

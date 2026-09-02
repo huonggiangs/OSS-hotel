@@ -23,6 +23,14 @@ interface DashboardSummary {
   recent_activity: { action: string; entity_type: string; actor: string | null; created_at: string }[];
   recent_customers: { full_name: string; email: string | null; phone: string | null; created_at: string }[];
 }
+interface ValueSnapshot {
+  cvg_vnd: number;
+  energy_savings_vnd: number;
+  open_alerts: number;
+  overdue_alerts: number;
+  open_maintenance: number;
+  automation_actions: number;
+}
 
 const BOOKING_STATUS_INFO: Record<string, { label: string; color: string }> = {
   CONFIRMED: { label: "Đã xác nhận", color: "#284AB1" },
@@ -82,6 +90,7 @@ function formatDateTime(value: string) {
 export function DashboardOverview() {
   const router = useRouter();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [valueSnapshot, setValueSnapshot] = useState<ValueSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -94,6 +103,12 @@ export function DashboardOverview() {
         setError(null);
       } catch (err) {
         if (active) setError(isApiError(err) ? err.message : "Không tải được số liệu tổng quan.");
+      }
+      try {
+        const value = await api.get<ValueSnapshot>("/api/v1/value/dashboard");
+        if (active) setValueSnapshot(value);
+      } catch {
+        // Value Dashboard có thể chưa có dữ liệu pilot; không làm hỏng các KPI vận hành.
       }
     };
     void load();
@@ -145,6 +160,11 @@ export function DashboardOverview() {
             ) : <span className="text-[11px] text-pms-muted">Đang tải...</span>}
           </div>
         ))}
+      </div>
+
+      <div className="mb-4 rounded-xl border border-pms-primary/10 bg-[#F6F8FF] p-4 shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-[11px] font-bold uppercase tracking-wide text-pms-primary">Money → Problem → Action</div><h2 className="m-0 mt-1 text-[14px] font-bold">Giá trị đang tạo ra</h2></div><a href="/value-dashboard" className="text-[11px] font-semibold text-pms-primary no-underline">Mở Value Dashboard →</a></div>
+        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-5"><QuickValue label="CVG kỳ này" value={formatVnd(valueSnapshot?.cvg_vnd ?? 0)} /><QuickValue label="Tiết kiệm điện" value={formatVnd(valueSnapshot?.energy_savings_vnd ?? 0)} /><QuickValue label="Cảnh báo mở" value={String(valueSnapshot?.open_alerts ?? 0)} tone={valueSnapshot?.overdue_alerts ? "text-pms-danger" : undefined} /><QuickValue label="Bảo trì mở" value={String(valueSnapshot?.open_maintenance ?? 0)} /><QuickValue label="Tự động hóa" value={`${valueSnapshot?.automation_actions ?? 0} lần`} /></div>
       </div>
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-3">
@@ -262,6 +282,10 @@ export function DashboardOverview() {
 
 function Metric({ label, value, color }: { label: string; value: string; color?: string }) {
   return <div><span className="text-[10.5px] font-semibold" style={{ color }}>{label}</span><div className="text-[15px] font-bold">{value}</div></div>;
+}
+
+function QuickValue({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return <div className="min-w-0"><span className="block truncate text-[10.5px] text-pms-muted">{label}</span><b className={`mt-0.5 block truncate text-[13px] ${tone ?? ""}`}>{value}</b></div>;
 }
 
 function Empty({ text }: { text: string }) {
