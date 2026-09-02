@@ -58,3 +58,36 @@ export async function fetchPropertyWebBranches(): Promise<PropertyWebBranch[] | 
     return null;
   }
 }
+
+export interface ProvisionedProperty {
+  property: { id: string; tenant_id: string; name: string; address: string | null; phone: string | null };
+  owner: { id: string; username: string; email: string; full_name: string; role: string };
+  credentials_created: boolean;
+  setup_steps: string[];
+}
+
+/** Tạo idempotent cơ sở + OWNER ở PMS; lỗi được throw để HQ lưu trạng thái retry. */
+export async function provisionProperty(input: {
+  tenantId: string;
+  propertyName: string;
+  address?: string | null;
+  phone?: string | null;
+  owner: { username: string; email: string; fullName: string; password: string; phone?: string | null };
+}): Promise<ProvisionedProperty> {
+  if (!INTERNAL_SERVICE_KEY) throw new Error("INTERNAL_SERVICE_KEY chưa cấu hình.");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const res = await fetch(`${PROPERTY_WEB_API_URL}/api/v1/internal/provisioning/property`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Service-Key": INTERNAL_SERVICE_KEY },
+      body: JSON.stringify(input),
+      signal: controller.signal,
+    });
+    const body = (await res.json().catch(() => ({}))) as { message?: unknown };
+    if (!res.ok) throw new Error(typeof body.message === "string" ? body.message : `property-web trả về ${res.status}`);
+    return body as ProvisionedProperty;
+  } finally {
+    clearTimeout(timeout);
+  }
+}

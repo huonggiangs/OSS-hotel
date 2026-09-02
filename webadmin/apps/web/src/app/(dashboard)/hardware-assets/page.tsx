@@ -76,6 +76,8 @@ export default function HardwareAssetsPage() {
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
+  const [installationLocation, setInstallationLocation] = useState("");
+  const [description, setDescription] = useState("");
   const [propertyId, setPropertyId] = useState("");
   const [propertyNameManual, setPropertyNameManual] = useState("");
   const [warrantyUntil, setWarrantyUntil] = useState("");
@@ -145,11 +147,15 @@ export default function HardwareAssetsPage() {
         subscriptionFee: subscriptionFee ? Number(subscriptionFee) : undefined,
         subscriptionCycle: subscriptionFee ? subscriptionCycle : undefined,
         parentAssetId: parentAssetId || undefined,
+        installationLocation: installationLocation || undefined,
+        description: description || undefined,
       });
       setShowForm(false);
       setBrand("");
       setModel("");
       setSerialNumber("");
+      setInstallationLocation("");
+      setDescription("");
       setPropertyId("");
       setPropertyNameManual("");
       setWarrantyUntil("");
@@ -268,6 +274,14 @@ export default function HardwareAssetsPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700">Model</label>
             <input value={model} onChange={(e) => setModel(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Vị trí lắp đặt</label>
+            <input value={installationLocation} onChange={(e) => setInstallationLocation(e.target.value)} placeholder="Ví dụ: Tầng 2 · Phòng 201" className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-2">
+            <label className="block text-sm font-medium text-gray-700">Mô tả thiết bị</label>
+            <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Chức năng, thông tin lắp đặt, ghi chú bảo trì..." className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
           </div>
 
           <div className="sm:col-span-2 lg:col-span-1">

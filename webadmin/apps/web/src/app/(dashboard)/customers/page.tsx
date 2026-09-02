@@ -5,127 +5,33 @@ import { api, ApiClientError } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 
 interface Customer {
-  id: string;
-  name: string;
-  contact_email: string | null;
-  uses_kiosk: boolean;
-  uses_smart_hotel_os: boolean;
-  billing_status: string;
+  id: string; name: string; contact_email: string | null; uses_kiosk: boolean; uses_smart_hotel_os: boolean; billing_status: string;
+  pms_property_id?: string | null; onboarding_status?: string | null; onboarding_last_error?: string | null;
 }
+interface ProvisionResponse {
+  customer: Customer;
+  pms: { property_id: string; property_name: string; login_url: string; setup_steps: string[] } | null;
+  owner: { username: string; email: string; full_name: string; role: string } | null;
+  credentials: { username: string; temporary_password: string; display_once: boolean } | null;
+  email: { status: "SENT" | "NOT_CONFIGURED" | "FAILED"; recipient: string; sent_at: string | null; error: string | null };
+}
+const inputClass = "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm";
 
 export default function CustomersPage() {
-  const [items, setItems] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [usesKiosk, setUsesKiosk] = useState(false);
-  const [usesSmartHotelOs, setUsesSmartHotelOs] = useState(false);
+  const [items, setItems] = useState<Customer[]>([]); const [loading, setLoading] = useState(true); const [showForm, setShowForm] = useState(false); const [error, setError] = useState<string | null>(null); const [result, setResult] = useState<ProvisionResponse | null>(null); const [submitting, setSubmitting] = useState(false);
+  const [name, setName] = useState(""); const [address, setAddress] = useState(""); const [contactName, setContactName] = useState(""); const [contactEmail, setContactEmail] = useState(""); const [contactPhone, setContactPhone] = useState(""); const [ownerFullName, setOwnerFullName] = useState(""); const [ownerEmail, setOwnerEmail] = useState(""); const [ownerPhone, setOwnerPhone] = useState(""); const [username, setUsername] = useState(""); const [temporaryPassword, setTemporaryPassword] = useState(""); const [sendEmail, setSendEmail] = useState(true);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await api.get<{ items: Customer[] }>("/api/v1/customers");
-      setItems(res.items);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Không tải được danh sách khách hàng.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  async function load() { setLoading(true); try { const res = await api.get<{ items: Customer[] }>("/api/v1/customers"); setItems(res.items); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Không tải được danh sách khách hàng."); } finally { setLoading(false); } }
+  useEffect(() => { load(); }, []);
+  function resetForm() { setName(""); setAddress(""); setContactName(""); setContactEmail(""); setContactPhone(""); setOwnerFullName(""); setOwnerEmail(""); setOwnerPhone(""); setUsername(""); setTemporaryPassword(""); setSendEmail(true); }
+  async function handleCreate(e: FormEvent) { e.preventDefault(); setError(null); setResult(null); setSubmitting(true); try { const response = await api.post<ProvisionResponse>("/api/v1/customers/provision", { name, address: address || undefined, contactName: contactName || undefined, contactEmail, contactPhone: contactPhone || undefined, ownerFullName, ownerEmail, ownerPhone: ownerPhone || undefined, username: username || undefined, temporaryPassword: temporaryPassword || undefined, sendEmail }); setResult(response); setShowForm(false); resetForm(); await load(); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Khởi tạo cơ sở thất bại."); } finally { setSubmitting(false); } }
+  async function copyCredentials() { if (!result?.credentials) return; await navigator.clipboard?.writeText(`Tài khoản PMS: ${result.credentials.username}\nMật khẩu tạm: ${result.credentials.temporary_password}`); }
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    try {
-      await api.post("/api/v1/customers", {
-        name,
-        contactEmail: contactEmail || undefined,
-        usesKiosk,
-        usesSmartHotelOs,
-      });
-      setShowForm(false);
-      setName("");
-      setContactEmail("");
-      setUsesKiosk(false);
-      setUsesSmartHotelOs(false);
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Tạo khách hàng thất bại.");
-    }
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Khách hàng 360</h1>
-          <p className="mt-1 text-sm text-gray-500">Hồ sơ khách hàng hợp nhất — đang dùng Kiosk, Smart Hotel OS, hoặc cả hai.</p>
-        </div>
-        <button onClick={() => setShowForm((v) => !v)} className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700">
-          {showForm ? "Đóng" : "+ Thêm khách hàng"}
-        </button>
-      </div>
-
-      {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-
-      {showForm && (
-        <form onSubmit={handleCreate} className="mt-4 grid grid-cols-1 gap-4 rounded-xl border border-gray-200 bg-white p-5 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Tên khách sạn</label>
-            <input required value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Email liên hệ</label>
-            <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div className="flex items-center gap-4 sm:col-span-2">
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={usesKiosk} onChange={(e) => setUsesKiosk(e.target.checked)} />
-              Dùng Kiosk Remote Management
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={usesSmartHotelOs} onChange={(e) => setUsesSmartHotelOs(e.target.checked)} />
-              Dùng Smart Hotel OS
-            </label>
-          </div>
-          <div className="sm:col-span-2">
-            <button type="submit" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Lưu khách hàng</button>
-          </div>
-        </form>
-      )}
-
-      <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Tên</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Email</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Sản phẩm đang dùng</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Thanh toán</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {loading && <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">Đang tải...</td></tr>}
-            {!loading && items.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">Chưa có khách hàng nào.</td></tr>}
-            {items.map((c) => (
-              <tr key={c.id}>
-                <td className="px-4 py-2 font-medium text-gray-900">{c.name}</td>
-                <td className="px-4 py-2 text-gray-600">{c.contact_email ?? "—"}</td>
-                <td className="px-4 py-2 text-gray-600">
-                  {[c.uses_kiosk && "Kiosk", c.uses_smart_hotel_os && "Smart Hotel OS"].filter(Boolean).join(" + ") || "—"}
-                </td>
-                <td className="px-4 py-2"><StatusBadge status={c.billing_status} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+  return <div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-lg font-semibold text-gray-900">Khách hàng 360</h1><p className="mt-1 text-sm text-gray-500">Khởi tạo cơ sở PMS, tài khoản OWNER và bàn giao trong một luồng.</p></div><button onClick={() => { setShowForm((v) => !v); setResult(null); }} className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700">{showForm ? "Đóng" : "+ Setup nhanh cơ sở"}</button></div>
+    {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+    {result && <section className="mt-4 rounded-xl border border-green-200 bg-green-50 p-5 text-sm text-green-950"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold">Đã khởi tạo: {result.pms?.property_name ?? result.customer.name}</h2><p className="mt-1">Trạng thái: {result.customer.onboarding_status ?? "PROVISIONING"}</p></div><button onClick={() => setResult(null)} className="text-xs underline">Ẩn</button></div>{result.pms ? <div className="mt-3 grid gap-2 sm:grid-cols-2"><p>Đăng nhập PMS: <a className="font-medium underline" href={result.pms.login_url} target="_blank" rel="noreferrer">{result.pms.login_url}</a></p><p>OWNER: <b>{result.owner?.full_name}</b> ({result.owner?.email})</p><p>Tài khoản: <b>{result.owner?.username}</b></p><p>Email bàn giao: <b>{result.email.status}</b>{result.email.error ? ` — ${result.email.error}` : ""}</p></div> : <p className="mt-2 text-red-700">Chưa tạo được PMS: {result.email.error}</p>}{result.credentials && <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950"><p className="font-semibold">Mật khẩu tạm — chỉ hiển thị một lần</p><p className="mt-1 font-mono">{result.credentials.temporary_password}</p><button onClick={copyCredentials} className="mt-2 rounded border border-amber-400 px-2 py-1 text-xs">Sao chép thông tin bàn giao</button><p className="mt-1 text-xs">Mật khẩu không lưu dạng rõ và không gửi qua email.</p></div>}{result.pms && <ol className="mt-3 list-decimal space-y-1 pl-5">{result.pms.setup_steps.map((step) => <li key={step}>{step}</li>)}</ol>}</section>}
+    {showForm && <form onSubmit={handleCreate} className="mt-4 grid grid-cols-1 gap-4 rounded-xl border border-gray-200 bg-white p-5 sm:grid-cols-2"><div><label className="block text-sm font-medium text-gray-700">Tên cơ sở <span className="text-red-600">*</span></label><input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} /></div><div><label className="block text-sm font-medium text-gray-700">Địa chỉ</label><input value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} /></div><div><label className="block text-sm font-medium text-gray-700">Người liên hệ</label><input value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputClass} /></div><div><label className="block text-sm font-medium text-gray-700">Email cơ sở <span className="text-red-600">*</span></label><input required type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className={inputClass} /></div><div><label className="block text-sm font-medium text-gray-700">Điện thoại</label><input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputClass} /></div><div className="sm:col-span-2"><h2 className="border-b pb-2 text-sm font-semibold text-gray-900">Tài khoản chủ cơ sở (OWNER)</h2></div><div><label className="block text-sm font-medium text-gray-700">Họ tên OWNER <span className="text-red-600">*</span></label><input required value={ownerFullName} onChange={(e) => setOwnerFullName(e.target.value)} className={inputClass} /></div><div><label className="block text-sm font-medium text-gray-700">Email nhận bàn giao <span className="text-red-600">*</span></label><input required type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} className={inputClass} /></div><div><label className="block text-sm font-medium text-gray-700">Điện thoại OWNER</label><input value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} className={inputClass} /></div><div><label className="block text-sm font-medium text-gray-700">Username (tùy chọn)</label><input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Tự sinh từ email nếu để trống" className={inputClass} /></div><div><label className="block text-sm font-medium text-gray-700">Mật khẩu tạm (tùy chọn, ≥12 ký tự)</label><input minLength={12} value={temporaryPassword} onChange={(e) => setTemporaryPassword(e.target.value)} placeholder="Tự sinh bảo mật nếu để trống" className={inputClass} /></div><label className="flex items-center gap-2 text-sm text-gray-700 sm:col-span-2"><input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} /> Gửi email hướng dẫn (cần cấu hình SMTP HQ)</label><div className="sm:col-span-2"><button disabled={submitting} type="submit" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{submitting ? "Đang khởi tạo..." : "Khởi tạo và bàn giao"}</button></div></form>}
+    <div className="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm"><table className="min-w-[760px] divide-y divide-gray-200 text-sm"><thead className="bg-gray-50"><tr><th className="px-4 py-2 text-left font-medium text-gray-500">Tên</th><th className="px-4 py-2 text-left font-medium text-gray-500">Email</th><th className="px-4 py-2 text-left font-medium text-gray-500">Sản phẩm</th><th className="px-4 py-2 text-left font-medium text-gray-500">Onboarding PMS</th><th className="px-4 py-2 text-left font-medium text-gray-500">Thanh toán</th></tr></thead><tbody className="divide-y divide-gray-100">{loading && <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-400">Đang tải...</td></tr>}{!loading && items.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-400">Chưa có khách hàng nào.</td></tr>}{items.map((c) => <tr key={c.id}><td className="px-4 py-2 font-medium text-gray-900">{c.name}</td><td className="px-4 py-2 text-gray-600">{c.contact_email ?? "—"}</td><td className="px-4 py-2 text-gray-600">{[c.uses_kiosk && "Kiosk", c.uses_smart_hotel_os && "Smart Hotel OS"].filter(Boolean).join(" + ") || "—"}</td><td className="px-4 py-2">{c.onboarding_status ? <StatusBadge status={c.onboarding_status} /> : "—"}{c.pms_property_id && <span className="ml-2 font-mono text-xs text-gray-400">{c.pms_property_id}</span>}</td><td className="px-4 py-2"><StatusBadge status={c.billing_status} /></td></tr>)}</tbody></table></div>
+  </div>;
 }

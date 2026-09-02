@@ -13,6 +13,10 @@ export interface CustomerInput {
   shoTenantId?: string | null;
   kioskCustomerId?: string | null;
   billingStatus?: "ACTIVE" | "OVERDUE" | "SUSPENDED";
+  pmsPropertyId?: string | null;
+  onboardingStatus?: "NOT_STARTED" | "PROVISIONING" | "READY" | "EMAIL_SENT" | "EMAIL_NOT_CONFIGURED" | "EMAIL_FAILED";
+  onboardingEmailSentAt?: string | null;
+  onboardingLastError?: string | null;
 }
 
 export const customersRepo = {
@@ -39,11 +43,17 @@ export const customersRepo = {
     return rows[0] ?? null;
   },
 
+  async findByPmsPropertyId(propertyId: string): Promise<CustomerUnified | null> {
+    const { rows } = await pool.query<CustomerUnified>(`SELECT * FROM customers_unified WHERE pms_property_id = $1`, [propertyId]);
+    return rows[0] ?? null;
+  },
+
   async create(input: CustomerInput): Promise<CustomerUnified> {
     const { rows } = await pool.query<CustomerUnified>(
       `INSERT INTO customers_unified
-        (id, name, address, contact_name, contact_email, contact_phone, partner_id, uses_kiosk, uses_smart_hotel_os, sho_tenant_id, kiosk_customer_id, billing_status)
-       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        (id, name, address, contact_name, contact_email, contact_phone, partner_id, uses_kiosk, uses_smart_hotel_os, sho_tenant_id, kiosk_customer_id, billing_status,
+         pms_property_id, onboarding_status, onboarding_email_sent_at, onboarding_last_error)
+       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
       [
         input.name,
@@ -57,6 +67,10 @@ export const customersRepo = {
         input.shoTenantId ?? null,
         input.kioskCustomerId ?? null,
         input.billingStatus ?? "ACTIVE",
+        input.pmsPropertyId ?? null,
+        input.onboardingStatus ?? "NOT_STARTED",
+        input.onboardingEmailSentAt ?? null,
+        input.onboardingLastError ?? null,
       ]
     );
     return rows[0];
@@ -77,6 +91,10 @@ export const customersRepo = {
       sho_tenant_id: input.shoTenantId,
       kiosk_customer_id: input.kioskCustomerId,
       billing_status: input.billingStatus,
+      pms_property_id: input.pmsPropertyId,
+      onboarding_status: input.onboardingStatus,
+      onboarding_email_sent_at: input.onboardingEmailSentAt,
+      onboarding_last_error: input.onboardingLastError,
     };
     for (const [col, val] of Object.entries(map)) {
       if (val !== undefined) {
@@ -89,6 +107,28 @@ export const customersRepo = {
     const { rows } = await pool.query<CustomerUnified>(
       `UPDATE customers_unified SET ${fields.join(", ")}, updated_at = now() WHERE id = $${params.length} RETURNING *`,
       params
+    );
+    return rows[0] ?? null;
+  },
+
+  async updateOnboarding(id: string, input: {
+    pmsPropertyId?: string | null;
+    shoTenantId?: string | null;
+    status: "NOT_STARTED" | "PROVISIONING" | "READY" | "EMAIL_SENT" | "EMAIL_NOT_CONFIGURED" | "EMAIL_FAILED";
+    emailSentAt?: string | null;
+    lastError?: string | null;
+  }): Promise<CustomerUnified | null> {
+    const { rows } = await pool.query<CustomerUnified>(
+      `UPDATE customers_unified
+       SET pms_property_id = COALESCE($2, pms_property_id),
+           sho_tenant_id = COALESCE($3, sho_tenant_id),
+           onboarding_status = $4,
+           onboarding_email_sent_at = $5,
+           onboarding_last_error = $6,
+           updated_at = now()
+       WHERE id = $1
+       RETURNING *`,
+      [id, input.pmsPropertyId ?? null, input.shoTenantId ?? null, input.status, input.emailSentAt ?? null, input.lastError ?? null]
     );
     return rows[0] ?? null;
   },

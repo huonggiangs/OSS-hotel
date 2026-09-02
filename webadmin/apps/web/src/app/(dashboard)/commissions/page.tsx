@@ -1,109 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 
-interface CommissionRecord {
-  id: string;
-  partner_id: string;
-  period: string;
-  amount: string;
-  status: string;
-}
+interface CommissionRecord { id: string; partner_id: string; customer_id: string | null; rule_id: string | null; period: string; amount: string; status: string; partner_name?: string | null; customer_name?: string | null; }
+interface Option { id: string; name: string; }
+interface Rule { id: string; partner_id: string | null; rate_pct: string; product_scope: string; }
+const inputClass = "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm";
 
 export default function CommissionsPage() {
-  const [items, setItems] = useState<CommissionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [items, setItems] = useState<CommissionRecord[]>([]); const [partners, setPartners] = useState<Option[]>([]); const [customers, setCustomers] = useState<Option[]>([]); const [rules, setRules] = useState<Rule[]>([]); const [loading, setLoading] = useState(true); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<CommissionRecord | null>(null); const [error, setError] = useState<string | null>(null); const [busyId, setBusyId] = useState<string | null>(null);
+  const [partnerId, setPartnerId] = useState(""); const [customerId, setCustomerId] = useState(""); const [ruleId, setRuleId] = useState(""); const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7)); const [amount, setAmount] = useState("");
+  async function load() { setLoading(true); try { const [records, partnerRes, customerRes, ruleRes] = await Promise.all([api.get<{ items: CommissionRecord[] }>("/api/v1/commissions/records"), api.get<{ items: Option[] }>("/api/v1/partners"), api.get<{ items: Option[] }>("/api/v1/customers"), api.get<{ items: Rule[] }>("/api/v1/commissions/rules")]); setItems(records.items); setPartners(partnerRes.items); setCustomers(customerRes.items); setRules(ruleRes.items); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Không tải được dữ liệu hoa hồng."); } finally { setLoading(false); } }
+  useEffect(() => { load(); }, []);
+  function clearForm() { setPartnerId(""); setCustomerId(""); setRuleId(""); setPeriod(new Date().toISOString().slice(0, 7)); setAmount(""); setEditing(null); }
+  function startEdit(record: CommissionRecord) { setEditing(record); setPartnerId(record.partner_id); setCustomerId(record.customer_id ?? ""); setRuleId(record.rule_id ?? ""); setPeriod(record.period); setAmount(record.amount); setShowForm(true); }
+  async function save(e: FormEvent) { e.preventDefault(); setError(null); try { const body = { partnerId, customerId: customerId || null, ruleId: ruleId || null, period, amount: Number(amount) }; if (editing) await api.patch(`/api/v1/commissions/records/${editing.id}`, body); else await api.post("/api/v1/commissions/records", body); setShowForm(false); clearForm(); await load(); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Lưu bản ghi thất bại."); } }
+  async function remove(id: string) { if (!window.confirm("Xóa bản ghi hoa hồng chưa duyệt?")) return; setBusyId(id); setError(null); try { await api.del(`/api/v1/commissions/records/${id}`); await load(); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Xóa bản ghi thất bại."); } finally { setBusyId(null); } }
+  async function approve(id: string) { setBusyId(id); setError(null); try { await api.post(`/api/v1/commissions/records/${id}/approve`); await load(); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Duyệt hoa hồng thất bại."); } finally { setBusyId(null); } }
+  async function markPaid(id: string) { setBusyId(id); setError(null); try { await api.post(`/api/v1/commissions/records/${id}/mark-paid`); await load(); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Ghi nhận thanh toán thất bại."); } finally { setBusyId(null); } }
 
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await api.get<{ items: CommissionRecord[] }>("/api/v1/commissions/records");
-      setItems(res.items);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Không tải được danh sách hoa hồng.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  async function approve(id: string) {
-    setBusyId(id);
-    setError(null);
-    try {
-      await api.post(`/api/v1/commissions/records/${id}/approve`);
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Duyệt hoa hồng thất bại.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function markPaid(id: string) {
-    setBusyId(id);
-    setError(null);
-    try {
-      await api.post(`/api/v1/commissions/records/${id}/mark-paid`);
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Ghi nhận thanh toán thất bại.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  return (
-    <div>
-      <h1 className="text-lg font-semibold text-gray-900">Hoa hồng</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        Quy trình: CALCULATED → duyệt (APPROVED) → thanh toán (PAID). Không sửa quy tắc đã áp dụng cho kỳ đã tính.
-      </p>
-
-      {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-
-      <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Kỳ</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Số tiền</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Trạng thái</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Hành động</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {loading && <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">Đang tải...</td></tr>}
-            {!loading && items.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">Chưa có bản ghi hoa hồng nào.</td></tr>}
-            {items.map((r) => (
-              <tr key={r.id}>
-                <td className="px-4 py-2 text-gray-600">{r.period}</td>
-                <td className="px-4 py-2 font-medium text-gray-900">{Number(r.amount).toLocaleString("vi-VN")} đ</td>
-                <td className="px-4 py-2"><StatusBadge status={r.status} /></td>
-                <td className="px-4 py-2">
-                  {(r.status === "CALCULATED" || r.status === "PENDING_APPROVAL") && (
-                    <button disabled={busyId === r.id} onClick={() => approve(r.id)} className="text-xs font-medium text-brand-600 hover:underline disabled:opacity-50">
-                      Duyệt
-                    </button>
-                  )}
-                  {r.status === "APPROVED" && (
-                    <button disabled={busyId === r.id} onClick={() => markPaid(r.id)} className="text-xs font-medium text-brand-600 hover:underline disabled:opacity-50">
-                      Ghi nhận đã thanh toán
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+  return <div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-lg font-semibold text-gray-900">Hoa hồng đối tác</h1><p className="mt-1 text-sm text-gray-500">Tạo, sửa, xem chi tiết và xóa bản ghi trước khi duyệt: CALCULATED → APPROVED → PAID.</p></div><button onClick={() => { clearForm(); setShowForm((v) => !v); }} className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white">{showForm ? "Đóng" : "+ Thêm hoa hồng"}</button></div>
+    {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+    {showForm && <form onSubmit={save} className="mt-4 grid grid-cols-1 gap-4 rounded-xl border border-gray-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-3"><div><label className="block text-sm font-medium text-gray-700">Đối tác *</label><select required value={partnerId} onChange={(e) => setPartnerId(e.target.value)} className={inputClass}><option value="">— Chọn đối tác —</option>{partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700">Khách hàng</label><select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={inputClass}><option value="">— Không gán —</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700">Quy tắc</label><select value={ruleId} onChange={(e) => setRuleId(e.target.value)} className={inputClass}><option value="">— Không gán —</option>{rules.filter((r) => !partnerId || !r.partner_id || r.partner_id === partnerId).map((r) => <option key={r.id} value={r.id}>{r.product_scope} · {r.rate_pct}%</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700">Kỳ tính *</label><input required value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="2026-09" className={inputClass} /></div><div><label className="block text-sm font-medium text-gray-700">Số tiền (đ) *</label><input required min={0} step="0.01" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} /></div><div className="flex items-end"><button type="submit" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white">{editing ? "Cập nhật" : "Tạo bản ghi"}</button></div></form>}
+    <div className="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm"><table className="min-w-[900px] divide-y divide-gray-200 text-sm"><thead className="bg-gray-50"><tr><th className="px-4 py-2 text-left font-medium text-gray-500">Kỳ</th><th className="px-4 py-2 text-left font-medium text-gray-500">Đối tác / cơ sở</th><th className="px-4 py-2 text-left font-medium text-gray-500">Số tiền</th><th className="px-4 py-2 text-left font-medium text-gray-500">Trạng thái</th><th className="px-4 py-2 text-left font-medium text-gray-500">Hành động</th></tr></thead><tbody className="divide-y divide-gray-100">{loading && <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-400">Đang tải...</td></tr>}{!loading && items.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-400">Chưa có bản ghi hoa hồng nào.</td></tr>}{items.map((r) => <tr key={r.id}><td className="px-4 py-2 text-gray-600">{r.period}</td><td className="px-4 py-2"><p className="font-medium text-gray-900">{r.partner_name ?? r.partner_id}</p><p className="text-xs text-gray-500">{r.customer_name ?? "Không gán cơ sở"}</p></td><td className="px-4 py-2 font-medium text-gray-900">{Number(r.amount).toLocaleString("vi-VN")} đ</td><td className="px-4 py-2"><StatusBadge status={r.status} /></td><td className="px-4 py-2"><div className="flex flex-wrap gap-2"> <Link href={`/commissions/${r.id}`} className="text-xs font-medium text-brand-600 hover:underline">Chi tiết</Link>{(r.status === "CALCULATED" || r.status === "PENDING_APPROVAL") && <><button disabled={busyId === r.id} onClick={() => startEdit(r)} className="text-xs font-medium text-gray-700 hover:underline">Sửa</button><button disabled={busyId === r.id} onClick={() => remove(r.id)} className="text-xs font-medium text-red-600 hover:underline">Xóa</button><button disabled={busyId === r.id} onClick={() => approve(r.id)} className="text-xs font-medium text-brand-600 hover:underline">Duyệt</button></>}{r.status === "APPROVED" && <button disabled={busyId === r.id} onClick={() => markPaid(r.id)} className="text-xs font-medium text-brand-600 hover:underline">Ghi nhận đã thanh toán</button>}</div></td></tr>)}</tbody></table></div>
+  </div>;
 }

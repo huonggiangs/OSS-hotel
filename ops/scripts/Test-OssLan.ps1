@@ -45,8 +45,23 @@ foreach ($ip in $lanIps) {
     foreach ($service in $services) {
         $url = "http://${ip}:$($service.Port)"
         try {
-            $response = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 8
-            Write-Host "OK   $($service.Name): $url ($($response.StatusCode))" -ForegroundColor Green
+            # HQ trả 307 về /dashboard khi chưa đăng nhập; đó vẫn là dấu hiệu
+            # TCP/HTTP hoạt động. Không để Invoke-WebRequest coi redirect là lỗi.
+            $handler = [System.Net.Http.HttpClientHandler]::new()
+            $handler.AllowAutoRedirect = $false
+            $client = [System.Net.Http.HttpClient]::new($handler)
+            try {
+                $response = $client.GetAsync($url).GetAwaiter().GetResult()
+                $status = [int]$response.StatusCode
+            } finally {
+                $client.Dispose()
+                $handler.Dispose()
+            }
+            if ($status -ge 200 -and $status -lt 400) {
+                Write-Host "OK   $($service.Name): $url ($status)" -ForegroundColor Green
+            } else {
+                Write-Host "FAIL $($service.Name): $url (HTTP $status)" -ForegroundColor Red
+            }
         } catch {
             Write-Host "FAIL $($service.Name): $url — $($_.Exception.Message)" -ForegroundColor Red
         }

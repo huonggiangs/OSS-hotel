@@ -55,15 +55,45 @@ export const commissionsRepo = {
     }
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const { rows } = await pool.query<CommissionRecord>(
-      `SELECT * FROM commission_records ${where} ORDER BY created_at DESC`,
+      `SELECT cr.*, p.name AS partner_name, cu.name AS customer_name, r.rate_pct AS rule_rate_pct
+         FROM commission_records cr
+         JOIN partners p ON p.id = cr.partner_id
+         LEFT JOIN customers_unified cu ON cu.id = cr.customer_id
+         LEFT JOIN commission_rules r ON r.id = cr.rule_id
+        ${where.replaceAll("partner_id", "cr.partner_id").replaceAll("status", "cr.status")}
+        ORDER BY cr.created_at DESC`,
       params
     );
     return rows;
   },
 
   async findRecordById(id: string): Promise<CommissionRecord | null> {
-    const { rows } = await pool.query<CommissionRecord>(`SELECT * FROM commission_records WHERE id = $1`, [id]);
+    const { rows } = await pool.query<CommissionRecord>(
+      `SELECT cr.*, p.name AS partner_name, cu.name AS customer_name, r.rate_pct AS rule_rate_pct
+         FROM commission_records cr
+         JOIN partners p ON p.id = cr.partner_id
+         LEFT JOIN customers_unified cu ON cu.id = cr.customer_id
+         LEFT JOIN commission_rules r ON r.id = cr.rule_id
+        WHERE cr.id = $1`,
+      [id]
+    );
     return rows[0] ?? null;
+  },
+
+  async updateRecord(id: string, input: CommissionRecordInput): Promise<CommissionRecord | null> {
+    const { rows } = await pool.query<CommissionRecord>(
+      `UPDATE commission_records
+          SET partner_id = $2, customer_id = $3, rule_id = $4, period = $5, amount = $6, updated_at = now()
+        WHERE id = $1
+        RETURNING *`,
+      [id, input.partnerId, input.customerId ?? null, input.ruleId ?? null, input.period, input.amount]
+    );
+    return rows[0] ? this.findRecordById(rows[0].id) : null;
+  },
+
+  async deleteRecord(id: string): Promise<boolean> {
+    const result = await pool.query(`DELETE FROM commission_records WHERE id = $1`, [id]);
+    return result.rowCount === 1;
   },
 
   async createRecord(input: CommissionRecordInput): Promise<CommissionRecord> {

@@ -58,6 +58,13 @@ services:
       INTERNAL_SERVICE_KEY: "${INTERNAL_SERVICE_KEY:?INTERNAL_SERVICE_KEY phải được đặt trong ops/.env}"
       IOT_SERVICE_URL: "http://host.docker.internal:4103"
       IOT_SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong ops/.env}"
+      PMS_PUBLIC_URL: "${PMS_PUBLIC_URL:-http://sonanio25:3100}"
+      HQ_SMTP_HOST: "${HQ_SMTP_HOST:-}"
+      HQ_SMTP_PORT: "${HQ_SMTP_PORT:-587}"
+      HQ_SMTP_FROM: "${HQ_SMTP_FROM:-}"
+      HQ_SMTP_USER: "${HQ_SMTP_USER:-}"
+      HQ_SMTP_PASSWORD: "${HQ_SMTP_PASSWORD:-}"
+      HQ_SMTP_SECURE: "${HQ_SMTP_SECURE:-false}"
     ports:
       - "127.0.0.1:4000:4000"
     healthcheck:

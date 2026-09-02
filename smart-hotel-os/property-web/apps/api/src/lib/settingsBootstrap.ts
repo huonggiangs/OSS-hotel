@@ -23,3 +23,13 @@ export async function ensureDefaultSettings(): Promise<void> {
     }
   }
 }
+
+/** Seed ngay cho cơ sở vừa được HQ provision, không phải chờ restart API. */
+export async function ensureDefaultSettingsForProperty(propertyId: string, tenantId: string): Promise<void> {
+  for (const [group, defaultData] of Object.entries(DEFAULT_SETTINGS)) {
+    const existing = await settingsRepo.get(propertyId, group);
+    if (existing === null) {
+      await settingsRepo.upsert(propertyId, tenantId, group, defaultData);
+    }
+  }
+}

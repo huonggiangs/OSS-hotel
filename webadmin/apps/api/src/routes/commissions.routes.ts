@@ -19,6 +19,14 @@ const ruleSchema = z.object({
   effectiveTo: z.string().datetime().optional().nullable(),
 });
 
+const recordSchema = z.object({
+  partnerId: z.string().uuid(),
+  customerId: z.string().uuid().optional().nullable(),
+  ruleId: z.string().uuid().optional().nullable(),
+  period: z.string().min(1),
+  amount: z.number().nonnegative(),
+});
+
 commissionsRouter.get(
   "/rules",
   asyncHandler(async (_req, res) => {
@@ -39,13 +47,47 @@ commissionsRouter.post(
   })
 );
 
-const recordSchema = z.object({
-  partnerId: z.string().uuid(),
-  customerId: z.string().uuid().optional().nullable(),
-  ruleId: z.string().uuid().optional().nullable(),
-  period: z.string().min(1),
-  amount: z.number().nonnegative(),
-});
+commissionsRouter.get(
+  "/records/:id",
+  asyncHandler(async (req, res) => {
+    const record = await commissionsRepo.findRecordById(req.params.id);
+    if (!record) throw Errors.notFound("bản ghi hoa hồng");
+    res.json(record);
+  })
+);
+
+commissionsRouter.patch(
+  "/records/:id",
+  requireRole("SALES_MANAGER", "SUPER_ADMIN"),
+  asyncHandler(async (req, res) => {
+    const existing = await commissionsRepo.findRecordById(req.params.id);
+    if (!existing) throw Errors.notFound("bản ghi hoa hồng");
+    if (!["CALCULATED", "PENDING_APPROVAL"].includes(existing.status)) {
+      throw Errors.conflict("Chỉ có thể sửa bản ghi chưa duyệt hoặc đang chờ duyệt.");
+    }
+    const parsed = recordSchema.safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    const record = await commissionsRepo.updateRecord(req.params.id, parsed.data);
+    if (!record) throw Errors.notFound("bản ghi hoa hồng");
+    await writeAuditLog({ req, action: "UPDATE_COMMISSION_RECORD", entityType: "commission_record", entityId: req.params.id, beforeData: existing, afterData: record });
+    res.json(record);
+  })
+);
+
+commissionsRouter.delete(
+  "/records/:id",
+  requireRole("SALES_MANAGER", "SUPER_ADMIN"),
+  asyncHandler(async (req, res) => {
+    const existing = await commissionsRepo.findRecordById(req.params.id);
+    if (!existing) throw Errors.notFound("bản ghi hoa hồng");
+    if (!["CALCULATED", "PENDING_APPROVAL"].includes(existing.status)) {
+      throw Errors.conflict("Không thể xóa bản ghi đã duyệt hoặc đã thanh toán.");
+    }
+    await commissionsRepo.deleteRecord(req.params.id);
+    await writeAuditLog({ req, action: "DELETE_COMMISSION_RECORD", entityType: "commission_record", entityId: req.params.id, beforeData: existing });
+    res.status(204).send();
+  })
+);
 
 commissionsRouter.get(
   "/records",

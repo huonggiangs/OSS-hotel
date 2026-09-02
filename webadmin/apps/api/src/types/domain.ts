@@ -7,6 +7,7 @@ export type UserStatus = "ACTIVE" | "DISABLED";
 export type PartnerStatus = "ACTIVE" | "SUSPENDED" | "TERMINATED";
 export type SupplierStatus = "ACTIVE" | "INACTIVE";
 export type BillingStatus = "ACTIVE" | "OVERDUE" | "SUSPENDED";
+export type CustomerOnboardingStatus = "NOT_STARTED" | "PROVISIONING" | "READY" | "EMAIL_SENT" | "EMAIL_NOT_CONFIGURED" | "EMAIL_FAILED";
 export type TicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
 export type HardwareAssetType =
   | "KIOSK"
@@ -22,10 +23,10 @@ export type HardwareAssetType =
   | "POWER_SWITCH"
   | "ELECTRIC_METER"
   | "EDGE_NODE";
-export type HardwareAssetStatus = "IN_STOCK" | "DEPLOYED" | "UNDER_WARRANTY_CLAIM" | "RETIRED";
+export type HardwareAssetStatus = "IN_STOCK" | "DEPLOYED" | "UNDER_WARRANTY_CLAIM" | "INACTIVE" | "RETIRED";
 export type ConnectionStatus = "ONLINE" | "OFFLINE" | "UNKNOWN";
 export type SubscriptionCycle = "MONTHLY" | "YEARLY";
-export type AssetAlertType = "WARRANTY_EXPIRING" | "OFFLINE_TOO_LONG" | "HIGH_DISCONNECT_RATE";
+export type AssetAlertType = "WARRANTY_EXPIRING" | "OFFLINE_TOO_LONG" | "HIGH_DISCONNECT_RATE" | "MANUAL_FAULT";
 export type AssetAlertSeverity = "INFO" | "WARNING" | "CRITICAL";
 export type WarrantyClaimStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "REJECTED";
 export type ProductScope = "KIOSK" | "SMART_HOTEL_OS" | "BOTH";
@@ -93,6 +94,10 @@ export interface CustomerUnified {
   sho_tenant_id: string | null;
   kiosk_customer_id: string | null;
   billing_status: BillingStatus;
+  pms_property_id: string | null;
+  onboarding_status: CustomerOnboardingStatus;
+  onboarding_email_sent_at: Date | null;
+  onboarding_last_error: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -135,6 +140,10 @@ export interface HardwareAsset {
   property_id: string | null;
   property_name: string | null;
   parent_asset_id: string | null;
+  installation_location: string | null;
+  description: string | null;
+  deactivated_at: Date | null;
+  deactivation_reason: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -184,6 +193,9 @@ export interface CommissionRecord {
   paid_at: Date | null;
   created_at: Date;
   updated_at: Date;
+  partner_name?: string | null;
+  customer_name?: string | null;
+  rule_rate_pct?: string | null;
 }
 
 export interface AppRelease {

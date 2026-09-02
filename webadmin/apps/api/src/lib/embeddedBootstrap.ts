@@ -108,17 +108,19 @@ async function seedDemoData(db: PGlite): Promise<void> {
     [randomUUID(), supplierId, customerId]
   );
 
-  const ruleId = randomUUID();
+  const ruleId = "00000000-0000-0000-0000-000000000004";
   await db.query(
     `INSERT INTO commission_rules (id, partner_id, product_scope, rate_pct, is_recurring)
-     VALUES ($1, $2, 'BOTH', 10, true)`,
+     VALUES ($1, $2, 'BOTH', 10, true)
+     ON CONFLICT (id) DO NOTHING`,
     [ruleId, partnerId]
   );
 
   await db.query(
     `INSERT INTO commission_records (id, partner_id, customer_id, rule_id, period, amount, status)
-     VALUES ($1, $2, $3, $4, '2026-07', 1500000, 'CALCULATED')`,
-    [randomUUID(), partnerId, customerId, ruleId]
+     VALUES ($1, $2, $3, $4, '2026-07', 1500000, 'CALCULATED')
+     ON CONFLICT (id) DO NOTHING`,
+    ["00000000-0000-0000-0000-000000000005", partnerId, customerId, ruleId]
   );
 
   // ---- app_releases (Release Console, migration 002) ----

@@ -23,6 +23,10 @@ export interface HardwareAssetInput {
   propertyId?: string | null;
   propertyName?: string | null;
   parentAssetId?: string | null;
+  installationLocation?: string | null;
+  description?: string | null;
+  deactivatedAt?: string | null;
+  deactivationReason?: string | null;
 }
 
 export const hardwareAssetsRepo = {
@@ -110,8 +114,9 @@ export const hardwareAssetsRepo = {
       `INSERT INTO hardware_assets
         (id, asset_type, brand, model, serial_number, supplier_id, purchase_cost, purchased_at, warranty_until, status,
          customer_id, device_id_external, asset_code, activated_at, supporting_partner_id, connectivity_provider,
-         subscription_fee, subscription_cycle, connected_server, property_id, property_name, parent_asset_id)
-       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+         subscription_fee, subscription_cycle, connected_server, property_id, property_name, parent_asset_id,
+         installation_location, description, deactivated_at, deactivation_reason)
+       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
        RETURNING *`,
       [
         input.assetType,
@@ -135,6 +140,10 @@ export const hardwareAssetsRepo = {
         input.propertyId ?? null,
         input.propertyName ?? null,
         input.parentAssetId ?? null,
+        input.installationLocation ?? null,
+        input.description ?? null,
+        input.deactivatedAt ?? null,
+        input.deactivationReason ?? null,
       ]
     );
     return rows[0];
@@ -164,6 +173,10 @@ export const hardwareAssetsRepo = {
       property_id: input.propertyId,
       property_name: input.propertyName,
       parent_asset_id: input.parentAssetId,
+      installation_location: input.installationLocation,
+      description: input.description,
+      deactivated_at: input.deactivatedAt,
+      deactivation_reason: input.deactivationReason,
     };
     for (const [col, val] of Object.entries(map)) {
       if (val !== undefined) {
@@ -176,6 +189,22 @@ export const hardwareAssetsRepo = {
     const { rows } = await pool.query<HardwareAsset>(
       `UPDATE hardware_assets SET ${fields.join(", ")}, updated_at = now() WHERE id = $${params.length} RETURNING *`,
       params
+    );
+    return rows[0] ?? null;
+  },
+
+  async activate(id: string): Promise<HardwareAsset | null> {
+    const { rows } = await pool.query<HardwareAsset>(
+      `UPDATE hardware_assets SET status = 'DEPLOYED', activated_at = COALESCE(activated_at, now()), deactivated_at = NULL, deactivation_reason = NULL, updated_at = now() WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    return rows[0] ?? null;
+  },
+
+  async deactivate(id: string, reason: string): Promise<HardwareAsset | null> {
+    const { rows } = await pool.query<HardwareAsset>(
+      `UPDATE hardware_assets SET status = 'INACTIVE', deactivated_at = now(), deactivation_reason = $2, updated_at = now() WHERE id = $1 RETURNING *`,
+      [id, reason]
     );
     return rows[0] ?? null;
   },

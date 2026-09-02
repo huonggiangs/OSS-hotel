@@ -1,233 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { api, ApiClientError } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ConnectionDot } from "@/components/ConnectionDot";
 
-interface HardwareAssetDetail {
-  id: string;
-  asset_code: string;
-  asset_type: string;
-  brand: string | null;
-  model: string | null;
-  serial_number: string;
-  status: string;
-  connection_status: string;
-  disconnect_count: number;
-  last_seen_at: string | null;
-  last_connection_check_at: string | null;
-  activated_at: string | null;
-  purchased_at: string | null;
-  warranty_until: string | null;
-  supplier_id: string | null;
-  supporting_partner_id: string | null;
-  connectivity_provider: string | null;
-  subscription_fee: string | null;
-  subscription_cycle: string | null;
-  connected_server: string | null;
-  property_id: string | null;
-  property_name: string | null;
-  parent_asset_id: string | null;
-  customer_id: string | null;
-  child_assets: { id: string; asset_code: string; asset_type: string; brand: string | null; model: string | null; connection_status: string }[];
-}
+interface Asset { id: string; asset_code: string; asset_type: string; brand: string | null; model: string | null; serial_number: string; status: string; connection_status: string; disconnect_count: number; last_seen_at: string | null; last_connection_check_at: string | null; activated_at: string | null; purchased_at: string | null; warranty_until: string | null; supporting_partner_id: string | null; connectivity_provider: string | null; subscription_fee: string | null; subscription_cycle: string | null; connected_server: string | null; property_id: string | null; property_name: string | null; parent_asset_id: string | null; customer_id: string | null; installation_location: string | null; description: string | null; deactivated_at: string | null; deactivation_reason: string | null; child_assets: { id: string; asset_code: string; asset_type: string; brand: string | null; model: string | null; connection_status: string }[]; }
+interface Alert { id: string; alert_type: string; message: string; severity: string; created_at: string; resolved_at: string | null; }
+interface Option { id: string; name: string; }
+const inputClass = "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm";
+const types = ["KIOSK","PASSPORT_SCANNER","QR_SCANNER","CARD_DISPENSER","CASH_ACCEPTOR","IP_CAMERA","THERMAL_PRINTER","IOT_CONTROLLER","DOOR_LOCK","POWER_SWITCH","ELECTRIC_METER","EDGE_NODE","OTHER"];
 
-interface AssetAlert {
-  id: string;
-  alert_type: string;
-  message: string;
-  severity: string;
-  created_at: string;
-  resolved_at: string | null;
-}
-
-interface Partner {
-  id: string;
-  name: string;
-}
-
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">{label}</dt>
-      <dd className="mt-0.5 text-sm text-gray-900">{value ?? "—"}</dd>
-    </div>
-  );
-}
+function Field({ label, value }: { label: string; value: ReactNode }) { return <div><dt className="text-xs font-medium uppercase tracking-wide text-gray-400">{label}</dt><dd className="mt-0.5 break-words text-sm text-gray-900">{value ?? "—"}</dd></div>; }
 
 export default function HardwareAssetDetailPage() {
-  const params = useParams<{ id: string }>();
-  const [asset, setAsset] = useState<HardwareAssetDetail | null>(null);
-  const [alerts, setAlerts] = useState<AssetAlert[]>([]);
-  const [partners, setPartners] = useState<Partner[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await api.get<HardwareAssetDetail>(`/api/v1/hardware-assets/${params.id}`);
-      setAsset(res);
-      const alertsRes = await api.get<{ items: AssetAlert[] }>(`/api/v1/hardware-assets/${params.id}/alerts`);
-      setAlerts(alertsRes.items);
-      const partnersRes = await api.get<{ items: Partner[] }>("/api/v1/partners");
-      setPartners(partnersRes.items);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Không tải được thông tin thiết bị.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
-
-  async function handleSyncNow() {
-    setSyncing(true);
-    setSyncMessage(null);
-    try {
-      const res = await api.post<{ iotServiceReachable: boolean; matchedAssets: number; fetchedDevices: number; alertsCreated: number; error?: string }>(
-        "/api/v1/hardware-assets/sync-connection-status"
-      );
-      setSyncMessage(
-        res.iotServiceReachable
-          ? `Đã đồng bộ toàn hệ thống: khớp ${res.matchedAssets}/${res.fetchedDevices} thiết bị, sinh ${res.alertsCreated} cảnh báo mới.`
-          : `Không gọi được iot-service: ${res.error ?? "không rõ lỗi"}`
-      );
-      await load();
-    } catch (err) {
-      setSyncMessage(err instanceof ApiClientError ? err.message : "Đồng bộ thất bại.");
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  if (loading) return <p className="text-sm text-gray-500">Đang tải...</p>;
-  if (!asset) return <p className="text-sm text-red-600">{error ?? "Không tìm thấy thiết bị."}</p>;
-
-  const partnerName = partners.find((p) => p.id === asset.supporting_partner_id)?.name;
-
-  return (
-    <div>
-      <Link href="/hardware-assets" className="text-xs font-medium text-brand-600 hover:underline">
-        ← Danh sách thiết bị phần cứng
-      </Link>
-
-      <div className="mt-2 flex items-center justify-between">
-        <div>
-          <h1 className="font-mono text-lg font-semibold text-gray-900">{asset.asset_code}</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {asset.asset_type.replaceAll("_", " ")} {[asset.brand, asset.model].filter(Boolean).length ? `· ${[asset.brand, asset.model].filter(Boolean).join(" ")}` : ""} · Serial {asset.serial_number}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <ConnectionDot status={asset.connection_status} />
-          <StatusBadge status={asset.status} />
-          <button
-            onClick={handleSyncNow}
-            disabled={syncing}
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            {syncing ? "Đang đồng bộ..." : "Đồng bộ trạng thái ngay"}
-          </button>
-        </div>
-      </div>
-
-      {syncMessage && <p className="mt-3 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">{syncMessage}</p>}
-      {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-
-      {/* Cảnh báo riêng của thiết bị này */}
-      {alerts.filter((a) => !a.resolved_at).length > 0 && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-semibold text-amber-900">Cảnh báo</p>
-          <ul className="mt-2 space-y-1">
-            {alerts.filter((a) => !a.resolved_at).map((a) => (
-              <li key={a.id} className="text-xs text-amber-800">
-                <span className="font-semibold">[{a.severity}]</span> {a.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-gray-900">Kết nối &amp; vận hành</h2>
-          <dl className="mt-3 grid grid-cols-2 gap-4">
-            <Field label="Trạng thái kết nối" value={<ConnectionDot status={asset.connection_status} />} />
-            <Field label="Số lần mất kết nối" value={asset.disconnect_count} />
-            <Field label="Lần cuối thấy" value={asset.last_seen_at ? new Date(asset.last_seen_at).toLocaleString("vi-VN") : null} />
-            <Field label="Lần kiểm tra gần nhất" value={asset.last_connection_check_at ? new Date(asset.last_connection_check_at).toLocaleString("vi-VN") : null} />
-            <Field label="Server đang kết nối" value={asset.connected_server} />
-            <Field label="Ngày kích hoạt" value={asset.activated_at ? new Date(asset.activated_at).toLocaleDateString("vi-VN") : null} />
-          </dl>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-gray-900">Bảo hành &amp; hỗ trợ</h2>
-          <dl className="mt-3 grid grid-cols-2 gap-4">
-            <Field label="Ngày mua" value={asset.purchased_at ? new Date(asset.purchased_at).toLocaleDateString("vi-VN") : null} />
-            <Field label="Hạn bảo hành" value={asset.warranty_until ? new Date(asset.warranty_until).toLocaleDateString("vi-VN") : null} />
-            <Field label="Đối tác hỗ trợ/bảo hành" value={partnerName ?? asset.supporting_partner_id} />
-            <Field label="Khách hàng sử dụng" value={asset.customer_id ?? "Chưa gán"} />
-          </dl>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-gray-900">Thuê bao dịch vụ kết nối</h2>
-          <dl className="mt-3 grid grid-cols-2 gap-4">
-            <Field label="Nhà cung cấp" value={asset.connectivity_provider} />
-            <Field
-              label="Phí thuê bao"
-              value={asset.subscription_fee ? `${Number(asset.subscription_fee).toLocaleString("vi-VN")} đ / ${asset.subscription_cycle === "YEARLY" ? "năm" : "tháng"}` : null}
-            />
-          </dl>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-gray-900">Vị trí</h2>
-          <dl className="mt-3 grid grid-cols-2 gap-4">
-            <Field label="Cơ sở" value={asset.property_name} />
-            <Field label="Mã cơ sở (property_id)" value={asset.property_id} />
-          </dl>
-        </div>
-      </div>
-
-      {/* Thiết bị phụ trợ gắn vào (vd: máy in/máy quét gắn vào Kiosk) */}
-      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-gray-900">Thiết bị phụ trợ gắn vào ({asset.child_assets.length})</h2>
-        {asset.child_assets.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-400">Không có thiết bị phụ trợ nào gắn vào thiết bị này.</p>
-        ) : (
-          <ul className="mt-3 divide-y divide-gray-100">
-            {asset.child_assets.map((c) => (
-              <li key={c.id} className="flex items-center justify-between py-2 text-sm">
-                <Link href={`/hardware-assets/${c.id}`} className="font-mono font-medium text-brand-700 hover:underline">
-                  {c.asset_code}
-                </Link>
-                <span className="text-gray-500">{c.asset_type.replaceAll("_", " ")} {[c.brand, c.model].filter(Boolean).join(" ")}</span>
-                <ConnectionDot status={c.connection_status} />
-              </li>
-            ))}
-          </ul>
-        )}
-        {asset.parent_asset_id && (
-          <p className="mt-3 text-xs text-gray-500">
-            Thiết bị này là phụ trợ của{" "}
-            <Link href={`/hardware-assets/${asset.parent_asset_id}`} className="font-mono text-brand-700 hover:underline">
-              thiết bị chính
-            </Link>
-            .
-          </p>
-        )}
-      </div>
-    </div>
-  );
+  const params = useParams<{ id: string }>(); const [asset, setAsset] = useState<Asset | null>(null); const [alerts, setAlerts] = useState<Alert[]>([]); const [partners, setPartners] = useState<Option[]>([]); const [properties, setProperties] = useState<Option[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [message, setMessage] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [editing, setEditing] = useState(false); const [fault, setFault] = useState(""); const [severity, setSeverity] = useState("WARNING"); const [deactivationReason, setDeactivationReason] = useState("");
+  const [form, setForm] = useState({ assetType: "OTHER", brand: "", model: "", serialNumber: "", status: "IN_STOCK", propertyId: "", propertyName: "", supportingPartnerId: "", installationLocation: "", description: "", warrantyUntil: "", connectivityProvider: "", subscriptionFee: "", subscriptionCycle: "MONTHLY" });
+  async function load() { setLoading(true); try { const [a, ar, pr, po] = await Promise.all([api.get<Asset>(`/api/v1/hardware-assets/${params.id}`), api.get<{ items: Alert[] }>(`/api/v1/hardware-assets/${params.id}/alerts`), api.get<{ items: Option[] }>("/api/v1/partners"), api.get<{ items: Option[] }>("/api/v1/hardware-assets/property-options")]); setAsset(a); setAlerts(ar.items); setPartners(pr.items); setProperties(po.items); setForm({ assetType: a.asset_type, brand: a.brand ?? "", model: a.model ?? "", serialNumber: a.serial_number, status: a.status, propertyId: a.property_id ?? "", propertyName: a.property_name ?? "", supportingPartnerId: a.supporting_partner_id ?? "", installationLocation: a.installation_location ?? "", description: a.description ?? "", warrantyUntil: a.warranty_until ? a.warranty_until.slice(0, 10) : "", connectivityProvider: a.connectivity_provider ?? "", subscriptionFee: a.subscription_fee ?? "", subscriptionCycle: a.subscription_cycle ?? "MONTHLY" }); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Không tải được thông tin thiết bị."); } finally { setLoading(false); } }
+  useEffect(() => { load(); }, [params.id]);
+  async function update() { setBusy(true); setError(null); try { await api.patch(`/api/v1/hardware-assets/${params.id}`, { assetType: form.assetType, brand: form.brand || undefined, model: form.model || undefined, serialNumber: form.serialNumber, status: form.status, propertyId: form.propertyId || undefined, propertyName: form.propertyName || undefined, supportingPartnerId: form.supportingPartnerId || null, installationLocation: form.installationLocation || null, description: form.description || null, warrantyUntil: form.warrantyUntil ? new Date(form.warrantyUntil).toISOString() : null, connectivityProvider: form.connectivityProvider || undefined, subscriptionFee: form.subscriptionFee ? Number(form.subscriptionFee) : null, subscriptionCycle: form.subscriptionFee ? form.subscriptionCycle : null }); setEditing(false); setMessage("Đã cập nhật thông tin thiết bị."); await load(); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Cập nhật thiết bị thất bại."); } finally { setBusy(false); } }
+  async function lifecycle(action: "activate" | "deactivate") { if (action === "deactivate" && deactivationReason.trim().length < 3) { setError("Nhập lý do ngừng kích hoạt (ít nhất 3 ký tự)."); return; } setBusy(true); setError(null); try { await api.post(`/api/v1/hardware-assets/${params.id}/${action}`, action === "deactivate" ? { reason: deactivationReason } : undefined); setDeactivationReason(""); setMessage(action === "activate" ? "Đã kích hoạt thiết bị." : "Đã ngừng kích hoạt thiết bị."); await load(); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Không cập nhật được vòng đời thiết bị."); } finally { setBusy(false); } }
+  async function reportFault() { if (fault.trim().length < 3) { setError("Mô tả lỗi phải có ít nhất 3 ký tự."); return; } setBusy(true); setError(null); try { await api.post(`/api/v1/hardware-assets/${params.id}/faults`, { description: fault, severity }); setFault(""); setMessage("Đã ghi nhận báo lỗi và tạo cảnh báo."); await load(); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Ghi nhận lỗi thất bại."); } finally { setBusy(false); } }
+  async function resolveAlert(id: string) { setBusy(true); try { await api.post(`/api/v1/hardware-assets/${params.id}/alerts/${id}/resolve`); await load(); } catch (err) { setError(err instanceof ApiClientError ? err.message : "Không thể xử lý cảnh báo."); } finally { setBusy(false); } }
+  if (loading) return <p className="text-sm text-gray-500">Đang tải...</p>; if (!asset) return <p className="text-sm text-red-600">{error ?? "Không tìm thấy thiết bị."}</p>;
+  const set = (key: keyof typeof form, value: string) => setForm((v) => ({ ...v, [key]: value }));
+  return <div><Link href="/hardware-assets" className="text-xs font-medium text-brand-600 hover:underline">← Danh sách thiết bị phần cứng</Link><div className="mt-2 flex flex-wrap items-center justify-between gap-3"><div><h1 className="font-mono text-lg font-semibold text-gray-900">{asset.asset_code}</h1><p className="mt-1 text-sm text-gray-500">{asset.asset_type.replaceAll("_", " ")} {[asset.brand, asset.model].filter(Boolean).join(" ")} · Serial {asset.serial_number}</p></div><div className="flex flex-wrap items-center gap-2"><ConnectionDot status={asset.connection_status} /><StatusBadge status={asset.status} /><button onClick={() => setEditing((v) => !v)} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">{editing ? "Đóng sửa" : "Sửa thiết bị"}</button>{asset.status === "INACTIVE" ? <button disabled={busy} onClick={() => lifecycle("activate")} className="rounded-md bg-green-600 px-3 py-2 text-sm text-white disabled:opacity-50">Kích hoạt</button> : <button disabled={busy} onClick={() => lifecycle("deactivate")} className="rounded-md bg-amber-600 px-3 py-2 text-sm text-white disabled:opacity-50">Ngừng kích hoạt</button>}</div></div>{message && <p className="mt-3 rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">{message}</p>}{error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+    {asset.status !== "INACTIVE" && <div className="mt-3 flex flex-wrap gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3"><input value={deactivationReason} onChange={(e) => setDeactivationReason(e.target.value)} placeholder="Lý do ngừng kích hoạt..." className="min-w-[240px] flex-1 rounded border border-amber-300 px-2 py-1 text-sm" /><span className="self-center text-xs text-amber-800">Nhập lý do rồi bấm Ngừng kích hoạt</span></div>}
+    {editing && <section className="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-3"><div><label className="text-sm">Loại</label><select value={form.assetType} onChange={(e) => set("assetType", e.target.value)} className={inputClass}>{types.map((t) => <option key={t}>{t}</option>)}</select></div><div><label className="text-sm">Serial</label><input value={form.serialNumber} onChange={(e) => set("serialNumber", e.target.value)} className={inputClass} /></div><div><label className="text-sm">Trạng thái</label><select value={form.status} onChange={(e) => set("status", e.target.value)} className={inputClass}>{["IN_STOCK","DEPLOYED","UNDER_WARRANTY_CLAIM","INACTIVE","RETIRED"].map((s) => <option key={s}>{s}</option>)}</select></div><div><label className="text-sm">Hãng</label><input value={form.brand} onChange={(e) => set("brand", e.target.value)} className={inputClass} /></div><div><label className="text-sm">Model</label><input value={form.model} onChange={(e) => set("model", e.target.value)} className={inputClass} /></div><div><label className="text-sm">Cơ sở</label><select value={form.propertyId} onChange={(e) => { const p = properties.find((x) => x.id === e.target.value); setForm((v) => ({ ...v, propertyId: e.target.value, propertyName: p?.name ?? v.propertyName })); }} className={inputClass}><option value="">— Không gán —</option>{properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>{!properties.length && <input value={form.propertyName} onChange={(e) => set("propertyName", e.target.value)} placeholder="Tên cơ sở" className={inputClass} />}</div><div><label className="text-sm">Đối tác hỗ trợ</label><select value={form.supportingPartnerId} onChange={(e) => set("supportingPartnerId", e.target.value)} className={inputClass}><option value="">— Không gán —</option>{partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div><div><label className="text-sm">Vị trí lắp đặt</label><input value={form.installationLocation} onChange={(e) => set("installationLocation", e.target.value)} className={inputClass} /></div><div><label className="text-sm">Hạn bảo hành</label><input type="date" value={form.warrantyUntil} onChange={(e) => set("warrantyUntil", e.target.value)} className={inputClass} /></div><div><label className="text-sm">Nhà cung cấp kết nối</label><input value={form.connectivityProvider} onChange={(e) => set("connectivityProvider", e.target.value)} className={inputClass} /></div><div><label className="text-sm">Phí thuê bao</label><input type="number" min={0} value={form.subscriptionFee} onChange={(e) => set("subscriptionFee", e.target.value)} className={inputClass} /></div><div className="sm:col-span-2 lg:col-span-3"><label className="text-sm">Mô tả</label><textarea value={form.description} onChange={(e) => set("description", e.target.value)} className={inputClass} rows={3} /></div><div><button disabled={busy} onClick={update} className="rounded-md bg-brand-600 px-4 py-2 text-sm text-white disabled:opacity-50">Lưu thay đổi</button></div></section>}
+    <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"><div className="rounded-xl border border-gray-200 bg-white p-5"><h2 className="text-sm font-semibold">Kết nối & vận hành</h2><dl className="mt-3 grid grid-cols-2 gap-4"><Field label="Kết nối" value={<ConnectionDot status={asset.connection_status} />} /><Field label="Mất kết nối" value={asset.disconnect_count} /><Field label="Lần cuối thấy" value={asset.last_seen_at ? new Date(asset.last_seen_at).toLocaleString("vi-VN") : null} /><Field label="Kiểm tra gần nhất" value={asset.last_connection_check_at ? new Date(asset.last_connection_check_at).toLocaleString("vi-VN") : null} /><Field label="Server" value={asset.connected_server} /><Field label="Ngày kích hoạt" value={asset.activated_at ? new Date(asset.activated_at).toLocaleDateString("vi-VN") : null} /></dl></div><div className="rounded-xl border border-gray-200 bg-white p-5"><h2 className="text-sm font-semibold">Cơ sở & lắp đặt</h2><dl className="mt-3 grid grid-cols-2 gap-4"><Field label="Cơ sở" value={asset.property_name} /><Field label="property_id" value={asset.property_id} /><Field label="Vị trí" value={asset.installation_location} /><Field label="Mô tả" value={asset.description} /><Field label="Ngừng lúc" value={asset.deactivated_at ? new Date(asset.deactivated_at).toLocaleString("vi-VN") : null} /><Field label="Lý do ngừng" value={asset.deactivation_reason} /></dl></div><div className="rounded-xl border border-gray-200 bg-white p-5"><h2 className="text-sm font-semibold">Bảo hành & thuê bao</h2><dl className="mt-3 grid grid-cols-2 gap-4"><Field label="Hạn bảo hành" value={asset.warranty_until ? new Date(asset.warranty_until).toLocaleDateString("vi-VN") : null} /><Field label="Đối tác hỗ trợ" value={partners.find((p) => p.id === asset.supporting_partner_id)?.name ?? asset.supporting_partner_id} /><Field label="Nhà cung cấp" value={asset.connectivity_provider} /><Field label="Phí thuê bao" value={asset.subscription_fee ? `${Number(asset.subscription_fee).toLocaleString("vi-VN")} đ` : null} /></dl></div></div>
+    <section className="mt-6 rounded-xl border border-gray-200 bg-white p-5"><h2 className="text-sm font-semibold">Báo lỗi thiết bị</h2><div className="mt-3 flex flex-col gap-2 sm:flex-row"><textarea value={fault} onChange={(e) => setFault(e.target.value)} rows={2} placeholder="Mô tả lỗi, dấu hiệu, thời điểm..." className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm" /><select value={severity} onChange={(e) => setSeverity(e.target.value)} className="rounded border border-gray-300 px-3 py-2 text-sm"><option>INFO</option><option>WARNING</option><option>CRITICAL</option></select><button disabled={busy} onClick={reportFault} className="rounded-md bg-amber-600 px-3 py-2 text-sm text-white disabled:opacity-50">Ghi nhận báo lỗi</button></div></section>
+    <section className="mt-4 rounded-xl border border-gray-200 bg-white p-5"><h2 className="text-sm font-semibold">Cảnh báo ({alerts.length})</h2>{alerts.length === 0 ? <p className="mt-2 text-sm text-gray-400">Chưa có cảnh báo.</p> : <ul className="mt-2 divide-y divide-gray-100">{alerts.map((a) => <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"><span><b>[{a.severity}]</b> {a.message} <span className="text-xs text-gray-400">{new Date(a.created_at).toLocaleString("vi-VN")}</span></span>{!a.resolved_at ? <button disabled={busy} onClick={() => resolveAlert(a.id)} className="text-xs text-brand-600 hover:underline">Đánh dấu đã xử lý</button> : <span className="text-xs text-green-600">Đã xử lý</span>}</li>)}</ul>}</section>
+    <section className="mt-4 rounded-xl border border-gray-200 bg-white p-5"><h2 className="text-sm font-semibold">Thiết bị phụ trợ ({asset.child_assets.length})</h2>{asset.child_assets.length ? <ul className="mt-2 divide-y divide-gray-100">{asset.child_assets.map((c) => <li key={c.id} className="flex flex-wrap justify-between py-2 text-sm"><Link href={`/hardware-assets/${c.id}`} className="font-mono text-brand-700 hover:underline">{c.asset_code}</Link><span>{c.asset_type.replaceAll("_", " ")} {[c.brand, c.model].filter(Boolean).join(" ")} <ConnectionDot status={c.connection_status} /></span></li>)}</ul> : <p className="mt-2 text-sm text-gray-400">Không có thiết bị phụ trợ.</p>}</section>
+  </div>;
 }

@@ -63,17 +63,21 @@ async function main() {
     [randomUUID(), supplierId, customerId]
   );
 
-  const ruleId = randomUUID();
+  // ID cố định để seed có thể chạy lại an toàn khi watcher rebuild Docker;
+  // tránh tạo thêm quy tắc/bản ghi hoa hồng trùng mỗi lần source đổi.
+  const ruleId = "00000000-0000-0000-0000-000000000004";
   await client.query(
     `INSERT INTO commission_rules (id, partner_id, product_scope, rate_pct, is_recurring)
-     VALUES ($1, $2, 'BOTH', 10, true)`,
+     VALUES ($1, $2, 'BOTH', 10, true)
+     ON CONFLICT (id) DO NOTHING`,
     [ruleId, partnerId]
   );
 
   await client.query(
     `INSERT INTO commission_records (id, partner_id, customer_id, rule_id, period, amount, status)
-     VALUES ($1, $2, $3, $4, '2026-07', 1500000, 'CALCULATED')`,
-    [randomUUID(), partnerId, customerId, ruleId]
+     VALUES ($1, $2, $3, $4, '2026-07', 1500000, 'CALCULATED')
+     ON CONFLICT (id) DO NOTHING`,
+    ["00000000-0000-0000-0000-000000000005", partnerId, customerId, ruleId]
   );
 
   console.log("Seed hoàn tất. Tài khoản demo (mật khẩu: ChangeMe123!):");

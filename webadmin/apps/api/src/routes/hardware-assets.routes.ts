@@ -40,7 +40,7 @@ const baseFields = {
   purchaseCost: z.number().nonnegative().optional(),
   purchasedAt: z.string().datetime().optional(),
   warrantyUntil: z.string().datetime().optional(),
-  status: z.enum(["IN_STOCK", "DEPLOYED", "UNDER_WARRANTY_CLAIM", "RETIRED"]).default("IN_STOCK"),
+  status: z.enum(["IN_STOCK", "DEPLOYED", "UNDER_WARRANTY_CLAIM", "INACTIVE", "RETIRED"]).default("IN_STOCK"),
   customerId: z.string().uuid().optional().nullable(),
   deviceIdExternal: z.string().optional(),
   activatedAt: z.string().datetime().optional(),
@@ -50,6 +50,10 @@ const baseFields = {
   subscriptionCycle: z.enum(["MONTHLY", "YEARLY"]).optional(),
   connectedServer: z.string().optional(),
   parentAssetId: z.string().uuid().optional().nullable(),
+  installationLocation: z.string().max(255).optional().nullable(),
+  description: z.string().max(2000).optional().nullable(),
+  deactivatedAt: z.string().datetime().optional().nullable(),
+  deactivationReason: z.string().max(1000).optional().nullable(),
 };
 
 const createSchema = z.object({
@@ -180,6 +184,63 @@ hardwareAssetsRouter.patch(
     const asset = await hardwareAssetsRepo.update(req.params.id, parsed.data);
     await writeAuditLog({ req, action: "UPDATE_HARDWARE_ASSET", entityType: "hardware_asset", entityId: req.params.id, beforeData: existing, afterData: asset });
     res.json(asset);
+  })
+);
+
+hardwareAssetsRouter.post(
+  "/:id/activate",
+  requireRole("SUPPLY_CHAIN", "SUPER_ADMIN", "OPS_SUPPORT"),
+  asyncHandler(async (req, res) => {
+    const existing = await hardwareAssetsRepo.findById(req.params.id);
+    if (!existing) throw Errors.notFound("thiết bị");
+    if (!existing.property_id) throw Errors.conflict("Không thể kích hoạt thiết bị chưa được gán vào cơ sở.");
+    const asset = await hardwareAssetsRepo.activate(existing.id);
+    await writeAuditLog({ req, action: "ACTIVATE_HARDWARE_ASSET", entityType: "hardware_asset", entityId: existing.id, beforeData: existing, afterData: asset });
+    res.json(asset);
+  })
+);
+
+hardwareAssetsRouter.post(
+  "/:id/deactivate",
+  requireRole("SUPPLY_CHAIN", "SUPER_ADMIN", "OPS_SUPPORT"),
+  asyncHandler(async (req, res) => {
+    const parsed = z.object({ reason: z.string().trim().min(3).max(1000) }).safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    const existing = await hardwareAssetsRepo.findById(req.params.id);
+    if (!existing) throw Errors.notFound("thiết bị");
+    const asset = await hardwareAssetsRepo.deactivate(existing.id, parsed.data.reason);
+    await writeAuditLog({ req, action: "DEACTIVATE_HARDWARE_ASSET", entityType: "hardware_asset", entityId: existing.id, beforeData: existing, afterData: asset });
+    res.json(asset);
+  })
+);
+
+hardwareAssetsRouter.post(
+  "/:id/faults",
+  requireRole("SUPPLY_CHAIN", "SUPER_ADMIN", "OPS_SUPPORT"),
+  asyncHandler(async (req, res) => {
+    const parsed = z.object({
+      description: z.string().trim().min(3).max(2000),
+      severity: z.enum(["INFO", "WARNING", "CRITICAL"]).default("WARNING"),
+    }).safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    const asset = await hardwareAssetsRepo.findById(req.params.id);
+    if (!asset) throw Errors.notFound("thiết bị");
+    const alert = await assetAlertsRepo.create({ assetId: asset.id, alertType: "MANUAL_FAULT", message: parsed.data.description, severity: parsed.data.severity });
+    await writeAuditLog({ req, action: "REPORT_HARDWARE_FAULT", entityType: "hardware_asset", entityId: asset.id, afterData: { alert_id: alert.id, severity: alert.severity, description: alert.message } });
+    res.status(201).json({ alert, asset });
+  })
+);
+
+hardwareAssetsRouter.post(
+  "/:id/alerts/:alertId/resolve",
+  requireRole("SUPPLY_CHAIN", "SUPER_ADMIN", "OPS_SUPPORT"),
+  asyncHandler(async (req, res) => {
+    const asset = await hardwareAssetsRepo.findById(req.params.id);
+    if (!asset) throw Errors.notFound("thiết bị");
+    const alert = await assetAlertsRepo.resolveById(req.params.alertId);
+    if (!alert || alert.asset_id !== asset.id) throw Errors.notFound("cảnh báo của thiết bị");
+    await writeAuditLog({ req, action: "RESOLVE_HARDWARE_ALERT", entityType: "hardware_alert", entityId: alert.id, afterData: alert });
+    res.json(alert);
   })
 );
 
