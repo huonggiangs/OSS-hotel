@@ -82,20 +82,20 @@ export default function SyncPage() {
         <div className="mb-2 flex items-start justify-between">
           <div>
             <h3 className="mb-0.5 text-[20px] font-bold">Đồng bộ</h3>
-            <p className="m-0 text-[13px] text-pms-text">Quản lý kết nối đồng bộ với các kênh OTA</p>
+            <p className="m-0 text-[13px] text-pms-text">Quản lý kết nối đồng bộ với các kênh bán trực tuyến</p>
           </div>
           <div
             className="cursor-pointer whitespace-nowrap rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
             onClick={() => setShowAdd(true)}
           >
-            + Thêm kênh OTA
+            + Thêm kênh bán
           </div>
         </div>
         <p className="mb-5 text-[12px] text-pms-muted">
-          Trang này cho phép lưu cấu hình kết nối riêng cho từng kênh OTA (mã cơ sở, API Key, loại dữ liệu muốn đồng
-          bộ) — chưa thực hiện đồng bộ trực tiếp với API thật của Booking.com/Agoda/Airbnb. Để đồng bộ thật cần trở
-          thành đối tác được từng kênh cấp phép (hợp đồng + credential riêng), ngoài phạm vi có thể tự triển khai khi
-          chưa có credential đối tác thật.
+          Trang này cho phép lưu cấu hình kết nối riêng cho từng kênh bán (mã cơ sở, mã kết nối, loại dữ liệu muốn đồng
+          bộ) — chưa thực hiện đồng bộ trực tiếp với hệ thống của Booking.com/Agoda/Airbnb. Để đồng bộ thật cần trở
+          thành đối tác được từng kênh cấp phép (hợp đồng + thông tin xác thực riêng), ngoài phạm vi có thể tự triển khai khi
+          chưa có thông tin xác thực đối tác thật.
         </p>
 
         {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
@@ -106,7 +106,7 @@ export default function SyncPage() {
               <table className="w-full min-w-[720px] border-collapse text-[13px]">
                 <thead>
                   <tr>
-                    {["Kênh OTA", "Mã cơ sở", "Đồng bộ", "Trạng thái", ""].map((h) => (
+                    {["Kênh bán", "Mã cơ sở", "Đồng bộ", "Trạng thái", ""].map((h) => (
                       <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
                         {h}
                       </th>
@@ -117,7 +117,7 @@ export default function SyncPage() {
                   {form.connections.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-2 py-4 text-pms-muted">
-                        Chưa có kênh OTA nào. Bấm "+ Thêm kênh OTA" để thêm.
+                        Chưa có kênh bán nào. Bấm "+ Thêm kênh bán" để thêm.
                       </td>
                     </tr>
                   )}

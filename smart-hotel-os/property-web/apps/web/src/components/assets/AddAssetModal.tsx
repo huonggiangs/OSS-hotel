@@ -95,7 +95,7 @@ export function AddAssetModal({
       width={600}
       footer={
         <>
-          <ButtonGhost onClick={onClose}>Cancel</ButtonGhost>
+          <ButtonGhost onClick={onClose}>Hủy</ButtonGhost>
           <ButtonPrimary onClick={handleSave}>{initial ? "Lưu" : "Tạo tài sản"}</ButtonPrimary>
         </>
       }

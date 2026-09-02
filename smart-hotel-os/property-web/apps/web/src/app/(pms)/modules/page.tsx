@@ -36,15 +36,19 @@ const MODULE_FLOWS: Record<string, { label: string; href: string }> = {
 };
 
 export default function ModulesPage() {
-  const { data, loading, save } = useSettings<ModulesData>("modules", FALLBACK);
+  const { data, loading, save, error } = useSettings<ModulesData>("modules", FALLBACK);
   const [notice, setNotice] = useState<string | null>(null);
 
   async function toggle(key: string) {
     const module = data.items.find((item) => item.key === key);
     if (!module) return;
     const nextOn = !module.on;
-    await save({ items: data.items.map((m) => (m.key === key ? { ...m, on: nextOn } : m)) });
-    setNotice(nextOn ? `Đã bật “${MODULE_LABELS[key] ?? module.name}”. Bước tiếp theo: ${MODULE_FLOWS[key]?.label ?? "mở cấu hình chi tiết"}.` : `Đã tắt “${MODULE_LABELS[key] ?? module.name}”.`);
+    try {
+      await save({ items: data.items.map((m) => (m.key === key ? { ...m, on: nextOn } : m)) });
+      setNotice(nextOn ? `Đã bật “${MODULE_LABELS[key] ?? module.name}”. Bước tiếp theo: ${MODULE_FLOWS[key]?.label ?? "mở cấu hình chi tiết"}.` : `Đã tắt “${MODULE_LABELS[key] ?? module.name}”.`);
+    } catch {
+      setNotice("Không thể cập nhật chức năng. Kiểm tra kết nối rồi thử lại.");
+    }
   }
 
   if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
@@ -53,6 +57,7 @@ export default function ModulesPage() {
     <div>
       <h1 className="mb-1 text-[22px] font-bold">Module nâng cao</h1>
       <p className="mb-2 text-[13px] text-pms-muted">Bật một chức năng sẽ mở bước cấu hình tiếp theo để dùng được trong vận hành.</p>
+      {error && <p className="mb-3 rounded-lg bg-pms-danger-bg px-3 py-2 text-[12px] text-pms-danger">{error}</p>}
       {notice && <p className="mb-4 rounded-lg bg-[#E9FBEF] px-3 py-2 text-[12px] text-pms-success">{notice}</p>}
 
       <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

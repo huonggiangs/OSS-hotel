@@ -203,7 +203,8 @@ export default function PrinterPage() {
                 + Thêm mẫu in
               </div>
             </div>
-            <table className="w-full border-collapse text-[13px]">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px] border-collapse text-[13px]">
               <thead>
                 <tr>
                   {["Loại chứng từ", "Mẫu đang dùng", "Khổ giấy", "Trạng thái", ""].map((h) => (
@@ -277,6 +278,7 @@ export default function PrinterPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </>
       )}

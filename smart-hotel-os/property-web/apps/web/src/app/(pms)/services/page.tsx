@@ -22,7 +22,7 @@ interface ServicesData {
 const FALLBACK: ServicesData = { own: [], partners: [] };
 
 export default function ServicesPage() {
-  const { data, loading, save } = useSettings<ServicesData>("services", FALLBACK);
+  const { data, loading, save, error } = useSettings<ServicesData>("services", FALLBACK);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showAddPartner, setShowAddPartner] = useState(false);
@@ -72,6 +72,7 @@ export default function ServicesPage() {
     <div>
       <h1 className="mb-1 text-[22px] font-bold">Dịch vụ</h1>
       <p className="mb-2 text-[13px] text-pms-muted">Tạo dịch vụ → công khai → ghi nhận sử dụng vào đúng phòng và hóa đơn</p>
+      {error && <p className="mb-3 rounded-lg bg-pms-danger-bg px-3 py-2 text-[12px] text-pms-danger">{error}</p>}
       {notice && <p className="mb-3 rounded-lg bg-[#E9FBEF] px-3 py-2 text-[12px] text-pms-success">{notice}</p>}
 
       <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-pms-primary/10 bg-[#F6F8FF] p-4 text-[12px] sm:grid-cols-3"><div><b>1. Tạo dịch vụ</b><p className="m-0 mt-1 text-[11px] text-pms-muted">Tên, giá, thời gian và nơi cung cấp.</p></div><div><b>2. Công khai</b><p className="m-0 mt-1 text-[11px] text-pms-muted">Chỉ dịch vụ đã công khai mới đưa cho khách chọn.</p></div><div><b>3. Ghi nhận và thu tiền</b><p className="m-0 mt-1 text-[11px] text-pms-muted">Mở phòng đang ở để thêm số lượng vào hóa đơn.</p></div></div>
@@ -157,7 +158,8 @@ export default function ServicesPage() {
             + Thêm đối tác
           </div>
         </div>
-        <table className="w-full border-collapse text-[13px]">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[620px] border-collapse text-[13px]">
           <thead>
             <tr>
               {["Đối tác", "Loại hình", "Khoảng cách", "Hoa hồng", "Trạng thái"].map((h) => (
@@ -183,6 +185,7 @@ export default function ServicesPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {editingService && (

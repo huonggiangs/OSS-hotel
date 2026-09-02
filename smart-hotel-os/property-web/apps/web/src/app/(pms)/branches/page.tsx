@@ -71,10 +71,11 @@ export default function BranchesPage() {
           </div>
         )}
         {!loading && !error && (
-          <table className="w-full border-collapse text-[13px]">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] border-collapse text-[13px]">
             <thead>
               <tr>
-                {["STT", "Tên cơ sở", "Địa chỉ", "Số phòng", "Trạng thái", "Action"].map((h) => (
+                {["STT", "Tên cơ sở", "Địa chỉ", "Số phòng", "Trạng thái", "Thao tác"].map((h) => (
                   <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
                     {h}
                   </th>
@@ -113,6 +114,7 @@ export default function BranchesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
         <div className="mt-4 flex items-center justify-between text-[13px] text-pms-muted">
           <span>Hiển thị {branches.length} cơ sở</span>

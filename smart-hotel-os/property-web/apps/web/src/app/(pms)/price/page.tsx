@@ -170,7 +170,7 @@ export default function PricePage() {
         <table className="w-full min-w-[900px] border-collapse whitespace-nowrap text-[13px]">
           <thead>
             <tr>
-              {["STT", "Loại phòng", "Số phòng", "Giường", "S.chứa", "Diện tích", "Giá cơ bản", "Giá linh hoạt", "Tính tiền", "Giảm giá", "Trạng thái", "Action"].map((h) => (
+              {["STT", "Loại phòng", "Số phòng", "Giường", "S.chứa", "Diện tích", "Giá cơ bản", "Giá linh hoạt", "Tính tiền", "Giảm giá", "Trạng thái", "Thao tác"].map((h) => (
                 <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
                   {h}
                 </th>
@@ -238,7 +238,7 @@ export default function PricePage() {
         <table className="w-full min-w-[1100px] border-collapse whitespace-nowrap text-[13px]">
           <thead>
             <tr>
-              {["Phòng", "Loại phòng", "Mã phòng", "Tầng", "Bữa ăn", "S.chứa", "Giá 1 đêm", "Tính tiền", "QR Code", "Sync", "Trạng thái", "Action"].map((h) => (
+              {["Phòng", "Loại phòng", "Mã phòng", "Tầng", "Bữa ăn", "S.chứa", "Giá 1 đêm", "Tính tiền", "Mã QR", "Đồng bộ", "Trạng thái", "Thao tác"].map((h) => (
                 <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
                   {h}
                 </th>
@@ -381,7 +381,7 @@ function RoomQrModal({ room, onClose }: { room: ApiRoom; onClose: () => void }) 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[rgba(23,26,31,.45)]" onClick={onClose}>
       <div className="flex w-[340px] flex-col items-center gap-4 rounded-[14px] bg-white p-6" onClick={(e) => e.stopPropagation()}>
-        <b className="text-[15px]">QR Code phòng {room.number}</b>
+        <b className="text-[15px]">Mã QR phòng {room.number}</b>
         {error && <div className="text-[12px] text-pms-danger">{error}</div>}
         {!error && imgUrl && <img src={imgUrl} alt={`QR phòng ${room.number}`} width={220} height={220} />}
         {!error && !imgUrl && <div className="text-[12px] text-pms-muted">Đang tải mã QR...</div>}

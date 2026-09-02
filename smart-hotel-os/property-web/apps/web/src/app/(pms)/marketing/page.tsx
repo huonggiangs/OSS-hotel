@@ -23,8 +23,8 @@ export default function MarketingPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-[22px] font-bold">Marketing</h1>
-      <p className="mb-[22px] text-[13px] text-pms-muted">Chiến dịch email/SMS gửi tới khách hàng</p>
+      <h1 className="mb-1 text-[22px] font-bold">Tiếp thị</h1>
+      <p className="mb-[22px] text-[13px] text-pms-muted">Chiến dịch thư điện tử hoặc tin nhắn gửi tới khách hàng</p>
 
       <div className="rounded-xl bg-white p-4 shadow-card sm:p-6">
         <div className="mb-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">

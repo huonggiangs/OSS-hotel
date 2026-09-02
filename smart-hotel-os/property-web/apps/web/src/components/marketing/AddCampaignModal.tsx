@@ -75,8 +75,8 @@ export function AddCampaignModal({ onClose, onCreate }: { onClose: () => void; o
             onChange={(e) => setField("channel", e.target.value)}
             className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-text"
           >
-            <option value="Email">Email</option>
-            <option value="SMS">SMS</option>
+            <option value="Email">Thư điện tử</option>
+            <option value="SMS">Tin nhắn SMS</option>
           </select>
         </Field>
         <div className="grid grid-cols-2 gap-4">

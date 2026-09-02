@@ -318,7 +318,8 @@ export default function PaymentPage() {
           </div>
         )}
         {!loading && !error && (
-          <table className="w-full border-collapse text-[13px]">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[620px] border-collapse text-[13px]">
             <thead>
               <tr>
                 {["Hoá đơn", "Khách hàng", "Hình thức", "Số tiền", "Trạng thái"].map((h) => (
@@ -347,6 +348,7 @@ export default function PaymentPage() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

@@ -14,11 +14,11 @@ export interface NavItem {
 export const mainNav: NavItem[] = [
   { key: "dashboard", label: "Tổng quan", icon: "grid", href: "/dashboard" },
   { key: "value-dashboard", label: "Giá trị tạo ra", icon: "wallet", href: "/value-dashboard" },
-  { key: "alerts", label: "Cảnh báo / SLA", icon: "megaphone", href: "/alerts" },
+  { key: "alerts", label: "Cảnh báo & thời hạn", icon: "megaphone", href: "/alerts" },
   { key: "booking", label: "Đặt phòng / Hợp đồng", icon: "calendar", href: "/booking" },
   { key: "rooms", label: "Trạng thái phòng", icon: "bed", href: "/rooms" },
   { key: "expenses", label: "Chi phí", icon: "wallet", href: "/expenses" },
-  { key: "marketing", label: "Marketing", icon: "megaphone", href: "/marketing" },
+  { key: "marketing", label: "Tiếp thị", icon: "megaphone", href: "/marketing" },
   { key: "customers", label: "Khách hàng", icon: "users", href: "/customers" },
   { key: "services", label: "Dịch vụ", icon: "link", href: "/services" },
   { key: "utilities", label: "Tiện ích", icon: "map", href: "/utilities" },
@@ -57,7 +57,7 @@ export const settingsTree: SettingsTreeGroup[] = [
   {
     title: "Kết nối",
     items: [
-      { label: "Kênh bán (OTA)", href: "/channel", badge: true },
+      { label: "Kênh bán trực tuyến", href: "/channel", badge: true },
       { label: "Đồng bộ hoá", href: "/sync" },
     ],
   },

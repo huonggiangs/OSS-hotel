@@ -88,7 +88,8 @@ export default function TaxPage() {
         {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
         {error && <div className="text-[13px] text-red-500">{error}</div>}
         {!loading && (
-          <table className="w-full border-collapse text-[13px]">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse text-[13px]">
             <thead>
               <tr>
                 {["Tên", "Mức thu", "Áp dụng cho", "Hiển thị khách", ""].map((h) => (
@@ -119,6 +120,7 @@ export default function TaxPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

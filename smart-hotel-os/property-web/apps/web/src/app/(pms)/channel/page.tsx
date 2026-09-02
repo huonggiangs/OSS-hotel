@@ -25,7 +25,7 @@ export default function ChannelPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-[22px] font-bold">Kênh bán (OTA)</h1>
+      <h1 className="mb-1 text-[22px] font-bold">Kênh bán trực tuyến</h1>
       <p className="mb-[22px] text-[13px] text-pms-muted">Đồng bộ giá &amp; phòng trống theo thời gian thực</p>
       {loading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
       {error && <div className="text-[13px] text-red-500">{error}</div>}

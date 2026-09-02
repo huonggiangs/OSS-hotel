@@ -47,13 +47,13 @@ export function AddBranchModal({ onClose, onCreate }: { onClose: () => void; onC
         <div>
           <label className="mb-1.5 block text-[12px]">Tỉnh/ Thành Phố</label>
           <div className="flex justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted-2">
-            Select dropdown <span>⌄</span>
+            Chọn tỉnh/thành phố <span>⌄</span>
           </div>
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Phường/ Xã</label>
           <div className="flex justify-between rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted-2">
-            Select dropdown <span>⌄</span>
+            Chọn phường/xã <span>⌄</span>
           </div>
         </div>
         <div>
@@ -67,11 +67,11 @@ export function AddBranchModal({ onClose, onCreate }: { onClose: () => void; onC
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Tên tòa</label>
-          <div className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted-2">Input</div>
+          <div className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted-2">Nhập tên tòa nhà</div>
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Số tầng</label>
-          <div className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted-2">Input</div>
+          <div className="rounded-lg border border-pms-border px-3 py-2.5 text-[13px] text-pms-muted-2">Nhập số tầng</div>
         </div>
       </div>
     </Modal>

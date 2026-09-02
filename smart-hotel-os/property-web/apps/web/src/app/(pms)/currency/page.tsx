@@ -190,7 +190,8 @@ export default function CurrencyPage() {
         {error && <div className="mb-3 text-[13px] text-red-500">{error}</div>}
         {fxError && <div className="mb-3 text-[13px] text-pms-danger">{fxError}</div>}
         {!loading && (
-          <table className="w-full border-collapse text-[13px]">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] border-collapse text-[13px]">
             <thead>
               <tr>
                 {["Mã", "Tên", "Tỷ giá", "Tự động", "Mặc định", ""].map((h) => (
@@ -294,6 +295,7 @@ export default function CurrencyPage() {
               )}
             </tbody>
           </table>
+          </div>
         )}
 
         {showAdd && (

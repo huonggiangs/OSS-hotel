@@ -33,7 +33,7 @@ interface UtilitiesData {
 const FALLBACK: UtilitiesData = { links: [], syncAvail: true, syncPromo: false };
 
 export default function UtilitiesPage() {
-  const { data, loading, save } = useSettings<UtilitiesData>("utilities", FALLBACK);
+  const { data, loading, save, error } = useSettings<UtilitiesData>("utilities", FALLBACK);
   const [openConfig, setOpenConfig] = useState<"maps" | "hotel" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState<MaintenancePartner>({ id: "", name: "", category: "Điện", phone: "", note: "", visibleToGuest: true });
@@ -56,6 +56,7 @@ export default function UtilitiesPage() {
       <p className="mb-[22px] text-[13px] text-pms-muted">
         Khai báo nơi tìm đường, kênh đặt phòng và đối tác hỗ trợ để biến cấu hình thành hành động cụ thể
       </p>
+      {error && <p className="mb-3 rounded-lg bg-pms-danger-bg px-3 py-2 text-[12px] text-pms-danger">{error}</p>}
       {notice && <p className="mb-3 rounded-lg bg-[#E9FBEF] px-3 py-2 text-[12px] text-pms-success">{notice}</p>}
 
       <div className="flex flex-col gap-3.5">

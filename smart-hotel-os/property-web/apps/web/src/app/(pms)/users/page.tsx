@@ -94,7 +94,8 @@ export default function UsersPage() {
         </div>
         {rolesLoading && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
         {!rolesLoading && (
-          <table className="w-full border-collapse text-[13px]">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse text-[13px]">
             <thead>
               <tr>
                 {["Vai trò", "Số người dùng", "Phạm vi quyền", ""].map((h) => (
@@ -120,6 +121,7 @@ export default function UsersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -135,7 +137,8 @@ export default function UsersPage() {
         </div>
         {loadingAccounts && <div className="text-[13px] text-pms-muted">Đang tải...</div>}
         {!loadingAccounts && (
-          <table className="w-full border-collapse text-[13px]">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] border-collapse text-[13px]">
             <thead>
               <tr>
                 {["Tên đăng nhập", "Họ tên", "Email", "Vai trò", "Trạng thái", ""].map((h) => (
@@ -183,6 +186,7 @@ export default function UsersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
