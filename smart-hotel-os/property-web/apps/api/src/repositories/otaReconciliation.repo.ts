@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { pool } from "../lib/db";
 import type { BookingChannel } from "../types/domain";
+import { Errors } from "../utils/errors";
 
 export interface OtaReconciliationInput {
   bookingId?: string | null;
@@ -36,8 +37,8 @@ export const otaReconciliationRepo = {
         `SELECT id FROM bookings WHERE property_id = $1 AND (id = $2 OR code = $2) LIMIT 1`,
         [propertyId, bookingId]
       );
-      if (!bookingRows[0]) bookingId = null;
-      else bookingId = bookingRows[0].id;
+      if (!bookingRows[0]) throw Errors.notFound("đặt phòng để đối soát");
+      bookingId = bookingRows[0].id;
     }
     const net = Math.max(0, input.grossAmount - input.commissionAmount);
     const { rows } = await pool.query(
