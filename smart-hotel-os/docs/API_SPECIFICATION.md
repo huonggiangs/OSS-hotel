@@ -103,7 +103,23 @@ GET    /api/v1/admin/audit-logs
 GET    /api/v1/admin/tenants/{id}/usage
 ```
 
-## 10. Quy ước chung
+## 10. PMS — xác nhận khách, tiền cọc và đối soát OTA (MVP 015)
+
+```
+POST   /api/v1/bookings/{id}/arrival-confirmation   # willArrive + reason
+POST   /api/v1/bookings/{id}/no-show                # reason + depositResolution
+GET    /api/v1/settings/booking_policy
+PUT    /api/v1/settings/booking_policy
+GET    /api/v1/settings/customer_care
+PUT    /api/v1/settings/customer_care
+GET    /api/v1/ota-reconciliation
+POST   /api/v1/ota-reconciliation
+PATCH  /api/v1/ota-reconciliation/{id}
+```
+
+Máy đọc QR căn cước dạng HID gửi chuỗi vào ô nhận phòng nhanh; không lưu ảnh căn cước. Gửi Zalo/Facebook và đối soát OTA tự động chỉ bật sau khi cơ sở cung cấp credential, webhook và chấp thuận dữ liệu.
+
+## 11. Quy ước chung
 
 - Auth: Bearer JWT (nội bộ), OAuth2 client credentials (bên thứ 3/API key).
 - Mọi list endpoint hỗ trợ phân trang (`page`, `page_size`), lọc, sắp xếp.

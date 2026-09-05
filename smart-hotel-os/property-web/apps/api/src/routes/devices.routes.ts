@@ -17,7 +17,7 @@ devicesRouter.use(requireAuth);
 const createSchema = z.object({
   roomId: z.string().optional().nullable(),
   controlKind: z
-    .enum(["POWER_METER", "POWER_SWITCH", "LIGHTING_CONTROLLER", "AC_CONTROLLER", "DOOR_LOCK", "CARD_DISPENSER", "ANNOUNCEMENT_SPEAKER", "SMART_TV", "OTHER"])
+    .enum(["POWER_METER", "POWER_SWITCH", "LIGHTING_CONTROLLER", "AC_CONTROLLER", "DOOR_LOCK", "CARD_DISPENSER", "ID_SCANNER", "ANNOUNCEMENT_SPEAKER", "SMART_TV", "OTHER"])
     .default("POWER_SWITCH"),
   name: z.string().min(1),
   externalId: z.string().optional(),
@@ -37,6 +37,7 @@ const DEVICE_TYPE_BY_CONTROL_KIND = {
   AC_CONTROLLER: "AC_CONTROLLER",
   DOOR_LOCK: "DOOR_LOCK",
   CARD_DISPENSER: "OTHER",
+  ID_SCANNER: "ID_SCANNER",
   ANNOUNCEMENT_SPEAKER: "OTHER",
   SMART_TV: "OTHER",
   OTHER: "OTHER",

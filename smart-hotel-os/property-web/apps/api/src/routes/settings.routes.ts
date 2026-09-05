@@ -25,6 +25,8 @@ settingsRouter.use(requireAuth);
 const VALID_GROUPS = new Set([
   "basic",
   "facility",
+  "booking_policy",
+  "customer_care",
   "amenities",
   "images",
   "email",

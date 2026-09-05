@@ -19,6 +19,7 @@ type DeviceControlKind =
   | "AC_CONTROLLER"
   | "DOOR_LOCK"
   | "CARD_DISPENSER"
+  | "ID_SCANNER"
   | "ANNOUNCEMENT_SPEAKER"
   | "SMART_TV"
   | "OTHER";
@@ -40,6 +41,7 @@ const DEVICE_KINDS: { value: DeviceControlKind; label: string; icon: string }[] 
   { value: "LIGHTING_CONTROLLER", label: "Điều khiển ánh sáng", icon: "💡" },
   { value: "DOOR_LOCK", label: "Khóa thông minh", icon: "🔐" },
   { value: "CARD_DISPENSER", label: "Bộ cấp / thu hồi thẻ", icon: "🪪" },
+  { value: "ID_SCANNER", label: "Máy đọc QR căn cước", icon: "▣" },
   { value: "ANNOUNCEMENT_SPEAKER", label: "Loa thông báo", icon: "🔊" },
   { value: "SMART_TV", label: "Smart TV", icon: "📺" },
   { value: "AC_CONTROLLER", label: "Điều khiển điều hòa", icon: "❄️" },

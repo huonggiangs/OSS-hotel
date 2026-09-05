@@ -45,7 +45,7 @@ const createSchema = z
   checkoutAt: dateTimeSchema.optional(),
   stayType: z.enum(["HOURLY", "OVERNIGHT", "DAILY"]).default("DAILY"),
   totalPrice: z.number().min(0).default(0),
-  deposit: z.number().min(0).default(0),
+  deposit: z.number().min(0).optional(),
   notes: z.string().optional(),
   guestDetails: guestDetailsSchema.optional(),
   })
@@ -110,6 +110,14 @@ const serviceSchema = z.object({
 const cardSchema = z.object({ cardCode: z.string().trim().min(1).max(100), deviceId: z.string().min(1).optional() });
 const settlementPreviewSchema = z.object({ paymentMethod: paymentMethodSchema.default("CASH") });
 const settlementFinalizeSchema = z.object({ invoiceId: z.string().min(1) });
+const arrivalConfirmationSchema = z.object({
+  willArrive: z.boolean(),
+  reason: z.string().trim().max(500).optional(),
+});
+const noShowSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+  depositResolution: z.enum(["REFUND", "RETAIN", "PENDING"]),
+});
 
 bookingsRouter.get(
   "/:id",
@@ -169,6 +177,31 @@ bookingsRouter.post(
   asyncHandler(async (req, res) => {
     const booking = await bookingsRepo.checkin(req.user!.propertyId, req.user!.tenantId, req.user!.id, req.params.id);
     await writeAuditLog({ req, action: "CHECKIN_BOOKING", entityType: "booking", entityId: booking.id, afterData: { status: booking.status } });
+    res.json(booking);
+  })
+);
+
+bookingsRouter.post(
+  "/:id/arrival-confirmation",
+  requireRole("OWNER", "MANAGER", "RECEPTIONIST"),
+  asyncHandler(async (req, res) => {
+    const parsed = arrivalConfirmationSchema.safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    if (!parsed.data.willArrive && !parsed.data.reason) throw Errors.validation({ reason: ["Cần ghi rõ lý do khách không đến."] });
+    const booking = await bookingsRepo.confirmArrival(req.user!.propertyId, req.params.id, parsed.data.willArrive, parsed.data.reason);
+    await writeAuditLog({ req, action: parsed.data.willArrive ? "CONFIRM_GUEST_ARRIVAL" : "MARK_BOOKING_NO_SHOW", entityType: "booking", entityId: booking.id, afterData: { status: booking.status, reason: parsed.data.reason } });
+    res.json(booking);
+  })
+);
+
+bookingsRouter.post(
+  "/:id/no-show",
+  requireRole("OWNER", "MANAGER", "RECEPTIONIST"),
+  asyncHandler(async (req, res) => {
+    const parsed = noShowSchema.safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    const booking = await bookingsRepo.resolveNoShow(req.user!.propertyId, req.user!.tenantId, req.user!.id, req.params.id, parsed.data.reason, parsed.data.depositResolution);
+    await writeAuditLog({ req, action: "RESOLVE_NO_SHOW_DEPOSIT", entityType: "booking", entityId: booking.id, afterData: { status: booking.status, deposit_resolution: booking.deposit_resolution, reason: parsed.data.reason } });
     res.json(booking);
   })
 );

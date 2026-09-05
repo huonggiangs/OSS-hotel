@@ -20,6 +20,8 @@ interface ApiBooking {
   status: string;
   checkin_date: string;
   checkout_date: string;
+  created_at?: string;
+  arrival_confirmation_status?: "PENDING" | "WILL_ARRIVE" | "NO_SHOW";
 }
 
 const CHANNEL_LABEL: Record<string, string> = {
@@ -37,6 +39,7 @@ const STATUS_INFO: Record<string, { label: string; bg: string; fg: string }> = {
   CHECKED_IN: { label: "Đã nhận phòng", bg: "#EEF1FB", fg: "#284AB1" },
   CHECKED_OUT: { label: "Đã trả phòng", bg: "#F4F5F6", fg: "#777E90" },
   CANCELLED: { label: "Đã huỷ", bg: "#FCEAEC", fg: "#CC2F42" },
+  NO_SHOW: { label: "Không đến", bg: "#FCEAEC", fg: "#CC2F42" },
 };
 
 function formatDate(iso: string): string {

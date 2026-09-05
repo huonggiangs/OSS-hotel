@@ -20,6 +20,48 @@ export interface BookingInput {
   guestDetails?: GuestDetailsInput;
 }
 
+export type DepositResolution = "REFUND" | "RETAIN" | "PENDING";
+
+export interface ArrivalConfirmationResult extends BookingWithDetails {
+  deposit_resolution: DepositResolution | null;
+}
+
+export interface OtaReconciliation {
+  id: string;
+  property_id: string;
+  tenant_id: string;
+  booking_id: string | null;
+  channel: BookingChannel;
+  external_reference: string;
+  gross_amount: string;
+  commission_amount: string;
+  net_amount: string;
+  received_amount: string;
+  settlement_date: string | null;
+  status: "PENDING" | "MATCHED" | "DISPUTED";
+  note: string | null;
+  source: string;
+  created_at: Date;
+  updated_at: Date;
+  booking_code?: string | null;
+  guest_name?: string | null;
+}
+
+interface DepositPolicy {
+  enabled?: boolean;
+  percent?: number;
+  noShowPolicy?: DepositResolution;
+}
+
+async function readDepositPolicy(db: DbPool, propertyId: string): Promise<DepositPolicy> {
+  const { rows } = await db.query<{ data: DepositPolicy }>(
+    `SELECT data FROM property_settings WHERE property_id = $1 AND group_key = 'booking_policy'`,
+    [propertyId]
+  );
+  const data = rows[0]?.data;
+  return data && typeof data === "object" ? data : {};
+}
+
 export interface GuestDetailsInput {
   dateOfBirth?: string | null;
   gender?: string | null;
@@ -314,6 +356,12 @@ export const bookingsRepo = {
       const checkoutAt = input.checkoutAt ?? defaultCheckoutAt(input.checkoutDate);
       if (input.roomId) await ensureRoomAvailable(tx, propertyId, input.roomId, checkinAt, checkoutAt);
       const code = await this.nextCode(tx, propertyId);
+      const policy = await readDepositPolicy(tx, propertyId);
+      const configuredPercent = Number(policy.percent ?? 0);
+      const policyDeposit = policy.enabled && input.totalPrice && configuredPercent > 0
+        ? Math.round(Number(input.totalPrice) * Math.min(100, Math.max(0, configuredPercent)) / 100)
+        : 0;
+      const deposit = input.deposit === undefined ? policyDeposit : input.deposit;
       const { rows } = await tx.query<Booking>(
         `INSERT INTO bookings
         (id, property_id, tenant_id, code, customer_id, room_id, channel, status, checkin_date, checkout_date, checkin_at, checkout_at, stay_type, total_price, deposit, notes, created_by)
@@ -333,14 +381,67 @@ export const bookingsRepo = {
         checkoutAt,
         input.stayType ?? "DAILY",
         input.totalPrice ?? 0,
-        input.deposit ?? 0,
+        deposit,
         input.notes ?? null,
         createdBy ?? null,
       ]
       );
       const booking = rows[0];
+      if (deposit > 0) {
+        await tx.query(
+          `INSERT INTO booking_deposit_events (id, property_id, tenant_id, booking_id, action, amount, reason, created_by)
+           VALUES ($1,$2,$3,$4,'POLICY_APPLIED',$5,$6,$7)`,
+          [randomUUID(), propertyId, tenantId, booking.id, deposit, `Áp dụng chính sách cọc ${configuredPercent}%`, createdBy ?? null]
+        );
+      }
       await upsertGuestDetails(tx, propertyId, tenantId, booking.id, input.guestDetails);
       return booking;
+    });
+  },
+
+  async confirmArrival(propertyId: string, id: string, willArrive: boolean, reason?: string): Promise<BookingWithDetails> {
+    const status: BookingStatus = willArrive ? "CONFIRMED" : "NO_SHOW";
+    const arrivalStatus = willArrive ? "WILL_ARRIVE" : "NO_SHOW";
+    const existing = await this.findById(propertyId, id);
+    if (!existing) throw Errors.notFound("hợp đồng");
+    if (["CHECKED_IN", "CHECKED_OUT"].includes(existing.status)) throw Errors.conflict("Hợp đồng đã hoàn tất nhận/trả phòng, không thể đổi xác nhận đến.");
+    const { rows } = await pool.query<BookingWithDetails>(
+      `UPDATE bookings SET status = $1, arrival_confirmation_status = $2, arrival_confirmed_at = now(),
+         no_show_reason = $3, deposit_resolution = CASE WHEN $4 THEN deposit_resolution ELSE 'PENDING' END, updated_at = now()
+       WHERE property_id = $5 AND id = $6 RETURNING *`,
+      [status, arrivalStatus, willArrive ? null : reason ?? "Không có lý do", willArrive, propertyId, id]
+    );
+    return (await this.findById(propertyId, rows[0].id))!;
+  },
+
+  async resolveNoShow(propertyId: string, tenantId: string, userId: string | undefined, id: string, reason: string, resolution: DepositResolution): Promise<BookingWithDetails> {
+    return pool.transaction(async (tx) => {
+      const { rows } = await tx.query<Booking>(`SELECT * FROM bookings WHERE property_id = $1 AND id = $2 FOR UPDATE`, [propertyId, id]);
+      const booking = rows[0];
+      if (!booking) throw Errors.notFound("hợp đồng");
+      if (!["PENDING", "CONFIRMED", "NO_SHOW"].includes(booking.status)) throw Errors.conflict("Chỉ có thể xử lý tiền cọc cho đặt phòng chưa nhận phòng.");
+      await tx.query(
+        `UPDATE bookings SET status = 'NO_SHOW', arrival_confirmation_status = 'NO_SHOW', arrival_confirmed_at = COALESCE(arrival_confirmed_at, now()),
+          no_show_reason = $1, deposit_resolution = $2, updated_at = now() WHERE property_id = $3 AND id = $4`,
+        [reason, resolution, propertyId, id]
+      );
+      const action = resolution === "REFUND" ? "REFUND_REQUESTED" : resolution === "RETAIN" ? "RETAINED" : "PENDING_REVIEW";
+      await tx.query(
+        `INSERT INTO booking_deposit_events (id, property_id, tenant_id, booking_id, action, amount, reason, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [randomUUID(), propertyId, tenantId, id, action, booking.deposit, reason, userId ?? null]
+      );
+      const { rows: detailRows } = await tx.query<BookingWithDetails>(
+        `SELECT b.*, c.full_name AS guest_name, r.number AS room_number, rt.name AS room_type_name
+         FROM bookings b
+         LEFT JOIN customers c ON c.id = b.customer_id
+         LEFT JOIN rooms r ON r.id = b.room_id
+         LEFT JOIN room_types rt ON rt.id = r.room_type_id
+         WHERE b.property_id = $1 AND b.id = $2`,
+        [propertyId, id]
+      );
+      if (!detailRows[0]) throw Errors.notFound("hợp đồng");
+      return detailRows[0];
     });
   },
 
@@ -393,7 +494,7 @@ export const bookingsRepo = {
       const existing = bookingRows[0];
       if (!existing) throw Errors.notFound("hợp đồng");
       if (existing.status === "CHECKED_IN") return existing;
-      if (existing.status === "CHECKED_OUT" || existing.status === "CANCELLED") {
+      if (["CHECKED_OUT", "CANCELLED", "NO_SHOW"].includes(existing.status)) {
         throw Errors.conflict(`Không thể nhận phòng khi hợp đồng đang ${existing.status}.`);
       }
       if (!existing.room_id) throw Errors.conflict("Cần gán phòng trước khi nhận phòng.");

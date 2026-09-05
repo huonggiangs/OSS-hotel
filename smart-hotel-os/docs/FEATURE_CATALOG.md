@@ -15,6 +15,9 @@ Mỗi feature mới phải có mã `F#`, `Need refs`, KPI, owner, trạng thái 
 | F-MODULE-FLOW-001 | N3,N4 | Bật module và dẫn bước kế tiếp | PMS `/modules`: bật/tắt, thông báo, nút thiết lập tiếp theo | Rule-based | Thiết bị được gán ở bước cấu hình | MVP |
 | F-UTILITY-FLOW-001 | N2,N4,N5 | Tiện ích có luồng hành động | PMS `/utilities`: địa chỉ bản đồ, kênh đặt phòng, đồng bộ, đối tác hỗ trợ | Rule-based | Đối tác/thiết bị tham chiếu theo cơ sở | MVP |
 | F-SERVICE-FLOW-001 | N1,N3 | Dịch vụ từ tạo đến thu tiền | PMS `/services`: thêm/sửa/xóa, công khai, tìm kiếm, ghi nhận tại phòng/hóa đơn | Rule-based | Không bắt buộc; thiết bị dịch vụ là phase sau | MVP |
+| F-BOOKING-ARRIVAL-001 | N1,N3,N5 | Xác nhận đến/no-show và chính sách cọc | PMS `/customers`, `/booking`, cài đặt cơ sở | Rule trạng thái; AI chỉ gợi ý kịch bản | Máy đọc QR căn cước (tuỳ chọn) | MVP |
+| F-CRM-CARE-001 | N1,N3,N4 | Lịch chăm sóc khách có duyệt kịch bản | PMS `/customers` — Zalo/Facebook/email | Học thói quen ở chế độ đề xuất, không tự gửi | Không bắt buộc | MVP · cần credential kênh |
+| F-OTA-RECON-001 | N1,N4 | Đối soát tiền nhận từ OTA | PMS `/sync` — mã giao dịch, gộp/hoa hồng/thực nhận | Không dùng AI | Không bắt buộc | MVP · nhập tay/API đối tác sau |
 | F-VALUE-001 | N1,N2,N3,N4,N5 | Value Dashboard + CVG ledger | PMS `/value-dashboard`, KPI trên `/dashboard` | Chưa dùng AI; chỉ ghi nhận nguồn thật | meter/room/asset_code khi có telemetry | MVP · READY_FOR_PILOT |
 | F-ALERT-001 | N2,N4,N5 | Alert và SLA | PMS `/alerts`, severity, due_at, ACK/resolve | Rule trước, AI sau | offline/fault/energy telemetry | MVP · READY_FOR_PILOT |
 | F-AI-REV-001 | N1,N4 | Trợ lý lợi nhuận | CEO dashboard/chat (cần bổ sung) | RAG + tool calling có nguồn | Revenue/expense/OTA/energy data | Backlog |

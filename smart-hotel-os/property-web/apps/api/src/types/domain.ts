@@ -8,10 +8,10 @@ export type PropertyUserStatus = "ACTIVE" | "DISABLED";
 export type RoomTypeStatus = "ACTIVE" | "INACTIVE";
 export type RoomStatus = "OCCUPIED" | "VACANT" | "DIRTY" | "MAINTENANCE";
 export type BookingChannel = "DIRECT" | "BOOKING_COM" | "AGODA" | "AIRBNB" | "TRAVELOKA" | "OTHER";
-export type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED";
+export type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED" | "NO_SHOW";
 export type InvoiceMethod = "CASH" | "BANK_TRANSFER" | "CARD" | "OTA_WALLET" | "VNPAY" | "MOMO" | "ZALOPAY" | "STRIPE";
 export type InvoiceStatus = "PAID" | "PENDING" | "FAILED";
-export type DeviceType = "POWER_SWITCH" | "AC_CONTROLLER" | "DOOR_LOCK" | "OTHER";
+export type DeviceType = "POWER_SWITCH" | "AC_CONTROLLER" | "DOOR_LOCK" | "ID_SCANNER" | "OTHER";
 export type DeviceStatus = "ONLINE" | "OFFLINE" | "ERROR";
 export type DeviceControlKind =
   | "POWER_METER"
@@ -20,6 +20,7 @@ export type DeviceControlKind =
   | "AC_CONTROLLER"
   | "DOOR_LOCK"
   | "CARD_DISPENSER"
+  | "ID_SCANNER"
   | "ANNOUNCEMENT_SPEAKER"
   | "SMART_TV"
   | "OTHER";
@@ -112,6 +113,10 @@ export interface Booking {
   room_id: string | null;
   channel: BookingChannel;
   status: BookingStatus;
+  arrival_confirmation_status: "PENDING" | "WILL_ARRIVE" | "NO_SHOW";
+  arrival_confirmed_at: Date | null;
+  no_show_reason: string | null;
+  deposit_resolution: "REFUND" | "RETAIN" | "PENDING" | null;
   checkin_date: string;
   checkout_date: string;
   stay_type: "HOURLY" | "OVERNIGHT" | "DAILY";

@@ -50,6 +50,21 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
     "buildings": [],
     "zones": []
   },
+  "booking_policy": {
+    "enabled": true,
+    "percent": 30,
+    "noShowPolicy": "CASE_BY_CASE",
+    "requireArrivalConfirmation": true,
+    "refundWindowHours": 24
+  },
+  "customer_care": {
+    "enabled": false,
+    "channels": { "zalo": false, "facebook": false, "email": true },
+    "schedule": { "beforeArrivalHours": 24, "afterCheckoutHours": 4 },
+    "approvedScript": "Xin chào {{guest_name}}, cơ sở xin xác nhận thời gian nhận phòng {{checkin_date}}. Anh/chị có cần hỗ trợ gì thêm không?",
+    "learningMode": "SUGGEST_ONLY",
+    "consentRequired": true
+  },
   "amenities": {
     "groups": [
       {

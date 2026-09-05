@@ -62,6 +62,22 @@ interface BasicData {
   payment: { bankName: string; accountNumber: string; accountHolder: string };
 }
 
+interface BookingPolicyData {
+  enabled: boolean;
+  percent: number;
+  noShowPolicy: "REFUND" | "RETAIN" | "CASE_BY_CASE";
+  requireArrivalConfirmation: boolean;
+  refundWindowHours: number;
+}
+
+const BOOKING_POLICY_FALLBACK: BookingPolicyData = {
+  enabled: true,
+  percent: 30,
+  noShowPolicy: "CASE_BY_CASE",
+  requireArrivalConfirmation: true,
+  refundWindowHours: 24,
+};
+
 const FALLBACK: BasicData = {
   floorInputs: [],
   info: { intro: "", logoDataUrl: "", logoFileName: "", website: "", ctvCode: "", accommodationType: "", location: { address: "", latitude: null, longitude: null, source: "" } },
@@ -168,6 +184,7 @@ export default function BasicPage() {
   const { t } = usePmsLocale();
   const [tab, setTab] = useState<Tab>("info");
   const { data, loading, saving, error, savedAt, save } = useSettings<BasicData>("basic", FALLBACK);
+  const bookingPolicy = useSettings<BookingPolicyData>("booking_policy", BOOKING_POLICY_FALLBACK);
   const [form, setForm] = useState<BasicData>(FALLBACK);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -377,6 +394,18 @@ export default function BasicPage() {
           <Row label="Website"><input value={form.info.website} onChange={(event) => setForm((current) => ({ ...current, info: { ...current.info, website: event.target.value } }))} className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" placeholder="Địa chỉ website" /></Row>
           <Row label="Mã CTV"><input value={form.info.ctvCode} onChange={(event) => setForm((current) => ({ ...current, info: { ...current.info, ctvCode: event.target.value } }))} className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" placeholder="Mã CTV nếu có" /></Row>
           <Row label="Phân loại cơ sở"><select value={form.info.accommodationType} onChange={(event) => setForm((current) => ({ ...current, info: { ...current.info, accommodationType: event.target.value } }))} className="w-full rounded-lg border border-pms-border bg-white px-3 py-2.5 text-[13px]"><option value="">Chọn loại cơ sở lưu trú</option>{ACCOMMODATION_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</select></Row>
+          <Row label="Chính sách đặt cọc" tall><div className="space-y-3 rounded-lg border border-pms-border p-3">
+            <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={bookingPolicy.data.enabled} onChange={(e) => bookingPolicy.setData((current) => ({ ...current, enabled: e.target.checked }))} /> Tự động tính tiền cọc khi tạo đặt phòng</label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-[12px]">Tỷ lệ cọc (%)<input type="number" min={0} max={100} value={bookingPolicy.data.percent} onChange={(e) => bookingPolicy.setData((current) => ({ ...current, percent: Math.min(100, Math.max(0, Number(e.target.value) || 0)) }))} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" /></label>
+              <label className="text-[12px]">Thời hạn hoàn cọc (giờ)<input type="number" min={0} max={720} value={bookingPolicy.data.refundWindowHours} onChange={(e) => bookingPolicy.setData((current) => ({ ...current, refundWindowHours: Math.min(720, Math.max(0, Number(e.target.value) || 0)) }))} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" /></label>
+            </div>
+            <label className="block text-[12px]">Xử lý khi khách không đến<select value={bookingPolicy.data.noShowPolicy} onChange={(e) => bookingPolicy.setData((current) => ({ ...current, noShowPolicy: e.target.value as BookingPolicyData["noShowPolicy"] }))} className="mt-1 w-full rounded-lg border border-pms-border bg-white px-3 py-2.5 text-[13px]"><option value="CASE_BY_CASE">Xem lý do và quyết định từng trường hợp</option><option value="REFUND">Hoàn cọc</option><option value="RETAIN">Giữ cọc theo quy định</option></select></label>
+            <label className="flex items-center gap-2 text-[12px]"><input type="checkbox" checked={bookingPolicy.data.requireArrivalConfirmation} onChange={(e) => bookingPolicy.setData((current) => ({ ...current, requireArrivalConfirmation: e.target.checked }))} /> Nhắc nhân viên xác nhận khách sẽ đến trước ngày nhận phòng</label>
+            <button type="button" onClick={() => void bookingPolicy.save(bookingPolicy.data)} disabled={bookingPolicy.saving} className="rounded-lg border border-pms-primary px-3 py-2 text-[12px] font-semibold text-pms-primary disabled:opacity-50">{bookingPolicy.saving ? "Đang lưu..." : "Lưu chính sách cọc"}</button>
+            {bookingPolicy.savedAt && <span className="ml-2 text-[12px] text-pms-success">Đã lưu</span>}
+            {bookingPolicy.error && <p className="m-0 text-[12px] text-pms-danger">{bookingPolicy.error}</p>}
+          </div></Row>
           <Row label="Cài đặt cơ sở" tall><FacilitySettingsEditor /></Row>
           <Row label="Vị trí" tall><div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3"><button type="button" onClick={detectLocationByIp} disabled={locating} className="rounded-lg border border-pms-primary px-3 py-2.5 text-[13px] font-medium text-pms-primary disabled:cursor-wait disabled:opacity-60">{locating ? "Đang lấy vị trí..." : "Lấy vị trí theo IP"}</button>{form.info.location.address && <span className="text-[12px] text-pms-muted">{form.info.location.address}</span>}</div>
