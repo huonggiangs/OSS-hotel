@@ -56,7 +56,7 @@ export function CustomerDetailModal({
       width={640}
     >
       <div className="flex flex-col gap-[18px] px-6 py-5">
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat value={customer.bookings} label="Số lần đặt" />
           <Stat value={customer.rebookings} label="Đặt lại" />
           <Stat value={customer.careAfterStay} label="CSKH sau lưu trú" />
