@@ -65,6 +65,20 @@ export const customersRepo = {
     return rows[0] ?? null;
   },
 
+  async delete(propertyId: string, id: string): Promise<Customer | null> {
+    return pool.transaction(async (tx) => {
+      const { rows: existing } = await tx.query<Customer>(
+        `SELECT * FROM customers WHERE property_id = $1 AND id = $2 FOR UPDATE`,
+        [propertyId, id]
+      );
+      if (!existing[0]) return null;
+      // Giữ lịch sử đặt phòng nhưng bỏ liên kết tới khách đã xóa để không vi phạm FK.
+      await tx.query(`UPDATE bookings SET customer_id = NULL, updated_at = now() WHERE property_id = $1 AND customer_id = $2`, [propertyId, id]);
+      const { rows } = await tx.query<Customer>(`DELETE FROM customers WHERE property_id = $1 AND id = $2 RETURNING *`, [propertyId, id]);
+      return rows[0] ?? existing[0];
+    });
+  },
+
   async countTotal(propertyId: string): Promise<number> {
     const { rows } = await pool.query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM customers WHERE property_id = $1`, [
       propertyId,

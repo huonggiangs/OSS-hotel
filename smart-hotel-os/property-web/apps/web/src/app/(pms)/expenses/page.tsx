@@ -24,6 +24,8 @@ interface DailyEntry {
   amount: string;
   by: string;
   status: DailyEntryStatus;
+  source?: string;
+  expenseId?: string;
 }
 interface DailyEntriesData {
   items: DailyEntry[];
@@ -60,7 +62,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: daily, loading: loadingDaily, save: saveDaily } = useSettings<DailyEntriesData>("daily_entries", DAILY_FALLBACK);
+  const { data: daily, loading: loadingDaily, save: saveDaily, reload: reloadDaily } = useSettings<DailyEntriesData>("daily_entries", DAILY_FALLBACK);
 
   useEffect(() => {
     load();
@@ -81,15 +83,27 @@ export default function ExpensesPage() {
 
   async function handleCreateExpense(input: { category: string; amount: number; description: string; expenseDate: string }) {
     try {
-      await api.post("/api/v1/expenses", input);
+      const result = await api.post<{ approvalRequired?: boolean }>("/api/v1/expenses", input);
       setShowAdd(false);
-      load();
-    } catch {
-      // Lỗi hiển thị qua trạng thái error chung nếu cần — modal tự đóng khi thành công.
+      if (result.approvalRequired) setError("Chi phí đã gửi lên cấp quản lý chờ duyệt; chưa hạch toán vào danh sách chi phí.");
+      else setError(null);
+      await Promise.all([load(), reloadDaily()]);
+    } catch (err) {
+      setError(isApiError(err) ? err.message : "Không thể thêm chi phí.");
     }
   }
 
   async function setDailyStatus(id: string, status: DailyEntryStatus) {
+    const current = daily.items.find((item) => item.id === id);
+    if (current?.source === "EXPENSE_APPROVAL" && status !== "pending") {
+      try {
+        await api.post(`/api/v1/expenses/requests/${encodeURIComponent(id)}/${status === "approved" ? "approve" : "reject"}`);
+        await Promise.all([reloadDaily(), load()]);
+      } catch (err) {
+        setError(isApiError(err) ? err.message : "Không cập nhật được đề nghị chi phí.");
+      }
+      return;
+    }
     const next = { ...daily, items: daily.items.map((it) => (it.id === id ? { ...it, status } : it)) };
     await saveDaily(next);
   }

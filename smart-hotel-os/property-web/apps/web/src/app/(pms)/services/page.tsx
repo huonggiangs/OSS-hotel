@@ -7,6 +7,7 @@ import { EditServiceModal, type EditServiceForm } from "@/components/services/Ed
 import { AddPartnerModal, type NewPartnerForm } from "@/components/services/AddPartnerModal";
 import { AddServiceModal, type NewServiceForm } from "@/components/services/AddServiceModal";
 import { useSettings } from "@/lib/useSettings";
+import { Modal } from "@/components/ui/Modal";
 
 const TH = "border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted";
 const TD = "border-b border-pms-divider px-2 py-3";
@@ -26,6 +27,8 @@ export default function ServicesPage() {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showAddPartner, setShowAddPartner] = useState(false);
+  const [editingPartnerIndex, setEditingPartnerIndex] = useState<number | null>(null);
+  const [viewingPartnerIndex, setViewingPartnerIndex] = useState<number | null>(null);
   const [showAddService, setShowAddService] = useState(false);
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -64,6 +67,19 @@ export default function ServicesPage() {
   async function handleAddPartner(form: NewPartnerForm) {
     await save({ ...data, partners: [...data.partners, { ...form, linked: false }] });
     setShowAddPartner(false); setNotice("Đã thêm đối tác. Bạn có thể bật liên kết sau khi xác nhận thông tin.");
+  }
+
+  async function handleEditPartner(form: NewPartnerForm) {
+    if (editingPartnerIndex === null) return;
+    await save({ ...data, partners: data.partners.map((partner, index) => index === editingPartnerIndex ? { ...partner, ...form } : partner) });
+    setEditingPartnerIndex(null); setNotice("Đã cập nhật đối tác.");
+  }
+
+  async function handleDeletePartner(index: number) {
+    const partner = data.partners[index];
+    if (!partner || !window.confirm(`Xóa đối tác “${partner.name}”?`)) return;
+    await save({ ...data, partners: data.partners.filter((_, itemIndex) => itemIndex !== index) });
+    setNotice("Đã xóa đối tác.");
   }
 
   if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
@@ -158,11 +174,11 @@ export default function ServicesPage() {
             + Thêm đối tác
           </div>
         </div>
-        <div className="overflow-x-auto">
-        <table className="w-full min-w-[620px] border-collapse text-[13px]">
+        <div className="space-y-3 md:hidden">{data.partners.map((s, index) => <article key={`${s.name}-${index}`} className="rounded-lg border border-pms-divider p-3"><div className="flex items-start justify-between gap-3"><b className="break-words text-[13px]">{s.name}</b><StatusPill bg={s.linked ? "#E9FBEF" : "#F4F5F6"} fg={s.linked ? "#00C853" : "#777E90"}>{s.linked ? "Đang liên kết" : "Chưa liên kết"}</StatusPill></div><p className="m-0 mt-2 break-words text-[12px] text-pms-muted">{s.category} · {s.distance || "Chưa cập nhật"} · Hoa hồng {s.commission || "Chưa cập nhật"}</p><div className="mt-3 flex gap-3 text-[12px] font-semibold"><button type="button" onClick={() => setViewingPartnerIndex(index)} className="text-pms-primary">👁 Xem</button><button type="button" onClick={() => setEditingPartnerIndex(index)} className="text-pms-primary">✎ Sửa</button><button type="button" onClick={() => void handleDeletePartner(index)} className="text-pms-danger">🗑 Xóa</button></div></article>)}{data.partners.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có đối tác.</p>}</div>
+        <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[760px] border-collapse text-[13px]">
           <thead>
             <tr>
-              {["Đối tác", "Loại hình", "Khoảng cách", "Hoa hồng", "Trạng thái"].map((h) => (
+              {["Đối tác", "Loại hình", "Khoảng cách", "Hoa hồng", "Trạng thái", "Hành động"].map((h) => (
                 <th key={h} className={TH}>
                   {h}
                 </th>
@@ -170,8 +186,8 @@ export default function ServicesPage() {
             </tr>
           </thead>
           <tbody>
-            {data.partners.map((s) => (
-              <tr key={s.name}>
+            {data.partners.map((s, index) => (
+              <tr key={`${s.name}-${index}`}>
                 <td className={`${TD} font-semibold`}>{s.name}</td>
                 <td className={TD}>{s.category}</td>
                 <td className={TD}>{s.distance}</td>
@@ -181,6 +197,7 @@ export default function ServicesPage() {
                     {s.linked ? "Đang liên kết" : "Chưa liên kết"}
                   </StatusPill>
                 </td>
+                <td className={TD}><div className="flex gap-2 text-[12px] font-semibold"><button type="button" title="Xem" onClick={() => setViewingPartnerIndex(index)} className="text-pms-primary">👁</button><button type="button" title="Sửa" onClick={() => setEditingPartnerIndex(index)} className="text-pms-primary">✎</button><button type="button" title="Xóa" onClick={() => void handleDeletePartner(index)} className="text-pms-danger">🗑</button></div></td>
               </tr>
             ))}
           </tbody>
@@ -196,6 +213,8 @@ export default function ServicesPage() {
         />
       )}
       {showAddPartner && <AddPartnerModal onClose={() => setShowAddPartner(false)} onSave={handleAddPartner} />}
+      {editingPartnerIndex !== null && data.partners[editingPartnerIndex] && <AddPartnerModal initial={data.partners[editingPartnerIndex]} onClose={() => setEditingPartnerIndex(null)} onSave={handleEditPartner} />}
+      {viewingPartnerIndex !== null && data.partners[viewingPartnerIndex] && <Modal title="Chi tiết đối tác" onClose={() => setViewingPartnerIndex(null)} width={520}><div className="space-y-2 px-6 py-5 text-[13px]"><b className="block text-[16px]">{data.partners[viewingPartnerIndex].name}</b><p className="m-0">Loại hình: {data.partners[viewingPartnerIndex].category}</p><p className="m-0">Khoảng cách: {data.partners[viewingPartnerIndex].distance || "Chưa cập nhật"}</p><p className="m-0">Hoa hồng: {data.partners[viewingPartnerIndex].commission || "Chưa cập nhật"}</p><p className="m-0">Trạng thái: {data.partners[viewingPartnerIndex].linked ? "Đang liên kết" : "Chưa liên kết"}</p></div></Modal>}
       {showAddService && <AddServiceModal onClose={() => setShowAddService(false)} onSave={handleAddService} />}
     </div>
   );

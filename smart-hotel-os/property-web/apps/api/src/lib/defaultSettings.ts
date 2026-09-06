@@ -1308,6 +1308,7 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
     ]
   },
   "marketing": {
+    "deleteAllowedRoles": ["OWNER"],
     "campaigns": [
       {
         "name": "Ưu đãi hè 2026",

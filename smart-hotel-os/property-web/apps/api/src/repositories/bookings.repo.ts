@@ -315,16 +315,20 @@ async function createHousekeepingTask(db: DbPool, propertyId: string, tenantId: 
 }
 
 export const bookingsRepo = {
-  async list(propertyId: string): Promise<BookingWithDetails[]> {
+  async list(propertyId: string, search?: string): Promise<BookingWithDetails[]> {
+    const params: unknown[] = [propertyId];
+    const searchClause = search?.trim()
+      ? (() => { params.push(`%${search.trim()}%`); return ` AND (b.code ILIKE $2 OR c.full_name ILIKE $2 OR c.phone ILIKE $2 OR c.email ILIKE $2)`; })()
+      : "";
     const { rows } = await pool.query<BookingWithDetails>(
       `SELECT b.*, c.full_name AS guest_name, r.number AS room_number, rt.name AS room_type_name
        FROM bookings b
        LEFT JOIN customers c ON c.id = b.customer_id
        LEFT JOIN rooms r ON r.id = b.room_id
        LEFT JOIN room_types rt ON rt.id = r.room_type_id
-       WHERE b.property_id = $1
+       WHERE b.property_id = $1${searchClause}
        ORDER BY b.created_at DESC`,
-      [propertyId]
+      params
     );
     return rows;
   },

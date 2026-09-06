@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Donut, buildConicGradient } from "@/components/ui/Donut";
 import { api, isApiError } from "@/lib/api-client";
@@ -92,6 +93,38 @@ export function DashboardOverview() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [valueSnapshot, setValueSnapshot] = useState<ValueSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lookupText, setLookupText] = useState("");
+  const [lookupResults, setLookupResults] = useState<{ kind: "customer" | "booking"; id: string; title: string; detail: string }[]>([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+
+  async function searchGuestOrBooking(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = lookupText.trim();
+    if (query.length < 2) {
+      setLookupResults([]);
+      setLookupError("Nhập ít nhất 2 ký tự để tìm kiếm.");
+      return;
+    }
+    setLookupLoading(true);
+    setLookupError(null);
+    try {
+      const [customers, bookings] = await Promise.all([
+        api.get<{ items: { id: string; full_name: string; phone: string | null; email: string | null }[] }>(`/api/v1/customers?search=${encodeURIComponent(query)}`),
+        api.get<{ items: { id: string; code: string; guest_name: string | null; room_number: string | null; status: string }[] }>(`/api/v1/bookings?search=${encodeURIComponent(query)}`),
+      ]);
+      setLookupResults([
+        ...customers.items.slice(0, 5).map((item) => ({ kind: "customer" as const, id: item.id, title: item.full_name, detail: item.phone || item.email || "Khách hàng" })),
+        ...bookings.items.slice(0, 5).map((item) => ({ kind: "booking" as const, id: item.id, title: item.code, detail: `${item.guest_name || "Chưa có tên khách"}${item.room_number ? ` · Phòng ${item.room_number}` : ""}` })),
+      ]);
+      if (customers.items.length === 0 && bookings.items.length === 0) setLookupError("Không tìm thấy khách hàng hoặc mã đặt phòng phù hợp.");
+    } catch (err) {
+      setLookupError(isApiError(err) ? err.message : "Không tìm kiếm được dữ liệu.");
+      setLookupResults([]);
+    } finally {
+      setLookupLoading(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -148,6 +181,16 @@ export function DashboardOverview() {
   return (
     <div>
       {error && <p className="mb-3.5 rounded-lg bg-pms-danger-bg px-3 py-2 text-[12.5px] text-pms-danger">{error}</p>}
+
+      <section className="mb-4 rounded-xl bg-white p-4 shadow-card sm:p-5">
+        <div className="mb-2"><h2 className="m-0 text-[15px] font-semibold">Tìm khách hoặc mã đặt phòng</h2><p className="m-0 mt-1 text-[11.5px] text-pms-muted">Tìm theo tên, số điện thoại, email hoặc mã đặt phòng.</p></div>
+        <form onSubmit={searchGuestOrBooking} className="flex flex-col gap-2 sm:flex-row">
+          <input value={lookupText} onChange={(event) => setLookupText(event.target.value)} placeholder="Ví dụ: Nguyễn Văn An hoặc HD-2026001" className="min-w-0 flex-1 rounded-lg border border-pms-border px-3 py-2.5 text-[13px] outline-none focus:border-pms-primary" aria-label="Tìm khách hoặc mã đặt phòng" />
+          <button type="submit" disabled={lookupLoading} className="rounded-lg bg-pms-primary px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-60">{lookupLoading ? "Đang tìm..." : "Tìm kiếm"}</button>
+        </form>
+        {lookupError && <p className="m-0 mt-2 text-[12px] text-pms-danger">{lookupError}</p>}
+        {lookupResults.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{lookupResults.map((result) => <button type="button" key={`${result.kind}-${result.id}`} onClick={() => router.push(result.kind === "customer" ? "/customers" : "/booking")} className="rounded-lg border border-pms-divider p-3 text-left hover:border-pms-primary"><div className="text-[12px] font-semibold text-pms-primary">{result.kind === "customer" ? "Khách" : "Đặt phòng"} · {result.title}</div><div className="mt-1 text-[11.5px] text-pms-muted">{result.detail}</div></button>)}</div>}
+      </section>
 
       <div className="mb-3.5 grid grid-cols-2 gap-3.5 xl:grid-cols-4">
         {displayedKpis.map((k, index) => (

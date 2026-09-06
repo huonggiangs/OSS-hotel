@@ -26,8 +26,8 @@ function fmt(d: string) {
 // 1994-2029 bản gốc). Khác các modal Thêm khác trong app, bản gốc bind form này vào
 // state thật (`campaignForm`, `setCampaignField`, `addCampaign`) nên giữ nguyên hành
 // vi input thật (không phải placeholder tĩnh).
-export function AddCampaignModal({ onClose, onCreate }: { onClose: () => void; onCreate: (row: CampaignRow) => void }) {
-  const [form, setForm] = useState<CampaignForm>(EMPTY_FORM);
+export function AddCampaignModal({ onClose, onCreate, initial }: { onClose: () => void; onCreate: (row: CampaignRow) => void; initial?: Partial<CampaignForm> }) {
+  const [form, setForm] = useState<CampaignForm>({ ...EMPTY_FORM, ...initial });
 
   function setField<K extends keyof CampaignForm>(field: K, value: CampaignForm[K]) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -49,13 +49,13 @@ export function AddCampaignModal({ onClose, onCreate }: { onClose: () => void; o
 
   return (
     <Modal
-      title="Tạo chiến dịch mới"
+      title={initial ? "Sửa chiến dịch" : "Tạo chiến dịch mới"}
       onClose={onClose}
       width={620}
       footer={
         <>
           <ButtonGhost onClick={onClose}>Hủy</ButtonGhost>
-          <ButtonPrimary onClick={submit}>Tạo chiến dịch</ButtonPrimary>
+          <ButtonPrimary onClick={submit}>{initial ? "Lưu thay đổi" : "Tạo chiến dịch"}</ButtonPrimary>
         </>
       }
     >

@@ -46,9 +46,10 @@ interface CustomerCareData {
   approvedScript: string;
   learningMode: "SUGGEST_ONLY" | "OFF";
   consentRequired: boolean;
+  targetCustomerId?: string | null;
 }
 
-const CUSTOMER_CARE_FALLBACK: CustomerCareData = { enabled: false, channels: { zalo: false, facebook: false, email: true }, schedule: { beforeArrivalHours: 24, afterCheckoutHours: 4 }, approvedScript: "Xin chào {{guest_name}}, cơ sở xin xác nhận thời gian nhận phòng {{checkin_date}}. Anh/chị có cần hỗ trợ gì thêm không?", learningMode: "SUGGEST_ONLY", consentRequired: true };
+const CUSTOMER_CARE_FALLBACK: CustomerCareData = { enabled: false, channels: { zalo: false, facebook: false, email: true }, schedule: { beforeArrivalHours: 24, afterCheckoutHours: 4 }, approvedScript: "Xin chào {{guest_name}}, cơ sở xin xác nhận thời gian nhận phòng {{checkin_date}}. Anh/chị có cần hỗ trợ gì thêm không?", learningMode: "SUGGEST_ONLY", consentRequired: true, targetCustomerId: null };
 
 export type CustomerBookingDetail = ApiCustomerBooking;
 type CustomerView = CustomerRow & { bookingDetails: ApiCustomerBooking[] };
@@ -78,6 +79,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const [careMessage, setCareMessage] = useState<string | null>(null);
   const care = useSettings<CustomerCareData>("customer_care", CUSTOMER_CARE_FALLBACK);
 
@@ -124,6 +126,26 @@ export default function CustomersPage() {
     }
   }
 
+  async function handleSaveCustomer(input: { fullName: string; phone: string; email: string; note: string }) {
+    if (!selected) return;
+    await api.patch(`/api/v1/customers/${selected.key}`, { fullName: input.fullName, phone: input.phone, email: input.email, note: input.note });
+    setEditingKey(null);
+    await load();
+    setCareMessage("Đã cập nhật thông tin khách hàng.");
+  }
+
+  async function handleDeleteCustomer(customer: CustomerView) {
+    if (!window.confirm(`Xóa khách hàng “${customer.name}”? Lịch sử đặt phòng vẫn được giữ lại.`)) return;
+    try {
+      await api.delete(`/api/v1/customers/${customer.key}`);
+      if (selectedKey === customer.key) { setSelectedKey(null); setEditingKey(null); }
+      setCareMessage("Đã xóa khách hàng.");
+      await load();
+    } catch (err) {
+      setCareMessage(isApiError(err) ? err.message : "Không thể xóa khách hàng.");
+    }
+  }
+
   if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
   if (error)
     return (
@@ -143,14 +165,15 @@ export default function CustomersPage() {
           {customers.map((c) => {
             const segColor = customerSegmentColors[c.segment] ?? customerSegmentColors["Mới"];
             return (
-              <button key={c.key} type="button" onClick={() => setSelectedKey(c.key)} className="block w-full rounded-lg border border-pms-divider p-3 text-left">
+              <article key={c.key} className="rounded-lg border border-pms-divider p-3">
                 <div className="flex items-start justify-between gap-3">
                   <span className="font-semibold text-pms-primary">{c.name}</span>
                   <span className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: segColor.bg, color: segColor.fg }}>{c.segment}</span>
                 </div>
                 <p className="mt-2 break-words text-[12px] text-pms-muted">{c.phone} · {c.email}</p>
                 {c.note && <p className="mt-1 line-clamp-2 text-[12px] text-pms-muted">{c.note}</p>}
-              </button>
+                <div className="mt-3 flex gap-3 text-[12px] font-semibold"><button type="button" onClick={() => { setEditingKey(null); setSelectedKey(c.key); }} className="text-pms-primary">👁 Xem</button><button type="button" onClick={() => { setEditingKey(c.key); setSelectedKey(c.key); }} className="text-pms-primary">✎ Sửa</button><button type="button" onClick={() => void handleDeleteCustomer(c)} className="text-pms-danger">🗑 Xóa</button></div>
+              </article>
             );
           })}
           {customers.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có khách hàng.</p>}
@@ -158,7 +181,7 @@ export default function CustomersPage() {
         <table className="hidden w-full border-collapse text-[13px] md:table">
           <thead>
             <tr>
-              {["Khách hàng", "Số điện thoại", "Email", "Số lần đặt", "Đặt lại", "Chăm sóc sau lưu trú", "Tổng chi tiêu", "Phân khúc", "Ghi chú"].map(
+              {["Khách hàng", "Số điện thoại", "Email", "Số lần đặt", "Đặt lại", "Chăm sóc sau lưu trú", "Tổng chi tiêu", "Phân khúc", "Ghi chú", "Hành động"].map(
                 (h) => (
                   <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
                     {h}
@@ -171,7 +194,7 @@ export default function CustomersPage() {
             {customers.map((c) => {
               const segColor = customerSegmentColors[c.segment] ?? customerSegmentColors["Mới"];
               return (
-                <tr key={c.key} className="cursor-pointer" onClick={() => setSelectedKey(c.key)}>
+                <tr key={c.key} className="cursor-pointer" onClick={() => { setEditingKey(null); setSelectedKey(c.key); }}>
                   <td className="border-b border-pms-divider px-2 py-3 font-semibold text-pms-primary">{c.name}</td>
                   <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{c.phone}</td>
                   <td className="border-b border-pms-divider px-2 py-3 text-pms-muted">{c.email}</td>
@@ -190,6 +213,7 @@ export default function CustomersPage() {
                   <td className="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-pms-divider px-2 py-3 text-pms-muted">
                     {c.note}
                   </td>
+                  <td className="border-b border-pms-divider px-2 py-3"><div className="flex gap-2 text-[12px] font-semibold"><button type="button" title="Xem" onClick={(event) => { event.stopPropagation(); setEditingKey(null); setSelectedKey(c.key); }} className="text-pms-primary">👁</button><button type="button" title="Sửa" onClick={(event) => { event.stopPropagation(); setEditingKey(c.key); setSelectedKey(c.key); }} className="text-pms-primary">✎</button><button type="button" title="Xóa" onClick={(event) => { event.stopPropagation(); void handleDeleteCustomer(c); }} className="text-pms-danger">🗑</button></div></td>
                 </tr>
               );
             })}
@@ -197,15 +221,15 @@ export default function CustomersPage() {
         </table>
       </div>
 
-      <CustomerCarePanel value={care.data} saving={care.saving} error={care.error} onChange={care.setData} onSave={() => void care.save(care.data)} />
+      <CustomerCarePanel value={care.data} customers={customers} saving={care.saving} error={care.error} onChange={care.setData} onSave={() => void care.save(care.data)} />
 
       {selected && (
-        <CustomerDetailModal customer={selected} onClose={() => setSelectedKey(null)} onChangeSegment={handleChangeSegment} onBookingAction={handleBookingAction} />
+        <CustomerDetailModal customer={selected} editing={editingKey === selected.key} onClose={() => { setSelectedKey(null); setEditingKey(null); }} onSaveCustomer={handleSaveCustomer} onChangeSegment={handleChangeSegment} onBookingAction={handleBookingAction} />
       )}
     </div>
   );
 }
 
-function CustomerCarePanel({ value, saving, error, onChange, onSave }: { value: CustomerCareData; saving: boolean; error: string | null; onChange: (value: CustomerCareData) => void; onSave: () => void }) {
-  return <section className="mt-5 rounded-xl bg-white p-4 shadow-card sm:p-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="m-0 text-[16px] font-semibold">Lịch chăm sóc khách tự động</h2><p className="mt-1 text-[12px] text-pms-muted">Lập lịch nhắc trước khi đến và sau khi trả phòng. Nhân viên duyệt kịch bản trước khi gửi.</p></div><label className="flex items-center gap-2 text-[12px]"><input type="checkbox" checked={value.enabled} onChange={(e) => onChange({ ...value, enabled: e.target.checked })} /> Bật lịch chăm sóc</label></div><div className="mt-4 grid gap-3 sm:grid-cols-3"><label className="text-[12px]">Kênh gửi<div className="mt-1 flex flex-wrap gap-3"><span><input type="checkbox" checked={value.channels.zalo} onChange={(e) => onChange({ ...value, channels: { ...value.channels, zalo: e.target.checked } })} /> Zalo</span><span><input type="checkbox" checked={value.channels.facebook} onChange={(e) => onChange({ ...value, channels: { ...value.channels, facebook: e.target.checked } })} /> Facebook</span><span><input type="checkbox" checked={value.channels.email} onChange={(e) => onChange({ ...value, channels: { ...value.channels, email: e.target.checked } })} /> Email</span></div></label><label className="text-[12px]">Nhắc trước khi đến (giờ)<input type="number" min={1} max={168} value={value.schedule.beforeArrivalHours} onChange={(e) => onChange({ ...value, schedule: { ...value.schedule, beforeArrivalHours: Number(e.target.value) || 24 } })} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2 text-[12px]" /></label><label className="text-[12px]">Nhắc sau trả phòng (giờ)<input type="number" min={1} max={168} value={value.schedule.afterCheckoutHours} onChange={(e) => onChange({ ...value, schedule: { ...value.schedule, afterCheckoutHours: Number(e.target.value) || 4 } })} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2 text-[12px]" /></label></div><label className="mt-3 block text-[12px]">Kịch bản đã duyệt<textarea value={value.approvedScript} onChange={(e) => onChange({ ...value, approvedScript: e.target.value })} className="mt-1 min-h-[80px] w-full rounded-lg border border-pms-border px-3 py-2 text-[12px]" /></label><div className="mt-3 flex flex-wrap items-center gap-3"><label className="text-[12px]"><input type="checkbox" checked={value.consentRequired} onChange={(e) => onChange({ ...value, consentRequired: e.target.checked })} /> Chỉ gửi khi khách đã đồng ý nhận tin</label><span className="text-[11px] text-pms-muted">Gợi ý kịch bản: học từ thao tác nhân viên ở chế độ chỉ đề xuất</span><button type="button" onClick={onSave} disabled={saving} className="ml-auto rounded-lg bg-pms-primary px-3 py-2 text-[12px] font-semibold text-white disabled:opacity-50">{saving ? "Đang lưu..." : "Lưu lịch chăm sóc"}</button></div>{error && <p className="m-0 mt-2 text-[12px] text-pms-danger">{error}</p>}<p className="m-0 mt-3 text-[11px] text-pms-muted">Để gửi thật qua Zalo/Facebook cần ứng dụng doanh nghiệp, quyền truy cập và sự đồng ý của khách; hiện hệ thống lưu lịch và kịch bản đã duyệt, không tự giả làm người.</p></section>;
+function CustomerCarePanel({ value, customers, saving, error, onChange, onSave }: { value: CustomerCareData; customers: CustomerView[]; saving: boolean; error: string | null; onChange: (value: CustomerCareData) => void; onSave: () => void }) {
+  return <section className="mt-5 rounded-xl bg-white p-4 shadow-card sm:p-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="m-0 text-[16px] font-semibold">Lịch chăm sóc khách tự động</h2><p className="mt-1 text-[12px] text-pms-muted">Lập lịch nhắc trước khi đến và sau khi trả phòng. Có thể áp dụng cho một khách hoặc toàn bộ khách.</p></div><label className="flex items-center gap-2 text-[12px]"><input type="checkbox" checked={value.enabled} onChange={(e) => onChange({ ...value, enabled: e.target.checked })} /> Bật lịch chăm sóc</label></div><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className="text-[12px]">Phạm vi áp dụng<select value={value.targetCustomerId ?? "ALL"} onChange={(e) => onChange({ ...value, targetCustomerId: e.target.value === "ALL" ? null : e.target.value })} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2 text-[12px]"><option value="ALL">Tất cả khách hàng</option>{customers.map((customer) => <option key={customer.key} value={customer.key}>{customer.name}</option>)}</select></label><label className="text-[12px]">Kênh gửi<div className="mt-1 flex flex-wrap gap-3"><span><input type="checkbox" checked={value.channels.zalo} onChange={(e) => onChange({ ...value, channels: { ...value.channels, zalo: e.target.checked } })} /> Zalo</span><span><input type="checkbox" checked={value.channels.facebook} onChange={(e) => onChange({ ...value, channels: { ...value.channels, facebook: e.target.checked } })} /> Facebook</span><span><input type="checkbox" checked={value.channels.email} onChange={(e) => onChange({ ...value, channels: { ...value.channels, email: e.target.checked } })} /> Email</span></div></label><label className="text-[12px]">Nhắc trước khi đến (giờ)<input type="number" min={1} max={168} value={value.schedule.beforeArrivalHours} onChange={(e) => onChange({ ...value, schedule: { ...value.schedule, beforeArrivalHours: Number(e.target.value) || 24 } })} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2 text-[12px]" /></label><label className="text-[12px]">Nhắc sau trả phòng (giờ)<input type="number" min={1} max={168} value={value.schedule.afterCheckoutHours} onChange={(e) => onChange({ ...value, schedule: { ...value.schedule, afterCheckoutHours: Number(e.target.value) || 4 } })} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2 text-[12px]" /></label></div><label className="mt-3 block text-[12px]">Kịch bản đã duyệt<textarea value={value.approvedScript} onChange={(e) => onChange({ ...value, approvedScript: e.target.value })} className="mt-1 min-h-[80px] w-full rounded-lg border border-pms-border px-3 py-2 text-[12px]" /></label><div className="mt-3 flex flex-wrap items-center gap-3"><label className="text-[12px]"><input type="checkbox" checked={value.consentRequired} onChange={(e) => onChange({ ...value, consentRequired: e.target.checked })} /> Chỉ gửi khi khách đã đồng ý nhận tin</label><span className="text-[11px] text-pms-muted">Gợi ý kịch bản: học từ thao tác nhân viên ở chế độ chỉ đề xuất</span><button type="button" onClick={onSave} disabled={saving} className="ml-auto rounded-lg bg-pms-primary px-3 py-2 text-[12px] font-semibold text-white disabled:opacity-50">{saving ? "Đang lưu..." : "Lưu lịch chăm sóc"}</button></div>{error && <p className="m-0 mt-2 text-[12px] text-pms-danger">{error}</p>}<p className="m-0 mt-3 text-[11px] text-pms-muted">Để gửi thật qua Zalo/Facebook cần ứng dụng doanh nghiệp, quyền truy cập và sự đồng ý của khách; hiện hệ thống lưu lịch và kịch bản đã duyệt.</p></section>;
 }

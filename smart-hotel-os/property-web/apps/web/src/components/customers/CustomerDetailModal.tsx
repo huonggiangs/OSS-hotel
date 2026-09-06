@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Modal } from "@/components/ui/Modal";
+import { useEffect, useState } from "react";
+import { ButtonGhost, ButtonPrimary, Modal } from "@/components/ui/Modal";
 import { customerSegmentColors, type CustomerRow } from "@/lib/mock-data";
 
 const SEGMENTS = ["Mới", "Khách quen", "VIP"] as const;
@@ -33,14 +33,21 @@ export function CustomerDetailModal({
   onClose,
   onChangeSegment,
   onBookingAction,
+  editing = false,
+  onSaveCustomer,
 }: {
   customer: CustomerRow;
   onClose: () => void;
   onChangeSegment: (segment: CustomerRow["segment"]) => void;
   onBookingAction?: (bookingId: string, action: "arrive" | "no-show", reason?: string, resolution?: "REFUND" | "RETAIN" | "PENDING") => Promise<void>;
+  editing?: boolean;
+  onSaveCustomer?: (input: { fullName: string; phone: string; email: string; note: string }) => Promise<void>;
 }) {
   const segColor = customerSegmentColors[customer.segment];
   const bookingDetails = (customer as CustomerRow & { bookingDetails?: BookingDetail[] }).bookingDetails ?? [];
+  const [form, setForm] = useState({ fullName: customer.name, phone: customer.phone === "—" ? "" : customer.phone, email: customer.email === "—" ? "" : customer.email, note: customer.note ?? "" });
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setForm({ fullName: customer.name, phone: customer.phone === "—" ? "" : customer.phone, email: customer.email === "—" ? "" : customer.email, note: customer.note ?? "" }); }, [customer]);
 
   return (
     <Modal
@@ -54,8 +61,10 @@ export function CustomerDetailModal({
       }
       onClose={onClose}
       width={640}
+      footer={editing && onSaveCustomer ? <><ButtonGhost onClick={onClose}>Hủy</ButtonGhost><ButtonPrimary onClick={() => { if (!form.fullName.trim() || saving) return; setSaving(true); void onSaveCustomer(form).finally(() => setSaving(false)); }}>{saving ? "Đang lưu..." : "Lưu thông tin"}</ButtonPrimary></> : undefined}
     >
       <div className="flex flex-col gap-[18px] px-6 py-5">
+        {editing && <div className="grid gap-3 sm:grid-cols-2"><label className="text-[12px]">Họ tên<span className="text-pms-danger"> *</span><input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" /></label><label className="text-[12px]">Số điện thoại<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" /></label><label className="text-[12px]">Email<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" /></label><label className="text-[12px]">Ghi chú<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="mt-1 w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]" /></label></div>}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat value={customer.bookings} label="Số lần đặt" />
           <Stat value={customer.rebookings} label="Đặt lại" />

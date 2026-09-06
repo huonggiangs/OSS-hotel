@@ -78,7 +78,7 @@ const updateSchema = z
 bookingsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const items = await bookingsRepo.list(req.user!.propertyId);
+    const items = await bookingsRepo.list(req.user!.propertyId, req.query.search as string | undefined);
     res.json({ items, total: items.length });
   })
 );

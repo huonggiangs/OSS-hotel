@@ -13,18 +13,18 @@ export interface NewPartnerForm {
 // Modal "Thêm đối tác mới" — pixel-perfect theo khối `showAddPartner` (dòng 2215-2244
 // bản gốc). Bản gốc để các trường là placeholder tĩnh (nút "Thêm đối tác" chỉ đóng
 // modal, không lưu dữ liệu thật) — giữ nguyên hành vi đó.
-export function AddPartnerModal({ onClose, onSave }: { onClose: () => void; onSave: (value: NewPartnerForm) => Promise<void> | void }) {
-  const [form, setForm] = useState<NewPartnerForm>({ name: "", category: "Ẩm thực", distance: "", commission: "" });
+export function AddPartnerModal({ onClose, onSave, initial }: { onClose: () => void; onSave: (value: NewPartnerForm) => Promise<void> | void; initial?: Partial<NewPartnerForm> }) {
+  const [form, setForm] = useState<NewPartnerForm>({ name: "", category: "Ẩm thực", distance: "", commission: "", ...initial });
   const set = (key: keyof NewPartnerForm, value: string) => setForm((current) => ({ ...current, [key]: value }));
   return (
     <Modal
-      title="Thêm đối tác mới"
+      title={initial ? "Sửa đối tác" : "Thêm đối tác mới"}
       onClose={onClose}
       width={520}
       footer={
         <>
           <ButtonGhost onClick={onClose}>Hủy</ButtonGhost>
-          <ButtonPrimary onClick={() => form.name.trim() && void onSave(form)}>Thêm đối tác</ButtonPrimary>
+          <ButtonPrimary onClick={() => form.name.trim() && void onSave(form)}>{initial ? "Lưu thay đổi" : "Thêm đối tác"}</ButtonPrimary>
         </>
       }
     >

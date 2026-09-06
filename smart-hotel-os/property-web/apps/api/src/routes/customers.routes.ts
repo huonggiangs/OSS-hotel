@@ -58,3 +58,15 @@ customersRouter.patch(
     res.json(customer);
   })
 );
+
+customersRouter.delete(
+  "/:id",
+  requireRole("OWNER", "MANAGER"),
+  asyncHandler(async (req, res) => {
+    const existing = await customersRepo.findById(req.user!.propertyId, req.params.id);
+    if (!existing) throw Errors.notFound("khách hàng");
+    const deleted = await customersRepo.delete(req.user!.propertyId, req.params.id);
+    await writeAuditLog({ req, action: "DELETE_CUSTOMER", entityType: "customer", entityId: req.params.id, beforeData: existing, afterData: null });
+    res.json(deleted);
+  })
+);
