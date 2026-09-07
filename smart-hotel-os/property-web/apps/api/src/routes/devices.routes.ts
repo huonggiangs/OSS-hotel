@@ -6,7 +6,8 @@ import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import { writeAuditLog } from "../middleware/audit";
 import { devicesRepo } from "../repositories/devices.repo";
-import { ENERGY_CONTROL_KINDS } from "../repositories/roomControl.repo";
+import { ENERGY_CONTROL_KINDS, setRoomEnergyState } from "../repositories/roomControl.repo";
+import { pool } from "../lib/db";
 
 const EDGE_NODE_URL = process.env.EDGE_NODE_URL ?? "http://localhost:4200";
 const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY;
@@ -143,9 +144,11 @@ devicesRouter.patch(
     if (!ENERGY_CONTROL_KINDS.includes(existing.control_kind as typeof ENERGY_CONTROL_KINDS[number])) {
       throw Errors.conflict("Loại thiết bị này không dùng công tắc nguồn phòng. Công tơ chỉ đọc số liệu; khóa và bộ cấp thẻ có nghiệp vụ riêng.");
     }
-    const device = await devicesRepo.setPower(req.user!.propertyId, req.params.id, parsed.data.powerOn);
-    if (!device) throw Errors.notFound("thiết bị");
-    await writeAuditLog({ req, action: "TOGGLE_DEVICE_POWER", entityType: "device", entityId: req.params.id, afterData: device });
-    res.json(device);
+    if (!existing.room_id) throw Errors.conflict("Thiết bị chưa được gán vào phòng.");
+    const commands = await pool.transaction(tx => setRoomEnergyState(tx, {
+      propertyId: req.user!.propertyId, tenantId: req.user!.tenantId, roomId: existing.room_id!,
+      deviceId: existing.id, powerOn: parsed.data.powerOn, requestedBy: req.user!.id,
+    }));
+    res.status(commands.some(c => c.deliveryStatus === "QUEUED") ? 202 : 409).json({ ...existing, commands, message: "Trạng thái điện chỉ thay đổi sau xác nhận thiết bị; xem kết quả từng lệnh." });
   })
 );

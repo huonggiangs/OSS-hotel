@@ -47,10 +47,12 @@ async function readError(response: Response) {
 
 /**
  * Đẩy các lệnh còn hàng đợi sang Edge. Idempotency key chính là event id nên
- * retry sau lỗi mạng không bao giờ tạo một command vật lý thứ hai tại IoT.
+ * IoT phải chống lặp theo event id; driver vẫn cần bảo đảm thao tác idempotent.
  */
 export async function dispatchPendingDeviceCommands(limit = 30) {
   if (!INTERNAL_SERVICE_KEY) return { dispatched: 0, failed: 0, skipped: 0, error: "Thiếu INTERNAL_SERVICE_KEY." };
+  await pool.query(`UPDATE device_control_events SET delivery_status='FAILED',last_error='Lệnh hết hạn trước khi được xác nhận.'
+    WHERE delivery_status='QUEUED' AND expires_at<=now()`);
   const { rows } = await pool.query<PendingEvent>(
     `SELECT e.id, e.property_id, e.tenant_id, e.room_id, e.booking_id, e.device_id, e.action, e.payload,
             d.asset_code, d.iot_device_id
@@ -61,15 +63,24 @@ export async function dispatchPendingDeviceCommands(limit = 30) {
         AND e.action IN ('POWER_ON', 'POWER_OFF')
         AND d.asset_code IS NOT NULL
         AND d.iot_device_id IS NOT NULL
+        AND e.expires_at > now()
+        AND (e.lease_until IS NULL OR e.lease_until < now())
         AND (e.last_attempt_at IS NULL OR e.last_attempt_at < now() - interval '10 seconds')
       ORDER BY e.created_at ASC
       LIMIT $1`,
-    [limit]
+    [Math.min(Math.max(Math.floor(limit) || 1, 1), 30)]
   );
 
   let dispatched = 0;
   let failed = 0;
   for (const event of rows) {
+    const claim = await pool.query(`UPDATE device_control_events e SET lease_until=now()+interval '30 seconds'
+      FROM devices d WHERE e.id=$1 AND e.delivery_status='QUEUED' AND e.iot_command_id IS NULL
+      AND e.expires_at>now() AND (e.lease_until IS NULL OR e.lease_until<now())
+      AND d.id=e.device_id AND d.property_id=e.property_id AND d.room_id=e.room_id
+      AND d.asset_code=$2 AND d.iot_device_id=$3 AND d.control_enabled=true
+      AND (e.action='POWER_ON' OR d.critical_load=false) RETURNING e.id`,[event.id,event.asset_code,event.iot_device_id]);
+    if (!claim.rows.length) continue;
     try {
       const response = await bridgeFetch("/api/v1/internal/device-events", {
         method: "POST",
@@ -88,11 +99,11 @@ export async function dispatchPendingDeviceCommands(limit = 30) {
       });
       if (!response.ok) throw new Error(await readError(response));
       const body = (await response.json()) as { command?: EdgeCommand; device?: { id: string } };
-      if (!body.command?.id || !body.device?.id) throw new Error("Edge không trả mã lệnh IoT hợp lệ.");
+      if (!body.command?.id || body.device?.id !== event.iot_device_id) throw new Error("Edge không trả đúng thiết bị hoặc mã lệnh IoT.");
       await pool.query(
         `UPDATE device_control_events
             SET iot_device_id = $2, iot_command_id = $3, dispatched_at = now(), last_attempt_at = now(),
-                dispatch_attempts = dispatch_attempts + 1, last_error = NULL
+                dispatch_attempts = dispatch_attempts + 1, last_error = NULL, lease_until = NULL
           WHERE id = $1 AND delivery_status = 'QUEUED'`,
         [event.id, body.device.id, body.command.id]
       );
@@ -100,7 +111,7 @@ export async function dispatchPendingDeviceCommands(limit = 30) {
     } catch (error) {
       await pool.query(
         `UPDATE device_control_events
-            SET last_attempt_at = now(), dispatch_attempts = dispatch_attempts + 1, last_error = $2
+            SET last_attempt_at = now(), dispatch_attempts = dispatch_attempts + 1, last_error = $2, lease_until = NULL
           WHERE id = $1 AND delivery_status = 'QUEUED'`,
         [event.id, (error as Error).message.slice(0, 1000)]
       );
@@ -129,12 +140,20 @@ export async function refreshDeviceCommandAcknowledgements(limit = 50) {
       const response = await bridgeFetch(`/api/v1/internal/device-commands/${encodeURIComponent(event.iot_device_id)}/${encodeURIComponent(event.iot_command_id)}`, { method: "GET" });
       if (!response.ok) throw new Error(await readError(response));
       const command = (await response.json()) as EdgeCommand;
+      if (command.id !== event.iot_command_id) throw new Error("Mã xác nhận không khớp lệnh đã gửi.");
       if (command.status === "PENDING") { pending += 1; continue; }
-      if (command.status === "ACKED" && command.ack_result?.success !== false) {
-        await pool.query(
-          `UPDATE device_control_events SET delivery_status = 'ACKNOWLEDGED', acknowledged_at = now(), last_error = NULL WHERE id = $1 AND delivery_status = 'QUEUED'`,
-          [event.id]
-        );
+      if (command.status === "ACKED" && command.ack_result?.success === true) {
+        await pool.transaction(async tx => {
+          await tx.query(`UPDATE device_control_events SET delivery_status='ACKNOWLEDGED',acknowledged_at=now(),last_error=NULL
+            WHERE id=$1 AND delivery_status='QUEUED' AND expires_at>now()`,[event.id]);
+          await tx.query(`UPDATE devices d SET power_on=(e.action='POWER_ON'),updated_at=now()
+            FROM device_control_events e WHERE e.id=$1 AND e.delivery_status='ACKNOWLEDGED'
+            AND d.id=e.device_id AND d.property_id=e.property_id AND d.room_id=e.room_id AND d.iot_device_id=e.iot_device_id
+            AND NOT EXISTS (SELECT 1 FROM device_control_events newer WHERE newer.device_id=d.id AND newer.created_at>e.created_at)`,[event.id]);
+          await tx.query(`UPDATE rooms r SET power_on=(e.action='POWER_ON'),updated_at=now()
+            FROM device_control_events e WHERE e.id=$1 AND e.delivery_status='ACKNOWLEDGED' AND r.id=e.room_id AND r.property_id=e.property_id
+            AND NOT EXISTS (SELECT 1 FROM device_control_events newer WHERE newer.room_id=r.id AND newer.created_at>e.created_at AND newer.action IN ('POWER_ON','POWER_OFF'))`,[event.id]);
+        });
         acknowledged += 1;
       } else {
         const reason = command.status === "ACKED" ? command.ack_result?.message || "Thiết bị từ chối lệnh." : `Lệnh IoT ${command.status}.`;

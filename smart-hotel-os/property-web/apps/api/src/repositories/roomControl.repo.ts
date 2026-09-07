@@ -35,13 +35,9 @@ export async function setRoomEnergyState(
     bookingId?: string | null;
     powerOn: boolean;
     requestedBy?: string;
+    deviceId?: string;
   }
 ): Promise<DeviceControlResult[]> {
-  await db.query(`UPDATE rooms SET power_on = $3, updated_at = now() WHERE property_id = $1 AND id = $2`, [
-    input.propertyId,
-    input.roomId,
-    input.powerOn,
-  ]);
   const { rows: devices } = await db.query<{
     id: string;
     name: string;
@@ -49,31 +45,28 @@ export async function setRoomEnergyState(
     asset_code: string | null;
     iot_device_id: string | null;
     status: "ONLINE" | "OFFLINE" | "ERROR";
+    critical_load: boolean;
+    control_enabled: boolean;
   }>(
-    `SELECT id, name, control_kind, asset_code, iot_device_id, status
+    `SELECT id, name, control_kind, asset_code, iot_device_id, status, critical_load, control_enabled
      FROM devices
-     WHERE property_id = $1 AND room_id = $2 AND control_kind = ANY($3::text[])`,
-    [input.propertyId, input.roomId, ENERGY_CONTROL_KINDS]
+     WHERE property_id = $1 AND room_id = $2 AND control_kind = ANY($3::text[]) AND ($4::text IS NULL OR id=$4) FOR UPDATE`,
+    [input.propertyId, input.roomId, ENERGY_CONTROL_KINDS, input.deviceId ?? null]
   );
   if (devices.length === 0) return [];
-
-  await db.query(
-    `UPDATE devices SET power_on = $3, updated_at = now()
-     WHERE property_id = $1 AND room_id = $2 AND control_kind = ANY($4::text[])`,
-    [input.propertyId, input.roomId, input.powerOn, ENERGY_CONTROL_KINDS]
-  );
 
   const action = input.powerOn ? "POWER_ON" : "POWER_OFF";
   const result: DeviceControlResult[] = [];
   for (const device of devices) {
-    const deliveryStatus = device.asset_code && device.iot_device_id ? "QUEUED" : "NOT_CONFIGURED";
+    const safetyError = !device.control_enabled ? "Chưa được chủ cơ sở cho phép điều khiển." : !input.powerOn && device.critical_load ? "Không được ngắt tải thiết yếu." : null;
+    const deliveryStatus = safetyError ? "FAILED" : device.asset_code && device.iot_device_id ? "QUEUED" : "NOT_CONFIGURED";
     await db.query(
       `INSERT INTO device_control_events
        (id, property_id, tenant_id, room_id, booking_id, device_id, action, delivery_status, payload, requested_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10)`,
       [
         randomUUID(), input.propertyId, input.tenantId, input.roomId, input.bookingId ?? null, device.id, action,
-        deliveryStatus, JSON.stringify({ requestedPowerOn: input.powerOn }), input.requestedBy ?? null,
+        deliveryStatus, JSON.stringify({ requestedPowerOn: input.powerOn, safetyError }), input.requestedBy ?? null,
       ]
     );
     result.push({ deviceId: device.id, deviceName: device.name, controlKind: device.control_kind, deliveryStatus });

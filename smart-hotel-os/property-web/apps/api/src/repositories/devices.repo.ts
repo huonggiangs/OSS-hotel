@@ -80,14 +80,6 @@ export const devicesRepo = {
     return rows[0] ?? null;
   },
 
-  async setPower(propertyId: string, id: string, powerOn: boolean): Promise<Device | null> {
-    const { rows } = await pool.query<Device>(
-      `UPDATE devices SET power_on = $1, updated_at = now() WHERE property_id = $2 AND id = $3 RETURNING *`,
-      [powerOn, propertyId, id]
-    );
-    return rows[0] ?? null;
-  },
-
   async setIotLink(propertyId: string, id: string, assetCode: string, iotDeviceId: string): Promise<Device | null> {
     const { rows } = await pool.query<Device>(
       `UPDATE devices SET asset_code = $1, iot_device_id = $2, updated_at = now()

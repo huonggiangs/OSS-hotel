@@ -40,7 +40,9 @@ try {
         & $docker exec $backup.Container rm -f $containerPath
     }
 
-    & $docker run --rm -v oss-edge_node_data:/from -v "${backupDir}:/to" alpine:3.20 sh -c "cd /from && tar -czf /to/edge_node_data.tar.gz ."
+    # Compose prefixes the declared volume with the project name (oss-edge).
+    # The previous unprefixed name silently produced an empty 84-byte archive.
+    & $docker run --rm -v oss-edge_edge_node_data:/from -v "${backupDir}:/to" alpine:3.20 sh -c "cd /from && tar -czf /to/edge_node_data.tar.gz ."
     if ($LASTEXITCODE -ne 0) { throw "Không backup được Edge Node volume." }
 
     & git -C $root bundle create (Join-Path $backupDir "oss-source.bundle") --all

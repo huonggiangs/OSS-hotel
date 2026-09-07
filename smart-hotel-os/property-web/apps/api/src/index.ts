@@ -24,6 +24,7 @@ import { sepayRouter, sepayWebhookRouter, publicSepayRouter } from "./routes/sep
 import { dataExportRouter } from "./routes/dataExport.routes";
 import { maintenanceRouter } from "./routes/maintenance.routes";
 import { valueRouter } from "./routes/value.routes";
+import { commercialRouter } from "./routes/commercial.routes";
 import { otaReconciliationRouter } from "./routes/otaReconciliation.routes";
 import { marketingRouter } from "./routes/marketing.routes";
 import { errorHandler } from "./middleware/errorHandler";
@@ -33,8 +34,13 @@ import { bootstrapEmbeddedDb } from "./lib/embeddedBootstrap";
 import { ensureDefaultSettings } from "./lib/settingsBootstrap";
 import { settingsRepo } from "./repositories/settings.repo";
 import { runDeviceCommandBridge } from "./repositories/deviceCommandBridge.repo";
+import { AdmissionGate, boundedInteger } from "./lib/runtimePolicy";
 
 const app = express();
+const admission = new AdmissionGate(boundedInteger(process.env.API_MAX_IN_FLIGHT, 100, 10000));
+let server: import("node:http").Server | undefined;
+let bridgeTimer: NodeJS.Timeout | undefined;
+let bridgeRunning = false;
 // API Docker chỉ nhận request từ Next.js proxy/loopback. Tin đúng một proxy để
 // req.ip đọc được X-Forwarded-For của thiết bị LAN khi allowlist IP được bật.
 app.set("trust proxy", 1);
@@ -51,6 +57,19 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/ready", async (_req, res) => {
+  if (!admission.ready) { res.status(503).json({ status: "draining" }); return; }
+  try { await pool.query("SELECT 1"); res.json({ status: "ready" }); }
+  catch { res.status(503).json({ status: "database_unavailable" }); }
+});
+app.use((req, res, next) => {
+  const release = admission.enter();
+  if (!release) { res.setHeader("Retry-After", "2"); res.status(503).json({ error_code: "BUSY", message: "Hệ thống đang bận, vui lòng thử lại." }); return; }
+  // Bound active HTTP responses per process; DB timeout bounds work after disconnect.
+  res.once("finish", release);
+  res.once("close", release);
+  next();
+});
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/internal", internalRouter);
@@ -61,6 +80,7 @@ app.use("/api/v1/customers", customersRouter);
 app.use("/api/v1/bookings", bookingsRouter);
 app.use("/api/v1/maintenance", maintenanceRouter);
 app.use("/api/v1/value", valueRouter);
+app.use("/api/v1/commercial", commercialRouter);
 app.use("/api/v1/ota-reconciliation", otaReconciliationRouter);
 app.use("/api/v1/marketing", marketingRouter);
 // Router SePay (public webhook + API xác thực) phải đăng ký TRƯỚC
@@ -105,18 +125,26 @@ async function start() {
   await ensureDefaultSettings();
   await settingsRepo.secureLegacyEmailSecrets();
 
-  app.listen(PORT, () => {
+  server = app.listen(PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`Property Web API đang chạy tại http://localhost:${PORT} (DB_MODE=${DB_MODE})`);
   });
+  server.requestTimeout = 30000;
+  server.headersTimeout = 15000;
+  server.keepAliveTimeout = 5000;
 
   if (process.env.DISABLE_DEVICE_COMMAND_BRIDGE !== "1") {
     const bridgeIntervalMs = Number(process.env.DEVICE_COMMAND_BRIDGE_INTERVAL_MS) || 5_000;
-    const bridgeTimer = setInterval(() => {
-      runDeviceCommandBridge().catch((err) => console.error("[device-command-bridge] lỗi:", err));
-    }, bridgeIntervalMs);
+    const tick = async () => {
+      if (bridgeRunning || !admission.ready) return;
+      bridgeRunning = true;
+      try { await runDeviceCommandBridge(); }
+      catch (err) { console.error("[device-command-bridge] lỗi:", err); }
+      finally { bridgeRunning = false; }
+    };
+    bridgeTimer = setInterval(() => { void tick(); }, bridgeIntervalMs);
     bridgeTimer.unref?.();
-    void runDeviceCommandBridge().catch((err) => console.error("[device-command-bridge] lỗi khởi tạo:", err));
+    void tick();
   }
 }
 
@@ -126,7 +154,14 @@ start().catch((err) => {
   process.exit(1);
 });
 
-process.on("SIGTERM", async () => {
+async function shutdown() {
+  if (!admission.ready) return;
+  admission.drain();
+  if (bridgeTimer) clearInterval(bridgeTimer);
+  const deadline = setTimeout(() => process.exit(1), 35000);
+  deadline.unref();
+  await new Promise<void>((resolve) => server ? server.close(() => resolve()) : resolve());
+  while (bridgeRunning) await new Promise((resolve) => setTimeout(resolve, 50));
   if (DB_MODE === "embedded" && embeddedDb) {
     await embeddedDb.close();
   } else {
@@ -134,4 +169,6 @@ process.on("SIGTERM", async () => {
     if (typeof maybePgPool.end === "function") await maybePgPool.end();
   }
   process.exit(0);
-});
+}
+process.on("SIGTERM", () => { void shutdown(); });
+process.on("SIGINT", () => { void shutdown(); });

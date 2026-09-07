@@ -2,6 +2,7 @@ import { Pool, PoolClient } from "pg";
 import { PGlite, Transaction as PGliteTransaction } from "@electric-sql/pglite";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
+import { boundedInteger } from "./runtimePolicy";
 
 // ============================================================================
 // Chế độ database: "postgres" (mặc định khi có DATABASE_URL, dùng pg.Pool kết
@@ -33,6 +34,11 @@ export interface DbPool {
 
 export const DB_MODE: "postgres" | "embedded" =
   (process.env.DB_MODE as "postgres" | "embedded" | undefined) ?? (process.env.DATABASE_URL ? "postgres" : "embedded");
+
+if (!["postgres", "embedded"].includes(DB_MODE)) throw new Error("Invalid DB_MODE");
+if (process.env.NODE_ENV === "production" && (DB_MODE !== "postgres" || !process.env.DATABASE_URL)) {
+  throw new Error("Production PMS requires PostgreSQL and DATABASE_URL");
+}
 
 // Thư mục lưu dữ liệu PGlite — mặc định `apps/api/.data/property-web-db` (đã
 // thêm `.data/` vào .gitignore). Có thể chỉnh qua biến môi trường PGLITE_DATA_DIR.
@@ -77,6 +83,12 @@ if (DB_MODE === "embedded") {
 } else {
   const pgPool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    max: boundedInteger(process.env.DB_POOL_MAX, 10, 100),
+    connectionTimeoutMillis: boundedInteger(process.env.DB_CONNECT_TIMEOUT_MS, 3000, 60000),
+    idleTimeoutMillis: 30000,
+    statement_timeout: boundedInteger(process.env.DB_STATEMENT_TIMEOUT_MS, 15000, 120000),
+    idle_in_transaction_session_timeout: 30000,
+    application_name: "pms-api",
   });
   pgPool.on("error", (err) => {
     // eslint-disable-next-line no-console
