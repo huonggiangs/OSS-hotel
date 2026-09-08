@@ -141,7 +141,7 @@ export function DashboardOverview() {
         const value = await api.get<ValueSnapshot>("/api/v1/value/dashboard");
         if (active) setValueSnapshot(value);
       } catch {
-        // Value Dashboard có thể chưa có dữ liệu pilot; không làm hỏng các KPI vận hành.
+        // Value Dashboard có thể chưa có dữ liệu Go-live; không làm hỏng các KPI vận hành.
       }
     };
     void load();

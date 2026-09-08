@@ -3,7 +3,7 @@
 // danh sách cơ sở (property) thật — dùng cho dropdown "gán vào cơ sở" khi
 // khai báo/sửa thiết bị trong webadmin.
 //
-// CƠ CHẾ XÁC THỰC (MVP TẠM THỜI — xem PROGRESS.md): vì đây là 2 hệ thống nội
+// CƠ CHẾ XÁC THỰC (GO-LIVE — xem PROGRESS.md): vì đây là 2 hệ thống nội
 // bộ công ty tự làm (KHÔNG PHẢI đối tác ngoài), dùng header
 // `X-Internal-Service-Key` đơn giản thay vì OAuth2 client credentials đầy đủ
 // như `hq-console/docs/PARTNER_API_STANDARDS.md` mô tả cho đối tác thật.

@@ -17,7 +17,7 @@
 // property-web KHÔNG có endpoint "upsert theo ID do client tự sinh" — nên
 // booking TẠO MỚI cục bộ lúc offline, khi push lên, Cloud sẽ tự sinh ID MỚI
 // (không trùng ID cục bộ). Các sự kiện sau đó của CHÍNH booking đó (checkin/
-// checkout) sẽ không map được sang đúng bản ghi Cloud nữa trong bản MVP này —
+// checkout) sẽ không map được sang đúng bản ghi Cloud nữa trong bản Go-live này —
 // đây là điểm cần một endpoint đồng bộ chuyên dụng ở property-web trong tương
 // lai (không sửa property-web trong phạm vi nhiệm vụ này).
 // ============================================================================
@@ -32,11 +32,11 @@ import type { Room, RoomType, Booking } from "../types/domain";
 const CLOUD_URL = (process.env.CLOUD_PROPERTY_API_URL ?? "http://localhost:4100").replace(/\/+$/, "");
 const PROPERTY_ID = process.env.PROPERTY_ID ?? "00000000-0000-0000-0000-00000000d101";
 // Tài khoản dùng bởi job đồng bộ để gọi API Cloud property-web thay mặt Edge
-// Node (máy-tới-máy). QUYẾT ĐỊNH ĐƠN GIẢN HOÁ CHO MVP: dùng lại tài khoản
+// Node (máy-tới-máy). QUYẾT ĐỊNH ĐƠN GIẢN HOÁ CHO GO-LIVE: dùng lại tài khoản
 // property_user "reception" (đủ quyền tạo/sửa booking + bật tắt phòng/thiết
 // bị — xem property-web/apps/api/src/middleware/rbac.ts) thay vì xây riêng cơ
 // chế OAuth2 client-credentials máy-tới-máy (đúng chuẩn dài hạn theo
-// hq-console/docs/PARTNER_API_STANDARDS.md, nhưng vượt phạm vi bản MVP này).
+// hq-console/docs/PARTNER_API_STANDARDS.md, nhưng vượt phạm vi bản Go-live này).
 const CLOUD_SYNC_USERNAME = process.env.CLOUD_SYNC_USERNAME;
 const CLOUD_SYNC_PASSWORD = process.env.CLOUD_SYNC_PASSWORD;
 
@@ -162,7 +162,7 @@ async function pushOutboxEvent(entityType: string, eventType: string, payload: a
             }),
           });
           // Xem ghi chú đầu file: Cloud tự sinh ID mới cho booking, không map
-          // ngược lại được ID cục bộ trong bản MVP này — vẫn coi 2xx là "đã
+          // ngược lại được ID cục bộ trong bản Go-live này — vẫn coi 2xx là "đã
           // đẩy thành công" (dữ liệu đã tới Cloud), chỉ là các event sau của
           // ĐÚNG booking này (checkin/checkout) sẽ không tìm thấy bản ghi
           // tương ứng ở Cloud (404) và được ghi log lỗi, không crash.

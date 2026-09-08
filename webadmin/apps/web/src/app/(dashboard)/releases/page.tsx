@@ -32,7 +32,7 @@ const APP_LABELS: Record<string, string> = {
   SUPER_ADMIN_WEB: "Super Admin Web",
 };
 
-// Release Console — MVP quản lý VERSION, KHÔNG PHẢI pipeline deploy thật.
+// Release Console — Go-live quản lý VERSION, KHÔNG PHẢI pipeline deploy thật.
 // "Phát hành" ở đây chỉ ghi nhận bản nào đang active trong bảng app_releases
 // để hiển thị/tra cứu; không tự gửi lệnh cập nhật xuống thiết bị/khách hàng
 // (xem giới hạn ghi trong hq-console/docs/MODULE_APP_RELEASE_CONSOLE.md mục 4
@@ -110,7 +110,7 @@ export default function ReleasesPage() {
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Release Console</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Tổng hợp phiên bản của toàn bộ client app trong hệ sinh thái. MVP quản lý version — chưa phải deploy pipeline thật, không gửi lệnh cập nhật xuống thiết bị/khách hàng.
+            Tổng hợp phiên bản của toàn bộ client app trong hệ sinh thái. Go-live quản lý version — chưa phải deploy pipeline thật, không gửi lệnh cập nhật xuống thiết bị/khách hàng.
           </p>
         </div>
         <button onClick={() => setShowForm((v) => !v)} className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700">

@@ -7,7 +7,7 @@
 //
 // Đồng thời đánh giá + sinh `asset_alerts` tự động (sắp hết bảo hành, offline
 // quá lâu, mất kết nối nhiều lần) — chạy chung 1 job cho đơn giản, không cần
-// thêm worker/scheduler riêng (đủ dùng cho quy mô demo/MVP hiện tại).
+// thêm worker/scheduler riêng (đủ dùng cho quy mô Go-live hiện tại).
 // ============================================================================
 
 import { pool } from "./db";
@@ -18,7 +18,7 @@ import type { HardwareAsset } from "../types/domain";
 const IOT_SERVICE_URL = process.env.IOT_SERVICE_URL ?? "http://localhost:4103";
 const IOT_SERVICE_API_KEY = process.env.IOT_SERVICE_API_KEY;
 
-// Ngưỡng sinh cảnh báo — hằng số đơn giản cho MVP, có thể chuyển thành cấu
+// Ngưỡng sinh cảnh báo — hằng số đơn giản cho Go-live, có thể chuyển thành cấu
 // hình theo tenant/khách hàng ở phase sau.
 const WARRANTY_EXPIRING_DAYS = 30;
 const OFFLINE_TOO_LONG_HOURS = 24;

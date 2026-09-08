@@ -9,7 +9,7 @@ import { Errors } from "../utils/errors";
 // (GET /api/v1/branches) — KHÔNG áp dụng cho bất kỳ endpoint nào khác (đặc
 // biệt KHÔNG áp dụng cho POST /branches hay bất kỳ endpoint ghi dữ liệu nào).
 //
-// ⚠ ĐÂY LÀ MVP TẠM THỜI cho môi trường dev — production PHẢI đổi sang OAuth2
+// ⚠ CẤU HÌNH GO-LIVE cho môi trường dev — production PHẢI đổi sang OAuth2
 // client credentials đúng chuẩn `hq-console/docs/PARTNER_API_STANDARDS.md`
 // trước khi 2 hệ thống này giao tiếp qua mạng thật ngoài máy dev. Ghi rõ lại
 // trong property-web/PROGRESS.md và webadmin/PROGRESS.md.

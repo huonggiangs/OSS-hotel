@@ -78,7 +78,7 @@ start().catch((err) => {
 });
 
 // --- Đồng bộ trạng thái kết nối thiết bị từ iot-service ---
-// Chạy nền định kỳ trong CÙNG process (đủ đơn giản cho quy mô demo/MVP hiện
+// Chạy nền định kỳ trong CÙNG process (đủ đơn giản cho quy mô Go-live hiện
 // tại, giống cách "timeout sweep" của iot-service đã làm) — KHÔNG throw/crash
 // process khi iot-service chưa chạy (syncConnectionStatusFromIot tự bắt lỗi
 // mạng, trả về iotServiceReachable=false). Có thể tắt bằng

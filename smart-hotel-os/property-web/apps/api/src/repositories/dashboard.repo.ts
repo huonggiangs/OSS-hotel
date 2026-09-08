@@ -139,7 +139,7 @@ export const dashboardRepo = {
 
   // Kế toán đêm (/night-audit) — 4 KPI đối soát cuối ngày, tính trực tiếp từ
   // invoices/rooms thật (không phải số liệu trang trí). "Chênh lệch đối soát"
-  // = 0 luôn cho MVP này vì hệ thống chỉ có 1 nguồn ghi nhận doanh thu
+  // = 0 luôn cho bản Go-live này vì hệ thống chỉ có 1 nguồn ghi nhận doanh thu
   // (invoices) — chưa có sổ sách kế toán độc lập thứ hai để so khớp.
   async nightAudit(propertyId: string) {
     const [invoicesToday, roomRevenueToday] = await Promise.all([

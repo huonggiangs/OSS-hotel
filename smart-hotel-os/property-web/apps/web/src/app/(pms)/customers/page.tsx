@@ -10,7 +10,7 @@ import { useSettings } from "@/lib/useSettings";
 // có sẵn). Đổi phân khúc trong modal chi tiết giờ gọi thật
 // PATCH /api/v1/customers/:id (thay vì chỉ setState cục bộ như bản mock cũ).
 // Các số liệu tổng hợp (số lần đặt/đặt lại/CSKH/tổng chi tiêu/giao dịch/dịch
-// vụ đã dùng) CHƯA có bảng thống kê tương ứng trong MVP này — hiển thị "—"
+// vụ đã dùng) CHƯA có bảng thống kê tương ứng trong bản Go-live này — hiển thị "—"
 // thay vì số liệu trang trí giả, xem PROGRESS.md.
 interface ApiCustomer {
   id: string;

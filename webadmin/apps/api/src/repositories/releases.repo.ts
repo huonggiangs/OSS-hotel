@@ -83,7 +83,7 @@ export const releasesRepo = {
     }
   },
 
-  // Dùng chung cho hai thao tác MVP: "rollback" (isActive=true — kích hoạt
+  // Dùng chung cho hai thao tác Go-live: "rollback" (isActive=true — kích hoạt
   // lại một bản cũ, khử active bản đang chạy) và "gỡ khỏi active"
   // (isActive=false — không tự chọn bản thay thế). Đây là quản lý VERSION,
   // KHÔNG phải deploy pipeline thật — xem giới hạn ghi trong PROGRESS.md và

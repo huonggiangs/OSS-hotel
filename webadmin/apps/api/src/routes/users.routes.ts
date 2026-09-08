@@ -101,7 +101,7 @@ usersRouter.post(
     if (!existing) throw Errors.notFound("người dùng");
 
     // Sinh mật khẩu tạm ngẫu nhiên, trả về DUY NHẤT MỘT LẦN trong response.
-    // Chưa có dịch vụ gửi email trong MVP này (xem PROGRESS.md) nên
+    // Chưa có dịch vụ gửi email trong bản Go-live này (xem PROGRESS.md) nên
     // SUPER_ADMIN phải tự truyền lại mật khẩu tạm cho người dùng qua kênh
     // khác (điện thoại, chat nội bộ...). Không lưu lại dạng plaintext.
     const tempPassword = randomBytes(6).toString("hex");
