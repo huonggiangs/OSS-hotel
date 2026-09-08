@@ -1,69 +1,83 @@
 # TASK ASSIGNMENT — GO-LIVE
 
 Ngày cập nhật: 08/09/2026  
-Phạm vi: đồng bộ nhãn trạng thái từ MVP/Pilot sang Go-live; không thay đổi logic tính năng.
+Nguồn chi tiết: `GO_LIVE_READINESS.md`; trang theo dõi: `GO_LIVE_PROGRESS.html`.
 
-## Feature đã chuyển sang Go-live
+## Trạng thái Feature Catalog
 
-| Feature ID | Need refs | Trạng thái mới |
-|---|---|---|
-| F-PMS-OPS-001 | N1,N3,N5 | Go-live |
-| F-PRICE-001 | N1 | Go-live |
-| F-IOT-CTRL-001 | N2,N3,N4 | Go-live |
-| F-REMOTE-001 | N4,N5 | Go-live |
-| F-MAINT-001 | N3,N4,N5 | Go-live |
-| F-HQ-ONBOARD-001 | N3,N4,N5 | Go-live |
-| F-HQ-ASSET-001 | N2,N3,N4,N5 | Go-live |
-| F-COMMISSION-001 | N1,N4 | Go-live |
-| F-MODULE-FLOW-001 | N3,N4 | Go-live |
-| F-UTILITY-FLOW-001 | N2,N4,N5 | Go-live |
-| F-SERVICE-FLOW-001 | N1,N3 | Go-live |
-| F-BOOKING-ARRIVAL-001 | N1,N3,N5 | Go-live |
-| F-CRM-CARE-001 | N1,N3,N4 | Go-live |
-| F-OTA-RECON-001 | N1,N4 | Go-live |
-| F-VALUE-001 | N1,N2,N3,N4,N5 | Go-live |
-| F-ALERT-001 | N2,N4,N5 | Go-live |
+### Đã sẵn sàng Go-live
 
-`F-AI-REV-001`, `F-AI-ENERGY-001` giữ nguyên Backlog.  
-`F-AI-CAMERA-001` giữ nguyên Out of scope.
+- F-HQ-ASSET-001
+- F-COMMISSION-001
+- F-MODULE-FLOW-001
+- F-UTILITY-FLOW-001
+- F-SERVICE-FLOW-001
+- F-BOOKING-ARRIVAL-001
 
-## File code đã chỉnh nhãn trạng thái
+### READY_FOR_PILOT / thiếu bằng chứng
 
-- `webadmin/apps/web/src/app/(dashboard)/releases/page.tsx`
-- `webadmin/apps/api/src/lib/propertyWebClient.ts`
-- `webadmin/apps/api/src/lib/iotSync.ts`
-- `webadmin/apps/api/src/index.ts`
-- `webadmin/apps/api/src/repositories/releases.repo.ts`
-- `webadmin/apps/api/src/routes/users.routes.ts`
-- `smart-hotel-os/apps/edge-node/src/lib/sync.ts`
-- `smart-hotel-os/property-web/apps/api/src/middleware/internalAuth.ts`
-- `smart-hotel-os/property-web/apps/api/src/repositories/dashboard.repo.ts`
-- `smart-hotel-os/property-web/apps/web/src/components/dashboard/DashboardOverview.tsx`
-- `smart-hotel-os/property-web/apps/web/src/app/(pms)/customers/page.tsx`
+- F-PMS-OPS-001
+- F-PRICE-001
+- F-IOT-CTRL-001
+- F-REMOTE-001
+- F-MAINT-001
+- F-HQ-ONBOARD-001
+- F-CRM-CARE-001
+- F-OTA-RECON-001
+- F-VALUE-001
+- F-ALERT-001
 
-Tên miền nghiệp vụ `energy_pilots`, API `/energy-pilots`, biến `pilot` và thuật toán đánh giá pilot không phải nhãn trạng thái nên được giữ nguyên để không thay đổi hợp đồng API hoặc logic dữ liệu.
+### Giữ nguyên phạm vi
 
-## Checklist giao Developer
+- Backlog: F-AI-REV-001, F-AI-ENERGY-001.
+- Out of scope: F-AI-CAMERA-001.
 
-| Ưu tiên | Người phụ trách gợi ý | Công việc | Điều kiện hoàn thành |
+## Phân công
+
+| Ưu tiên | Owner gợi ý | Task | Definition of Done |
 |---|---|---|---|
-| P0 | Codex | Chạy typecheck/build cho HQ, PMS và Edge | Tất cả tiến trình kết thúc thành công, không có lỗi TypeScript/build |
-| P0 | Claude | Viết hoặc cập nhật test cho 16 feature Go-live | Có test luồng chính, phân quyền và trường hợp lỗi; lưu bằng chứng kết quả |
-| P0 | Codex | Kiểm tra regression HQ → PMS → Edge → IoT | Luồng đăng nhập, phòng, booking, thiết bị, cảnh báo và giá trị không bị lỗi |
-| P0 | Claude | Đối chiếu tài liệu kỹ thuật với `FEATURE_CATALOG.md` | PRD, API, traceability và runbook không còn trạng thái mâu thuẫn |
-| P0 | Codex | Kiểm tra migration và backup/restore trên staging | Backup hợp lệ; migrate thành công; restore thử không dùng dữ liệu production |
-| P0 | Claude | Rà soát bảo mật trước triển khai | Secret production, RBAC, audit, TLS/VPN/MFA và giới hạn API được xác nhận |
-| P1 | Codex | Chạy kiểm thử Docker health và LAN | HQ 3000, PMS 3100, Edge 4200 phản hồi từ máy chủ và một máy LAN khác |
-| P1 | Claude | Rà soát checklist triển khai public | Hoàn thành từng mục trong `ops/PUBLIC_DEPLOYMENT_CHECKLIST.md`; ghi owner và bằng chứng |
-| P1 | Codex | Chuẩn bị regression report và rollback plan | Có danh sách phiên bản, migration tương thích và lệnh quay lui đã kiểm tra |
-| P1 | Claude / Codex | Theo dõi sau phát hành | Health, lỗi, độ trễ, lệnh thiết bị và cảnh báo có dashboard/SLA rõ ràng |
+| P0 | Codex | Test API/migration theo dõi Go-live | Migration PostgreSQL/PGlite, idempotency, filter, webhook signature và HTML regeneration đều PASS. |
+| P0 | Claude | Chuyển 20 Acceptance Criteria thành test matrix | Mỗi tiêu chí có trạng thái, test, artifact/commit hoặc N/A được BA duyệt. |
+| P0 | Codex | Sửa offline mapping Edge ↔ Cloud | Booking offline đồng bộ lại đúng ID; retry không trùng; conflict có cảnh báo. |
+| P0 | Claude | Kiểm thử cô lập tenant/RBAC/audit | Không truy cập chéo tenant; mọi thay đổi nhạy cảm có audit. |
+| P0 | Codex | Nghiệm thu relay + meter + khóa/thẻ + Edge | 30 ngày, ACK ≥95%, không sai phòng, tải critical không tự ngắt. |
+| P0 | Claude | Tích hợp OTA/payment/CRM sandbox | Credential/secret an toàn, webhook ký số, idempotent, đối soát đúng. |
+| P0 | Codex | Backup/restore drill | Khôi phục từng DB và Edge volume; checksum và thời gian RTO/RPO được ghi. |
+| P1 | Claude | Đối soát KPI tài chính/năng lượng | ADR, RevPAR, CVG, kWh và chi phí khớp nguồn; có before/after. |
+| P1 | Codex | CI/CD rolling và rollback | Staging ≥2 replica, readiness, migration compatible và rollback thành công. |
+| P1 | Claude | Bảo mật trước public | MFA, TLS/VPN, secret manager, rate limit, scan và pentest không còn High/Critical. |
+| P1 | Codex | Observability | Prometheus/OpenTelemetry, cảnh báo p95/webhook/CI và runbook on-call được test. |
 
-## Lệnh kiểm tra đề xuất
+## Cách ghi nhận mỗi phiên
 
-```text
-HQ API/Web: typecheck + build
-PMS API/Web: typecheck + build
-Edge Node: typecheck + build
-Docker/LAN: ops/scripts/Get-OssStatus.ps1 và ops/scripts/Test-OssLan.ps1
-Public: đối chiếu ops/PUBLIC_DEPLOYMENT_CHECKLIST.md
+Gọi HQ API sau khi hoàn thành từng batch; không sửa trực tiếp lịch sử trong HTML:
+
+```http
+POST /api/v1/go-live/progress
+X-Go-Live-Secret: <GO_LIVE_PROGRESS_SECRET>
+Content-Type: application/json
+
+{
+  "timestamp": "2026-09-08T08:15:00+07:00",
+  "description": "Mô tả batch đã làm",
+  "relatedItems": ["N2", "F-IOT-CTRL-001", "MODULE:IOT_ENERGY"],
+  "status": "DONE",
+  "evidence": "commit/test artifact/log/screenshot",
+  "performedBy": "Claude hoặc Codex",
+  "notes": "Không ghi secret hoặc dữ liệu khách",
+  "idempotencyKey": "task-name-<commit-sha>"
+}
 ```
+
+API ghi DB + audit trước, sau đó sinh lại `docs/GO_LIVE_PROGRESS.html`. Cùng key/cùng payload là replay an toàn; cùng key/payload khác phải trả `409`.
+
+CI dùng `.github/workflows/go-live-readiness.yml`. Cấu hình repository secret `GO_LIVE_PROGRESS_SECRET` và variable `GO_LIVE_PROGRESS_API_URL` để workflow gửi kết quả; GitHub webhook dùng `CI_PROGRESS_WEBHOOK_SECRET`, `X-GitHub-Delivery` và `X-Hub-Signature-256`.
+
+## Quy tắc hoàn thành
+
+- Không đổi READY_FOR_PILOT thành Go-live nếu chỉ có typecheck/build.
+- Hardware cần ACK/heartbeat và biên bản thật.
+- OTA/payment/CRM cần credential và webhook sandbox/thật.
+- KPI cần dữ liệu trước/sau; không dùng dữ liệu mô phỏng làm bằng chứng thương mại.
+- Mọi batch có test, evidence, log tiến trình và cập nhật tài liệu liên quan.
+- Không đưa token, mật khẩu, PII khách vào log/evidence.

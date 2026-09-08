@@ -65,6 +65,11 @@ services:
       HQ_SMTP_USER: "${HQ_SMTP_USER:-}"
       HQ_SMTP_PASSWORD: "${HQ_SMTP_PASSWORD:-}"
       HQ_SMTP_SECURE: "${HQ_SMTP_SECURE:-false}"
+      GO_LIVE_PROGRESS_SECRET: "${GO_LIVE_PROGRESS_SECRET:-}"
+      CI_PROGRESS_WEBHOOK_SECRET: "${CI_PROGRESS_WEBHOOK_SECRET:-}"
+      GO_LIVE_PROGRESS_HTML_PATH: "/var/lib/go-live/GO_LIVE_PROGRESS.html"
+    volumes:
+      - go_live_progress_output:/var/lib/go-live
     ports:
       - "127.0.0.1:4000:4000"
     healthcheck:
@@ -109,3 +114,4 @@ services:
 
 volumes:
   webadmin_postgres_data:
+  go_live_progress_output:

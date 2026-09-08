@@ -1,0 +1,106 @@
+name: Go-live readiness
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "smart-hotel-os/docs/**"
+      - "webadmin/apps/api/src/routes/goLiveProgress.routes.ts"
+      - "webadmin/apps/api/src/repositories/goLiveProgress.repo.ts"
+      - "webadmin/apps/api/src/lib/goLiveProgress*.ts"
+      - "webadmin/database/migrations/006_go_live_progress.sql"
+      - ".github/workflows/go-live-readiness.yml"
+  push:
+    branches: [main]
+    paths:
+      - "smart-hotel-os/docs/**"
+      - "webadmin/apps/api/**"
+      - "webadmin/database/migrations/006_go_live_progress.sql"
+      - ".github/workflows/go-live-readiness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-live-readiness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: webadmin/apps/api/package-lock.json
+      - name: Install locked dependencies
+        working-directory: webadmin/apps/api
+        run: npm ci
+      - name: Typecheck progress API
+        working-directory: webadmin/apps/api
+        run: npm run typecheck
+      - name: Validate catalog and progress schema
+        shell: bash
+        run: |
+          test -s smart-hotel-os/docs/GO_LIVE_READINESS.md
+          test -s smart-hotel-os/docs/GO_LIVE_PROGRESS.html
+          test -s smart-hotel-os/docs/TASK_ASSIGNMENT_GO_LIVE.md
+          grep -q 'go_live_progress_logs' webadmin/database/migrations/006_go_live_progress.sql
+          grep -q 'idempotency_key' webadmin/database/migrations/006_go_live_progress.sql
+          test "$(grep -c '| Go-live |' smart-hotel-os/docs/FEATURE_CATALOG.md)" -eq 6
+          test "$(grep -c '| READY_FOR_PILOT |' smart-hotel-os/docs/FEATURE_CATALOG.md)" -eq 10
+          test "$(grep -c 'Backlog' smart-hotel-os/docs/FEATURE_CATALOG.md)" -ge 2
+          test "$(grep -c 'Out of scope' smart-hotel-os/docs/FEATURE_CATALOG.md)" -eq 1
+      - name: Upload reviewed documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-live-readiness-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            smart-hotel-os/docs/GO_LIVE_READINESS.md
+            smart-hotel-os/docs/GO_LIVE_PROGRESS.html
+            smart-hotel-os/docs/TASK_ASSIGNMENT_GO_LIVE.md
+            smart-hotel-os/docs/FEATURE_CATALOG.md
+
+  publish-progress:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record CI result in HQ and regenerate HTML
+        if: vars.GO_LIVE_PROGRESS_API_URL != ''
+        env:
+          API_URL: ${{ vars.GO_LIVE_PROGRESS_API_URL }}
+          API_SECRET: ${{ secrets.GO_LIVE_PROGRESS_SECRET }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          test -n "$API_SECRET"
+          payload=$(jq -n \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg sha "$COMMIT_SHA" \
+            --arg evidence "$SERVER_URL/$REPOSITORY/actions/runs/$RUN_ID" \
+            '{timestamp:$timestamp,description:"CI Go-live readiness thành công",relatedItems:["CI","N4","N5","FEATURE_CATALOG.md"],status:"DONE",evidence:$evidence,performedBy:"GitHub Actions",notes:("Commit " + $sha),idempotencyKey:("go-live-ci-" + $sha)}')
+          curl --fail-with-body --retry 3 --retry-all-errors \
+            -H "Content-Type: application/json" -H "X-Go-Live-Secret: $API_SECRET" \
+            --data "$payload" "$API_URL/api/v1/go-live/progress"
+          curl --fail-with-body --retry 3 --retry-all-errors \
+            -H "X-Go-Live-Secret: $API_SECRET" \
+            "$API_URL/api/v1/go-live/progress/html" \
+            --output smart-hotel-os/docs/GO_LIVE_PROGRESS.html
+      - name: Upload database-generated progress page
+        if: vars.GO_LIVE_PROGRESS_API_URL != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-live-progress-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 90
+          path: smart-hotel-os/docs/GO_LIVE_PROGRESS.html

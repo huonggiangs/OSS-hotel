@@ -87,3 +87,14 @@ Người dùng yêu cầu 2 lần rất rõ ràng: cần 1 thiết bị phần c
 ## Ghi chú
 
 Tài liệu `kiosk.md` (sản phẩm Kiosk Remote Management) không bị chỉnh sửa trong phiên này — giữ nguyên là spec độc lập của sản phẩm kia.
+
+## 2026-09-08 — Rà soát Go-live, progress API, schema, webhook và CI
+
+- [x] Rà soát `docs/`, module spec, Acceptance Criteria và các file `PROGRESS.md`; phân loại theo bằng chứng tại `docs/GO_LIVE_READINESS.md`.
+- [x] Đồng bộ `FEATURE_CATALOG.md`: 6 Go-live, 10 READY_FOR_PILOT, 2 Backlog, 1 Out of scope.
+- [x] Thêm schema HQ `go_live_progress_logs`, index truy vấn và view tổng hợp trong migration 006.
+- [x] Thêm REST API ghi/list/filter/summary, idempotency, audit, webhook GitHub có HMAC và metrics Prometheus.
+- [x] Sinh `docs/GO_LIVE_PROGRESS.html` từ DB; cập nhật mới nhất xếp giảm dần và có evidence.
+- [x] Thêm `.github/workflows/go-live-readiness.yml` để typecheck, kiểm tra catalog/schema, lưu artifact và gọi API khi cấu hình secret/URL.
+- [x] Kiểm thử trên PGlite sạch: migration 001–006, create 201, replay 200, conflict 409, webhook 201, metrics và HTML đều hoạt động.
+- [ ] Các gap phần cứng, credential, bảo mật, offline mapping, 20 Acceptance Criteria và hạ tầng production tiếp tục theo `docs/TASK_ASSIGNMENT_GO_LIVE.md`.

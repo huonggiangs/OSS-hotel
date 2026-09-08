@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import type { Request } from "express";
 import cors from "cors";
 import helmet from "helmet";
 
@@ -15,11 +16,13 @@ import { usersRouter } from "./routes/users.routes";
 import { releasesRouter } from "./routes/releases.routes";
 import { purchaseOrdersRouter } from "./routes/purchase-orders.routes";
 import { internalRouter } from "./routes/internal.routes";
+import { goLiveProgressRouter } from "./routes/goLiveProgress.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { pool, DB_MODE, embeddedDb } from "./lib/db";
 import { bootstrapEmbeddedDb } from "./lib/embeddedBootstrap";
 import { syncConnectionStatusFromIot } from "./lib/iotSync";
+import { regenerateGoLiveProgressHtml } from "./lib/goLiveProgressHtml";
 
 const app = express();
 
@@ -30,7 +33,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(express.json({ verify: (req, _res, buffer) => { (req as Request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer); } }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok", db_mode: DB_MODE }));
 
@@ -47,6 +50,7 @@ app.use("/api/v1/audit-logs", auditLogsRouter);
 app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/releases", releasesRouter);
 app.use("/api/v1/purchase-orders", purchaseOrdersRouter);
+app.use("/api/v1/go-live/progress", goLiveProgressRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error_code: "ROUTE_NOT_FOUND", message: "Không tìm thấy endpoint." });
@@ -64,6 +68,9 @@ async function start() {
   if (DB_MODE === "embedded" && embeddedDb) {
     await bootstrapEmbeddedDb(embeddedDb);
   }
+
+  try { await regenerateGoLiveProgressHtml(); }
+  catch (error) { console.error("[go-live-progress] Không thể sinh trang HTML:", error); }
 
   app.listen(PORT, () => {
     // eslint-disable-next-line no-console

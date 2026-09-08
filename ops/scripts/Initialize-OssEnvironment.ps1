@@ -23,6 +23,8 @@ EDGE_JWT_SECRET=$(New-Base64Secret)
 SETTINGS_ENCRYPTION_KEY=$(New-Base64Secret)
 INTERNAL_SERVICE_KEY=$(New-Base64Secret)
 SERVICE_API_KEY=$(New-Base64Secret)
+GO_LIVE_PROGRESS_SECRET=$(New-Base64Secret)
+CI_PROGRESS_WEBHOOK_SECRET=$(New-Base64Secret)
 
 # Tài khoản fixture chỉ dành cho môi trường test Docker.
 CLOUD_SYNC_USERNAME=reception

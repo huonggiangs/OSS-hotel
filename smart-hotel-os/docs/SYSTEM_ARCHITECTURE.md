@@ -183,3 +183,19 @@ Ranh giới rõ: Smart Hotel OS expose các API sau cho Kiosk (hoặc bất kỳ
 - `POST /api/v1/iot/rooms/{room_id}/activate` — kích hoạt điện/điều hòa phòng sau khi phát thẻ.
 
 Xác thực bằng API key/OAuth2 client credentials cấp cho từng vendor kiosk, không dùng chung cơ chế license của sản phẩm Kiosk.
+
+## 10. Theo dõi Go-live và giám sát hiệu năng
+
+HQ Console sở hữu `go_live_progress_logs`; chức năng này tách khỏi database và request path nghiệp vụ PMS/IoT nên lỗi ghi tiến trình không được chặn check-in, thanh toán hay lệnh thiết bị. Luồng chuẩn:
+
+```text
+Claude/Codex/CI → HQ progress API → PostgreSQL (idempotent + audit)
+                                      ↓
+                         regenerate GO_LIVE_PROGRESS.html
+                                      ↓
+                           CI artifact / tài liệu duyệt
+```
+
+Các metrics tối thiểu tại `/api/v1/go-live/progress/metrics`: độ trễ API, độ trễ ghi DB, thời gian sinh HTML, tổng webhook thành công/thất bại. Prometheus scrape endpoint có xác thực; Alertmanager cảnh báo khi p95 API > 1 giây trong 10 phút, sinh HTML > 5 giây, webhook thất bại liên tiếp hoặc CI không cập nhật quá 24 giờ. Khi triển khai nhiều replica, metrics in-memory hiện tại phải chuyển sang OpenTelemetry/Prometheus collector dùng chung; job sinh HTML chỉ chạy ở worker/CI có lease, không chạy đồng thời trên mọi replica.
+
+Log giữ trong PostgreSQL; HTML là bản chiếu có thể sinh lại, không phải nguồn sự thật. CI lưu HTML và báo cáo kiểm tra dưới dạng artifact bất biến theo run/commit. Không ghi dữ liệu khách, token hoặc credential vào trường evidence/notes.

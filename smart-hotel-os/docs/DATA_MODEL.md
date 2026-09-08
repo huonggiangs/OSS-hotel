@@ -161,3 +161,25 @@ PENDING → WAITING_DEVICE → DELIVERED → ACKNOWLEDGED → APPLYING → SUCCE
 3. Dữ liệu nhạy cảm (passport, khuôn mặt nếu tích hợp kiosk trả về) không lưu tại Smart Hotel OS trừ khi có yêu cầu nghiệp vụ rõ ràng và mã hoá tại chỗ.
 4. Toàn bộ bảng nghiệp vụ có `created_at`, `updated_at`, `created_by`, `updated_by`.
 5. Migration bắt buộc có seed data demo tách biệt hoàn toàn khỏi production (đồng nhất `kiosk.md` mục 21.16).
+
+## 5. Log tiến trình Go-live
+
+Schema triển khai thật nằm tại `webadmin/database/migrations/006_go_live_progress.sql` vì HQ là nơi quản trị xuyên hệ thống.
+
+```text
+go_live_progress_logs
+  id                  text PK
+  completed_at        timestamptz
+  session_description text
+  related_items       text[]
+  status              DONE | IN_PROGRESS | MISSING
+  evidence            text
+  performed_by        text
+  notes               text nullable
+  idempotency_key     text unique
+  request_hash        text
+  created_at          timestamptz
+  updated_at          timestamptz
+```
+
+Index B-tree trên `completed_at`, `status`, `performed_by`; GIN trên `related_items`. View `go_live_progress_item_summary` tách và phân loại token `N#`, `F-*`, `MODULE:*`, file/khác để tính tổng số bản ghi, số hoàn thành, tỷ lệ hoàn thành và lần cập nhật gần nhất. API hỗ trợ lọc theo khoảng thời gian, trạng thái, người thực hiện và phân trang. Bảng là lịch sử append-only; không có endpoint sửa/xóa.

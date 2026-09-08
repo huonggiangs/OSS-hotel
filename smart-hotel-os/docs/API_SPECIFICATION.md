@@ -143,3 +143,17 @@ FEATURE_NOT_IN_SUBSCRIPTION
 ```
 
 Không trả lỗi chung chung 500 cho các trường hợp nghiệp vụ dự đoán được — nhất quán nguyên tắc với `kiosk.md` mục 17.
+
+## 12. HQ — theo dõi tiến trình Go-live
+
+Nguồn dữ liệu nằm ở HQ PostgreSQL; cập nhật phải ghi DB thành công trước khi sinh lại HTML.
+
+```text
+GET  /api/v1/go-live/progress?from=&to=&status=&performedBy=&page=&pageSize=
+GET  /api/v1/go-live/progress/summary
+GET  /api/v1/go-live/progress/metrics
+POST /api/v1/go-live/progress
+POST /api/v1/go-live/progress/webhook
+```
+
+`POST /progress` nhận `timestamp`, `description`, `relatedItems[]`, `status` (`DONE|IN_PROGRESS|MISSING`), `evidence`, `performedBy`, `notes`, `idempotencyKey`. Quyền ghi: `SUPER_ADMIN`, `RELEASE_MANAGER` hoặc header dịch vụ `X-Go-Live-Secret`. Webhook GitHub xác thực `X-Hub-Signature-256` bằng `CI_PROGRESS_WEBHOOK_SECRET`, chống lặp bằng `X-GitHub-Delivery`. Cùng một idempotency key với payload khác phải trả `409`.
