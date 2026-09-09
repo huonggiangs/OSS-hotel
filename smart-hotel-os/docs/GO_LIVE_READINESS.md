@@ -15,7 +15,7 @@ Không dùng nhãn Go-live của một feature phần mềm để suy ra rằng 
 - Đã tạo backup đầy đủ trước migration tại `backups/oss_20260909_100721_before-go-live-progress-migration`.
 - Đã rebuild HQ, PMS, Services và Edge; các giao diện `3000/3100/4200` và API `4000/4100-4104/4200` đều trả HTTP thành công.
 - Migration `006_go_live_progress.sql` đã được áp dụng vào PostgreSQL dùng chung lúc `2026-09-09 03:09:15 UTC`; bảng tiến độ có 8 bản ghi sau kiểm thử API thực tế.
-- Watcher tự cập nhật đang chạy nền, PID được xác nhận tại thời điểm kiểm tra; thay đổi source hợp lệ sẽ typecheck trước khi rebuild.
+- Watcher tự cập nhật đã được kiểm thử bằng một thay đổi thời gian tệp không đổi nội dung: watcher nhận sự kiện, typecheck đạt, rebuild đúng commit `ed3670f` và healthcheck thành công.
 - Edge heartbeat còn mới, Cloud reachable và outbox bằng 0. Đây là bằng chứng kết nối phần mềm, chưa phải ACK thiết bị vật lý.
 - Đối soát thiết bị: HQ `2/2` tài sản có `asset_code` nhưng `0` online; PMS `33` thiết bị nhưng chỉ `1` có `asset_code` và `1` có `iot_device_id`; IoT Service `3` thiết bị, `1` có `asset_code`, `0` online. Vì vậy nghiệm thu relay/công tơ/khóa thật vẫn **Đang làm**.
 - Kiểm tra ngay trên máy chủ đạt `http://192.168.1.99:3000`, `:3100`, `:4200`. Windows Firewall chưa thể cấu hình trong phiên không có quyền Administrator; cần chạy `ops/scripts/Enable-OssLanAccess.ps1` bằng PowerShell Administrator trước khi nghiệm thu từ máy khác.

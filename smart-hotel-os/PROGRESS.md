@@ -105,7 +105,7 @@ Tài liệu `kiosk.md` (sản phẩm Kiosk Remote Management) không bị chỉn
 - [x] Backup sáu database PostgreSQL, Edge volume và Git bundle trước migration; có checksum tại `backups/oss_20260909_100721_before-go-live-progress-migration`.
 - [x] Rebuild HQ/PMS/Services/Edge; migration HQ `006_go_live_progress.sql` đã áp dụng thành công vào PostgreSQL dùng chung.
 - [x] Xác minh HQ/PMS/Edge trên các cổng LAN `3000/3100/4200`; toàn bộ health endpoint `4000`, `4100-4104`, `4200` trả HTTP 200.
-- [x] Bật watcher nền để source thay đổi được typecheck rồi tự rebuild.
+- [x] Kiểm thử watcher bằng thay đổi thời gian tệp không đổi nội dung: tự nhận sự kiện, typecheck đạt, rebuild đúng commit `ed3670f` và healthcheck thành công.
 - [x] Ghi hai nhật ký triển khai/đối soát qua HQ API và sinh lại HTML từ database.
 - [ ] Chạy `ops/scripts/Enable-OssLanAccess.ps1` bằng PowerShell Administrator; phiên Codex hiện tại không có quyền thay đổi Windows Firewall.
 - [ ] Nghiệm thu thiết bị thật: hiện HQ 2 tài sản/0 online, PMS 33 thiết bị nhưng chỉ 1 mapping, IoT 3 thiết bị/0 online.
