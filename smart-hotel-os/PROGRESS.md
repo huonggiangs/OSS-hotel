@@ -98,3 +98,14 @@ Tài liệu `kiosk.md` (sản phẩm Kiosk Remote Management) không bị chỉn
 - [x] Thêm `.github/workflows/go-live-readiness.yml` để typecheck, kiểm tra catalog/schema, lưu artifact và gọi API khi cấu hình secret/URL.
 - [x] Kiểm thử trên PGlite sạch: migration 001–006, create 201, replay 200, conflict 409, webhook 201, metrics và HTML đều hoạt động.
 - [ ] Các gap phần cứng, credential, bảo mật, offline mapping, 20 Acceptance Criteria và hạ tầng production tiếp tục theo `docs/TASK_ASSIGNMENT_GO_LIVE.md`.
+
+## 2026-09-09 — Triển khai Docker/LAN và xác minh database dùng chung
+
+- [x] Đưa `nhucau.md` vào Git làm tài liệu nhu cầu khách hàng gốc.
+- [x] Backup sáu database PostgreSQL, Edge volume và Git bundle trước migration; có checksum tại `backups/oss_20260909_100721_before-go-live-progress-migration`.
+- [x] Rebuild HQ/PMS/Services/Edge; migration HQ `006_go_live_progress.sql` đã áp dụng thành công vào PostgreSQL dùng chung.
+- [x] Xác minh HQ/PMS/Edge trên các cổng LAN `3000/3100/4200`; toàn bộ health endpoint `4000`, `4100-4104`, `4200` trả HTTP 200.
+- [x] Bật watcher nền để source thay đổi được typecheck rồi tự rebuild.
+- [x] Ghi hai nhật ký triển khai/đối soát qua HQ API và sinh lại HTML từ database.
+- [ ] Chạy `ops/scripts/Enable-OssLanAccess.ps1` bằng PowerShell Administrator; phiên Codex hiện tại không có quyền thay đổi Windows Firewall.
+- [ ] Nghiệm thu thiết bị thật: hiện HQ 2 tài sản/0 online, PMS 33 thiết bị nhưng chỉ 1 mapping, IoT 3 thiết bị/0 online.

@@ -1,6 +1,6 @@
 # TASK ASSIGNMENT — GO-LIVE
 
-Ngày cập nhật: 08/09/2026  
+Ngày cập nhật: 09/09/2026
 Nguồn chi tiết: `GO_LIVE_READINESS.md`; trang theo dõi: `GO_LIVE_PROGRESS.html`.
 
 ## Trạng thái Feature Catalog
@@ -33,6 +33,13 @@ Nguồn chi tiết: `GO_LIVE_READINESS.md`; trang theo dõi: `GO_LIVE_PROGRESS.h
 - Out of scope: F-AI-CAMERA-001.
 
 ## Phân công
+
+### Trạng thái thực thi mới nhất
+
+- **Đã xong:** backup trước migration, migration PostgreSQL `006`, rebuild Docker/LAN, healthcheck toàn bộ API/UI, bật watcher, kiểm thử API ghi nhật ký và sinh HTML từ DB.
+- **Đang làm:** nghiệm thu thiết bị thật. Edge heartbeat đạt nhưng chưa có thiết bị online; mapping mới đạt 1 thiết bị xuyên PMS–IoT.
+- **Cần chủ máy chạy với quyền Administrator:** `ops/scripts/Enable-OssLanAccess.ps1`, sau đó mở HQ/PMS/Edge từ một máy hoặc điện thoại khác cùng mạng.
+- **Chưa được nâng Go-live:** `F-IOT-CTRL-001` vì chưa có ACK vật lý, kiểm thử tải critical, mất mạng/reconnect và số liệu 30 ngày.
 
 | Ưu tiên | Owner gợi ý | Task | Definition of Done |
 |---|---|---|---|

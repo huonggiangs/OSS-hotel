@@ -2,6 +2,17 @@
 
 Tài liệu này là điều kiện để chuyển trạng thái **pilot phần cứng** sang **đã nghiệm thu**. `power_on` trong PMS chỉ là trạng thái nghiệp vụ; chỉ ghi nhận thành công khi có `iot_command_id`, ACK của Edge/IoT và heartbeat còn mới.
 
+## Hiện trạng kiểm tra 09/09/2026
+
+| Thành phần | Kết quả thực tế | Trạng thái |
+|---|---|---|
+| Edge Node | Heartbeat mới, Cloud reachable, outbox `0` | Đạt kết nối phần mềm |
+| HQ Registry | 2 tài sản, 2 có `asset_code`, 0 online | Chưa nghiệm thu thiết bị |
+| PMS | 33 thiết bị, 1 có `asset_code`, 1 có `iot_device_id` | Mapping còn thiếu |
+| IoT Service | 3 thiết bị, 1 có `asset_code`, 0 online | Chưa có ACK vật lý |
+
+Không được đánh dấu hoàn tất các checkbox thiết bị dưới đây cho tới khi relay, công tơ và khóa/thẻ thật báo online và trả ACK đúng phòng.
+
 ## Chuẩn bị
 
 - [ ] Tạo tài sản ở HQ và cấp `asset_code` duy nhất.

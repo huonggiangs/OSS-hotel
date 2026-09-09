@@ -1,6 +1,6 @@
 # GO-LIVE READINESS — SMART HOTEL OS
 
-Ngày rà soát: 08/09/2026  
+Ngày rà soát: 08/09/2026; cập nhật triển khai: 09/09/2026
 Nguồn: mã nguồn hiện tại, `docs/`, các file `PROGRESS.md`, kết quả typecheck và kiểm tra runtime đã lưu.  
 Nguyên tắc: chỉ tính **Đã sẵn sàng Go-live** khi có code, tài liệu và bằng chứng kiểm thử phù hợp; phần mềm đã viết nhưng thiếu thiết bị, credential hoặc KPI thật được xếp **READY_FOR_PILOT**.
 
@@ -9,6 +9,16 @@ Nguyên tắc: chỉ tính **Đã sẵn sàng Go-live** khi có code, tài liệ
 Hệ thống đã có nền PMS/HQ/Edge/IoT và nhiều luồng phần mềm chạy được, nhưng **chưa đủ bằng chứng để phát hành toàn bộ sản phẩm như một hệ thống thương mại hoàn chỉnh**. Sáu feature độc lập đã đủ bằng chứng phần mềm để Go-live trong phạm vi nội bộ/LAN. Mười feature cần pilot, credential hoặc kiểm thử tích hợp. Hai feature AI vẫn Backlog; Camera AI vẫn Out of scope.
 
 Không dùng nhãn Go-live của một feature phần mềm để suy ra rằng thiết bị vật lý, public Internet, SLA, ROI hoặc tải lớn đã được nghiệm thu.
+
+### Cập nhật triển khai dùng chung ngày 09/09/2026
+
+- Đã tạo backup đầy đủ trước migration tại `backups/oss_20260909_100721_before-go-live-progress-migration`.
+- Đã rebuild HQ, PMS, Services và Edge; các giao diện `3000/3100/4200` và API `4000/4100-4104/4200` đều trả HTTP thành công.
+- Migration `006_go_live_progress.sql` đã được áp dụng vào PostgreSQL dùng chung lúc `2026-09-09 03:09:15 UTC`; bảng tiến độ có 8 bản ghi sau kiểm thử API thực tế.
+- Watcher tự cập nhật đang chạy nền, PID được xác nhận tại thời điểm kiểm tra; thay đổi source hợp lệ sẽ typecheck trước khi rebuild.
+- Edge heartbeat còn mới, Cloud reachable và outbox bằng 0. Đây là bằng chứng kết nối phần mềm, chưa phải ACK thiết bị vật lý.
+- Đối soát thiết bị: HQ `2/2` tài sản có `asset_code` nhưng `0` online; PMS `33` thiết bị nhưng chỉ `1` có `asset_code` và `1` có `iot_device_id`; IoT Service `3` thiết bị, `1` có `asset_code`, `0` online. Vì vậy nghiệm thu relay/công tơ/khóa thật vẫn **Đang làm**.
+- Kiểm tra ngay trên máy chủ đạt `http://192.168.1.99:3000`, `:3100`, `:4200`. Windows Firewall chưa thể cấu hình trong phiên không có quyền Administrator; cần chạy `ops/scripts/Enable-OssLanAccess.ps1` bằng PowerShell Administrator trước khi nghiệm thu từ máy khác.
 
 ## 2. Thống kê tổng hợp
 
