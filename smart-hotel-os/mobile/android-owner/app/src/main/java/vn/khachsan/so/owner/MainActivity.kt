@@ -8,6 +8,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.text.Editable
 import android.text.InputType
@@ -31,6 +33,20 @@ private enum class AppPage { DASHBOARD, ROOMS, BOOKINGS, ALERTS, ACCOUNT }
 
 class MainActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
+    private val liveHandler = Handler(Looper.getMainLooper())
+    private val liveRefresh = object : Runnable {
+        override fun run() {
+            if (accessToken != null && !isFinishing) {
+                when (currentPage) {
+                    AppPage.DASHBOARD -> loadDashboard()
+                    AppPage.ROOMS -> loadRooms()
+                    AppPage.ALERTS -> loadAlerts()
+                    else -> Unit
+                }
+                liveHandler.postDelayed(this, 15_000)
+            }
+        }
+    }
     private val api = MobileApi()
     private lateinit var credentialStore: DeviceCredentialStore
     private val primary = Color.rgb(38, 99, 218)
@@ -62,13 +78,42 @@ class MainActivity : Activity() {
         window.statusBarColor = canvasColor
         window.navigationBarColor = surface
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        apiBase = defaultApiBase()
         credentialStore = DeviceCredentialStore(this)
         val preferences = getSharedPreferences("anio", MODE_PRIVATE)
         preferences.edit().remove("pairing_id").remove("pairing_secret").remove("connection_id").remove("device_secret").apply()
-        val credential = credentialStore.load()
-        if (credential != null) resumeDeviceSession(credential.connectionId, credential.deviceSecret)
-        else showLogin()
+        locateServer()
+    }
+
+    override fun onNewIntent(newIntent: android.content.Intent) {
+        super.onNewIntent(newIntent)
+        intent = newIntent
+        locateServer()
+    }
+
+    private fun locateServer() {
+        val body = vertical().apply { gravity = Gravity.CENTER; setPadding(dp(24), dp(50), dp(24), dp(24)); setBackgroundColor(canvasColor) }
+        body.addView(label("ANIO", 32f, true, ink).apply { gravity = Gravity.CENTER })
+        body.addView(label("Đang tự động tìm máy chủ an toàn…", 14f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 12))
+        setContentView(body)
+        executor.execute {
+            val located = ServerLocator(this, api).locate(intent?.data)
+            runOnUiThread {
+                if (located == null) showServerUnavailable()
+                else {
+                    apiBase = located
+                    val credential = credentialStore.load()
+                    if (credential != null) resumeDeviceSession(credential.connectionId, credential.deviceSecret) else showLogin()
+                }
+            }
+        }
+    }
+
+    private fun showServerUnavailable() {
+        val body = vertical().apply { gravity = Gravity.CENTER; setPadding(dp(24), dp(50), dp(24), dp(24)); setBackgroundColor(canvasColor) }
+        body.addView(label("Chưa tìm thấy máy chủ", 24f, true, ink).apply { gravity = Gravity.CENTER })
+        body.addView(label("Hãy bảo đảm điện thoại và máy chủ PMS đang cùng Wi‑Fi. Ứng dụng sẽ tự tìm lại, bạn không cần nhập địa chỉ.", 14f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 12, bottom = 20))
+        body.addView(actionButton("Tìm lại", 0, true) { locateServer() }, matchWrap())
+        setContentView(body)
     }
 
     private fun showLogin() {
@@ -181,6 +226,8 @@ class MainActivity : Activity() {
             AppPage.ALERTS -> loadAlerts()
             AppPage.ACCOUNT -> renderAccount()
         }
+        liveHandler.removeCallbacks(liveRefresh)
+        liveHandler.postDelayed(liveRefresh, 15_000)
     }
 
     private fun header(title: String, showBell: Boolean = true) {
@@ -880,12 +927,6 @@ class MainActivity : Activity() {
         AppPage.BOOKINGS -> hasCapability("bookings")
         AppPage.ALERTS -> hasCapability("maintenance") || hasCapability("devices") || hasCapability("housekeeping")
     }
-    private fun defaultApiBase(): String {
-        val emulator = Build.FINGERPRINT.lowercase(Locale.getDefault()).contains("generic") ||
-            Build.MODEL.lowercase(Locale.getDefault()).contains("emulator") ||
-            Build.MODEL.lowercase(Locale.getDefault()).contains("sdk_gphone")
-        return if (emulator) "http://10.0.2.2:3100/api/backend" else "http://sonanio25:3100/api/backend"
-    }
     private fun deviceId(): String = "android-${Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown-device"}"
     private fun deviceName(): String = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
     private fun isProbablyEmulator(): Boolean {
@@ -965,5 +1006,7 @@ class MainActivity : Activity() {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = selected(position)
     }
 
-    override fun onDestroy() { executor.shutdownNow(); super.onDestroy() }
+    override fun onPause() { liveHandler.removeCallbacks(liveRefresh); super.onPause() }
+    override fun onResume() { super.onResume(); if (accessToken != null) liveHandler.postDelayed(liveRefresh, 15_000) }
+    override fun onDestroy() { liveHandler.removeCallbacks(liveRefresh); executor.shutdownNow(); super.onDestroy() }
 }

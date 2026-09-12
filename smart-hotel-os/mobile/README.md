@@ -13,7 +13,11 @@ Android/iOS gọi qua gateway PMS, không truy cập PostgreSQL và không gọi
 
 ## Android chủ cơ sở
 
-`android-owner` là ứng dụng native Kotlin, không dùng DB cục bộ. Phiên bản LAN tự chọn `http://10.0.2.2:3100/api/backend` trên emulator và `http://sonanio25:3100/api/backend` trên điện thoại thật; người dùng không phải nhập địa chỉ máy chủ. Production bắt buộc thay hostname này bằng tên miền HTTPS ổn định và tắt cleartext trong manifest.
+`android-owner` là ứng dụng native Kotlin, không dùng DB cục bộ. App không hardcode tên máy và không yêu cầu người dùng nhập URL: bản production ưu tiên domain HTTPS được cấu hình lúc build, bản LAN tự phát hiện PMS bằng UDP 53535 rồi xác minh endpoint `/api/v1/mobile/discovery`; emulator dùng `10.0.2.2`. Endpoint hoạt động gần nhất được lưu để mở app nhanh và tự discovery lại khi đổi Wi‑Fi/IP.
+
+HQ có nút `anio://discover` tại trang **Kết nối ứng dụng** để mở app và kích hoạt tìm máy chủ. Khi phát hành public, build với `ANIO_PUBLIC_API_BASE_URL=https://<api-domain>/api/backend`; chỉ endpoint HTTPS hoặc IP riêng trong LAN được app chấp nhận. Sau khi có domain/certificate production, tắt cleartext HTTP trong manifest cho bản release.
+
+Trang tổng quan, phòng và cảnh báo tự làm mới 15 giây một lần khi đang mở. Bản production nên bổ sung WebSocket/FCM cho thông báo tức thời; mọi thao tác ghi hiện tại đã gọi API trực tiếp và phản ánh lại ngay sau khi server xác nhận.
 
 Phiên bản 0.4.0 dùng chung cho chủ cơ sở, quản lý, lễ tân, buồng phòng và kỹ thuật viên. Ứng dụng chỉ hiện các menu/hành động thuộc quyền do PMS trả về. Giao diện dùng bộ icon vector 24 × 24 đồng nhất và tự co chữ/card theo chiều rộng màn hình cùng cỡ chữ hệ thống:
 

@@ -8,6 +8,11 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 class MobileApi {
+    fun isAnioPms(base: String): Boolean = runCatching {
+        val response = request(base, "/api/v1/mobile/discovery")
+        response.optString("service") == "ANIO_PMS" && response.optInt("api_version") >= 1
+    }.getOrDefault(false)
+
     private fun request(
         base: String,
         path: String,

@@ -36,12 +36,14 @@ import { ensureDefaultSettings } from "./lib/settingsBootstrap";
 import { settingsRepo } from "./repositories/settings.repo";
 import { runDeviceCommandBridge } from "./repositories/deviceCommandBridge.repo";
 import { AdmissionGate, boundedInteger } from "./lib/runtimePolicy";
+import { startLanDiscovery } from "./lib/lanDiscovery";
 
 const app = express();
 const admission = new AdmissionGate(boundedInteger(process.env.API_MAX_IN_FLIGHT, 100, 10000));
 let server: import("node:http").Server | undefined;
 let bridgeTimer: NodeJS.Timeout | undefined;
 let bridgeRunning = false;
+let lanDiscovery: import("node:dgram").Socket | null = null;
 // API Docker chỉ nhận request từ Next.js proxy/loopback. Tin đúng một proxy để
 // req.ip đọc được X-Forwarded-For của thiết bị LAN khi allowlist IP được bật.
 app.set("trust proxy", 1);
@@ -131,6 +133,7 @@ async function start() {
     // eslint-disable-next-line no-console
     console.log(`Property Web API đang chạy tại http://localhost:${PORT} (DB_MODE=${DB_MODE})`);
   });
+  lanDiscovery = startLanDiscovery();
   server.requestTimeout = 30000;
   server.headersTimeout = 15000;
   server.keepAliveTimeout = 5000;
@@ -160,6 +163,7 @@ async function shutdown() {
   if (!admission.ready) return;
   admission.drain();
   if (bridgeTimer) clearInterval(bridgeTimer);
+  lanDiscovery?.close();
   const deadline = setTimeout(() => process.exit(1), 35000);
   deadline.unref();
   await new Promise<void>((resolve) => server ? server.close(() => resolve()) : resolve());

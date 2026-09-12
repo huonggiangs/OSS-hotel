@@ -104,7 +104,7 @@ export default function MobileConnectionsPage() {
           <h1 className="text-2xl font-bold text-gray-950">Thiết bị đăng nhập ứng dụng</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-600">
             Người dùng đăng nhập trực tiếp bằng mã cơ sở, tên đăng nhập và mật khẩu. HQ không cần duyệt;
-            màn hình này dùng để theo dõi và thu hồi phiên của thiết bị bị mất hoặc có dấu hiệu bất thường.
+            màn hình này dùng để theo dõi thiết bị và thời điểm kết nối gần nhất.
           </p>
         </div>
         <button
@@ -125,9 +125,12 @@ export default function MobileConnectionsPage() {
       </div>
 
       <section className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-950">
-        <p className="font-semibold">Cách đăng nhập và bảo vệ tài khoản</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="font-semibold">Cách đăng nhập và bảo vệ tài khoản</p><p className="mt-1 text-xs text-blue-700">App tự tìm PMS trong LAN; bản public dùng domain HTTPS cố định. Người dùng không nhập URL máy chủ.</p></div>
+          <a href="anio://discover" className="rounded-lg bg-blue-600 px-4 py-2 text-center font-semibold text-white hover:bg-blue-700">Mở app và tự kết nối</a>
+        </div>
         <ol className="mt-2 grid gap-2 sm:grid-cols-3">
-          <li><b>1.</b> Nhập mã cơ sở, tên đăng nhập và mật khẩu trong lần đầu.</li>
+          <li><b>1.</b> App tự tìm máy chủ; nhập mã cơ sở, tên đăng nhập và mật khẩu trong lần đầu.</li>
           <li><b>2.</b> Hệ thống ghi nhận mã thiết bị và tự đăng nhập ở các lần sau.</li>
           <li><b>3.</b> HQ dùng trang này để thống kê thiết bị và thời điểm hoạt động gần nhất.</li>
         </ol>

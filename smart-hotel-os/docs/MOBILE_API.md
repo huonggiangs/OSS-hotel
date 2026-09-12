@@ -2,6 +2,8 @@
 
 API mobile dùng chung với PMS, đặt sau gateway `3100` (LAN) hoặc HTTPS ở môi trường public. Mobile không truy cập PostgreSQL, Edge Node hay service nội bộ trực tiếp.
 
+App không yêu cầu người dùng nhập địa chỉ máy chủ. Bản public dùng endpoint HTTPS cố định từ cấu hình build; trong LAN app phát UDP `ANIO_DISCOVER_V1` tới cổng `53535`, lấy IP nguồn của phản hồi rồi xác minh bằng `GET /api/backend/api/v1/mobile/discovery` trước khi đăng nhập. Endpoint đã xác minh gần nhất được lưu và tự thay khi người dùng đổi mạng.
+
 ## Xác thực
 
 ```http

@@ -64,8 +64,10 @@ services:
       EDGE_NODE_URL: "http://host.docker.internal:4200"
       PORT: "4100"
       WEB_ORIGIN: "*"
+      LAN_DISCOVERY_PORT: "53535"
     ports:
       - "127.0.0.1:4100:4100"
+      - "53535:53535/udp"
     volumes:
       - property_web_maintenance_uploads:/app/apps/api/uploads
     healthcheck:

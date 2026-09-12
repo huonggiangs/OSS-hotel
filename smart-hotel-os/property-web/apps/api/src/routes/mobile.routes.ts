@@ -21,6 +21,12 @@ import { assertLoginAllowed, recordLoginAttempt } from "../lib/loginProtection";
 // endpoint nghiệp vụ hiện có với cùng access token.
 export const mobileRouter = Router();
 
+// Endpoint không chứa dữ liệu tenant, chỉ dùng để app xác minh đúng dịch vụ
+// trước khi gửi thông tin đăng nhập tới endpoint vừa tự phát hiện.
+mobileRouter.get("/discovery", (_req, res) => {
+  res.json({ service: "ANIO_PMS", api_version: 1, transports: ["HTTPS", "LAN_DISCOVERY"], server_time: new Date().toISOString() });
+});
+
 const deviceLoginSchema = z.object({
   propertyCode: z.string().trim().regex(/^\d{6}$/, "Mã cơ sở phải gồm đúng 6 chữ số."),
   username: z.string().trim().min(1).max(320),

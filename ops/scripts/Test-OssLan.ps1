@@ -68,5 +68,28 @@ foreach ($ip in $lanIps) {
     }
 }
 
-Write-Host "`nTừ máy khác cùng Wi-Fi, ưu tiên mở các URL theo tên máy ở trên rồi thử đăng nhập." -ForegroundColor Yellow
-Write-Host "Nếu tên máy không mở được trên thiết bị đó, dùng URL IP vừa in ra hoặc cấu hình DNS nội bộ/DHCP reservation trên router." -ForegroundColor Yellow
+Write-Host "`n=== Tự phát hiện PMS cho mobile ===" -ForegroundColor Cyan
+$udp = [System.Net.Sockets.UdpClient]::new()
+try {
+    $udp.EnableBroadcast = $true
+    $udp.Client.ReceiveTimeout = 4000
+    $nonce = [guid]::NewGuid().ToString()
+    $payload = [Text.Encoding]::UTF8.GetBytes((@{ type = "ANIO_DISCOVER_V1"; nonce = $nonce } | ConvertTo-Json -Compress))
+    $target = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Broadcast, 53535)
+    [void]$udp.Send($payload, $payload.Length, $target)
+    $remote = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Any, 0)
+    $responseBytes = $udp.Receive([ref]$remote)
+    $response = [Text.Encoding]::UTF8.GetString($responseBytes) | ConvertFrom-Json
+    if ($response.service -eq "ANIO_PMS" -and $response.nonce -eq $nonce) {
+        Write-Host "OK   Mobile discovery: $($remote.Address):$($response.port)$($response.apiPath)" -ForegroundColor Green
+    } else {
+        Write-Host "FAIL Mobile discovery: phản hồi không hợp lệ." -ForegroundColor Red
+    }
+} catch {
+    Write-Host "FAIL Mobile discovery UDP 53535 — kiểm tra Docker và rule 'OSS LAN - PMS Discovery (53535)'." -ForegroundColor Red
+} finally {
+    $udp.Dispose()
+}
+
+Write-Host "`nTrên trình duyệt máy khác, có thể dùng URL theo tên máy hoặc IP ở trên." -ForegroundColor Yellow
+Write-Host "Ứng dụng ANIO tự tìm IP PMS qua UDP 53535; người dùng không nhập địa chỉ máy chủ." -ForegroundColor Yellow
