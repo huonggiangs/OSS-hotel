@@ -31,3 +31,4 @@ backups/
 .kotlin/
 smart-hotel-os/mobile/android-owner/.gradle/
 smart-hotel-os/mobile/android-owner/local.properties
+smart-hotel-os/mobile/*-preview.png

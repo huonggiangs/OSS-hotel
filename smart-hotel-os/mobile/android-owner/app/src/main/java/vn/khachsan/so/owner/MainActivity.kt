@@ -2,6 +2,7 @@ package vn.khachsan.so.owner
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -12,6 +13,7 @@ import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.*
 import org.json.JSONArray
 import org.json.JSONObject
@@ -26,14 +28,14 @@ private enum class AppPage { DASHBOARD, ROOMS, BOOKINGS, ALERTS, ACCOUNT }
 class MainActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
     private val api = MobileApi()
-    private val primary = Color.rgb(40, 74, 177)
-    private val success = Color.rgb(0, 168, 74)
-    private val warning = Color.rgb(232, 151, 0)
-    private val danger = Color.rgb(204, 47, 66)
-    private val ink = Color.rgb(20, 29, 55)
-    private val muted = Color.rgb(102, 112, 139)
+    private val primary = Color.rgb(38, 99, 218)
+    private val success = Color.rgb(0, 194, 120)
+    private val warning = Color.rgb(255, 171, 15)
+    private val danger = Color.rgb(232, 48, 71)
+    private val ink = Color.rgb(7, 14, 44)
+    private val muted = Color.rgb(104, 116, 153)
     private val surface = Color.WHITE
-    private val canvasColor = Color.rgb(246, 248, 255)
+    private val canvasColor = Color.rgb(244, 248, 255)
 
     private lateinit var content: LinearLayout
     private lateinit var apiInput: EditText
@@ -48,9 +50,13 @@ class MainActivity : Activity() {
     private var lastRooms = JSONArray()
     private var roomStatusFilter: String? = null
     private var pendingBookingRoomId: String? = null
+    private var alertBadgeCount = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = canvasColor
+        window.navigationBarColor = surface
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         apiBase = getSharedPreferences("anio", MODE_PRIVATE).getString("api_base", apiBase) ?: apiBase
         showLogin()
     }
@@ -100,10 +106,10 @@ class MainActivity : Activity() {
         currentPage = page
         val root = vertical().apply { setBackgroundColor(canvasColor) }
         val scroll = ScrollView(this).apply { isFillViewport = true }
-        content = vertical().apply { setPadding(dp(16), dp(22), dp(16), dp(22)) }
+        content = vertical().apply { setPadding(dp(16), dp(30), dp(16), dp(24)) }
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        root.addView(bottomNavigation(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(72)))
+        root.addView(bottomNavigation(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(76)))
         setContentView(root)
         when (page) {
             AppPage.DASHBOARD -> loadDashboard()
@@ -117,14 +123,28 @@ class MainActivity : Activity() {
     private fun header(title: String, showBell: Boolean = true) {
         val row = horizontal(Gravity.CENTER_VERTICAL)
         val left = vertical()
-        left.addView(label(title, 28f, true, ink))
-        left.addView(actionButton(propertyName(), 0, false) { chooseProperty() }.apply {
-            gravity = Gravity.START or Gravity.CENTER_VERTICAL
-            setPadding(0, 0, dp(8), 0)
-        }, matchWrap(top = 2))
+        left.addView(label(title, 30f, true, ink))
+        val property = label(propertyName(), 16f, false, Color.rgb(47, 82, 150)).apply {
+            setPadding(0, dp(3), dp(8), dp(3)); isClickable = true
+            contentDescription = "Đổi cơ sở"
+            setOnClickListener { chooseProperty() }
+        }
+        left.addView(property, matchWrap(top = 1))
         row.addView(left, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        if (showBell) row.addView(actionButton("🔔", 0, false) { showPage(AppPage.ALERTS) }, LinearLayout.LayoutParams(dp(52), dp(52)))
-        content.addView(row, matchWrap(bottom = 16))
+        if (showBell) {
+            val bell = FrameLayout(this).apply {
+                isClickable = true; isFocusable = true; contentDescription = "Mở cảnh báo"
+                setOnClickListener { showPage(AppPage.ALERTS) }
+            }
+            bell.addView(AnioIconView(this, AnioIcon.BELL, primary), FrameLayout.LayoutParams(dp(38), dp(38), Gravity.CENTER))
+            val badge = label(if (alertBadgeCount > 9) "9+" else alertBadgeCount.toString(), 10f, true, Color.WHITE).apply {
+                gravity = Gravity.CENTER; background = background(danger, 12f)
+                visibility = if (alertBadgeCount > 0) View.VISIBLE else View.GONE
+            }
+            bell.addView(badge, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.TOP or Gravity.END))
+            row.addView(bell, LinearLayout.LayoutParams(dp(54), dp(54)))
+        }
+        content.addView(row, matchWrap(bottom = 14))
     }
 
     private fun loadDashboard() {
@@ -140,6 +160,9 @@ class MainActivity : Activity() {
 
     private fun renderDashboard(overview: JSONObject, queue: JSONObject) {
         content.removeAllViews()
+        alertBadgeCount = (queue.optJSONArray("housekeeping")?.length() ?: 0) +
+            (queue.optJSONArray("device_alerts")?.length() ?: 0) +
+            (queue.optJSONArray("maintenance")?.length() ?: 0)
         header("Tổng quan")
         addDashboardSearch()
         val summary = overview.optJSONObject("summary") ?: JSONObject()
@@ -150,30 +173,28 @@ class MainActivity : Activity() {
         val occupancy = if (totalRooms == 0) 0 else occupied * 100 / totalRooms
         val financial = summary.optJSONArray("financial_daily") ?: JSONArray()
         val todayRevenue = if (financial.length() == 0) 0.0 else financial.optJSONObject(financial.length() - 1)?.optDouble("revenue") ?: 0.0
-        val queueCount = (queue.optJSONArray("housekeeping")?.length() ?: 0) + (queue.optJSONArray("device_alerts")?.length() ?: 0) + (queue.optJSONArray("maintenance")?.length() ?: 0)
-        val kpis = listOf(
-            Triple("Công suất phòng", "$occupancy%", "$occupied/$totalRooms phòng"),
-            Triple("Doanh thu hôm nay", money(todayRevenue), "Từ giao dịch đã ghi nhận"),
-            Triple("Phòng đang ở", "$occupied phòng", "Trên tổng $totalRooms phòng"),
-            Triple("Việc cần xử lý", "$queueCount việc", "Cảnh báo, dọn phòng, bảo trì"),
-        )
-        addTwoColumnCards(kpis.mapIndexed { index, item -> kpiCard(item.first, item.second, item.third, listOf(success, primary, primary, warning)[index]) })
-
-        content.addView(sectionTitle("Thao tác nhanh"), matchWrap(top = 4, bottom = 8))
+        val queueCount = alertBadgeCount
         addTwoColumnCards(listOf(
-            quickAction("Nhận phòng", android.R.drawable.ic_input_add) { roomStatusFilter = "VACANT"; showPage(AppPage.ROOMS) },
-            quickAction("Đặt phòng", android.R.drawable.ic_menu_my_calendar) { pendingBookingRoomId = ""; showPage(AppPage.BOOKINGS) },
-            quickAction("Trạng thái phòng", android.R.drawable.ic_menu_view) { roomStatusFilter = null; showPage(AppPage.ROOMS) },
-            quickAction("Báo hỏng", android.R.drawable.ic_menu_manage) { openMaintenanceForm() },
+            kpiCard("Công suất phòng", "$occupancy%", "$occupied/$totalRooms phòng", AnioIcon.BARS, success, Color.rgb(225, 249, 237)),
+            kpiCard("Doanh thu hôm nay", money(todayRevenue), "Đã ghi nhận", AnioIcon.COINS, primary, Color.rgb(230, 239, 255)),
+            kpiCard("Phòng đang ở", "$occupied phòng", "Trên tổng $totalRooms phòng", AnioIcon.BED, primary, Color.rgb(230, 242, 255)),
+            kpiCard("Việc cần xử lý", "$queueCount việc", "Cảnh báo và bảo trì", AnioIcon.TASKS, warning, Color.rgb(255, 245, 211)),
+        ))
+
+        addQuickActionRow(listOf(
+            quickAction("Nhận phòng", AnioIcon.USER_ADD) { roomStatusFilter = "VACANT"; showPage(AppPage.ROOMS) },
+            quickAction("Đặt phòng", AnioIcon.CALENDAR) { pendingBookingRoomId = ""; showPage(AppPage.BOOKINGS) },
+            quickAction("Trạng thái\nphòng", AnioIcon.BED) { roomStatusFilter = null; showPage(AppPage.ROOMS) },
+            quickAction("Báo hỏng", AnioIcon.WRENCH) { openMaintenanceForm() },
         ))
 
         val roomCard = card()
         val roomHeader = horizontal(Gravity.CENTER_VERTICAL)
         roomHeader.addView(sectionTitle("Trạng thái phòng"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        roomHeader.addView(linkButton("Xem phòng ›") { showPage(AppPage.ROOMS) })
+        roomHeader.addView(linkButton("Tình trạng phòng  ›") { showPage(AppPage.ROOMS) })
         roomCard.addView(roomHeader)
         val chartRow = horizontal(Gravity.CENTER_VERTICAL)
-        chartRow.addView(RoomDonutView(this).apply { setCounts(rooms.optInt("VACANT"), occupied, rooms.optInt("DIRTY"), rooms.optInt("MAINTENANCE")) }, LinearLayout.LayoutParams(dp(150), dp(150)))
+        chartRow.addView(RoomDonutView(this).apply { setCounts(rooms.optInt("VACANT"), occupied, rooms.optInt("DIRTY"), rooms.optInt("MAINTENANCE")) }, LinearLayout.LayoutParams(dp(132), dp(132)))
         val legend = vertical()
         addLegend(legend, "Trống", rooms.optInt("VACANT"), totalRooms, success)
         addLegend(legend, "Đang ở", occupied, totalRooms, primary)
@@ -186,11 +207,12 @@ class MainActivity : Activity() {
         val financeCard = card()
         val financeHeader = horizontal(Gravity.CENTER_VERTICAL)
         financeHeader.addView(sectionTitle("Thu nhập & chi phí"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        financeHeader.addView(chip("30 ngày", primary))
+        financeHeader.addView(chip("7 ngày ⌄", primary))
         financeCard.addView(financeHeader)
         val revenues = mutableListOf<Float>()
         val expenses = mutableListOf<Float>()
-        for (index in 0 until financial.length()) {
+        val financialStart = (financial.length() - 7).coerceAtLeast(0)
+        for (index in financialStart until financial.length()) {
             revenues.add(financial.optJSONObject(index)?.optDouble("revenue")?.toFloat() ?: 0f)
             expenses.add(financial.optJSONObject(index)?.optDouble("expense")?.toFloat() ?: 0f)
         }
@@ -209,22 +231,38 @@ class MainActivity : Activity() {
         alertCard.addView(alertHeader)
         if (firstAlert == null) alertCard.addView(label("Không có việc tồn đọng.", 13f, false, success), matchWrap(top = 10))
         else {
-            alertCard.addView(label(firstAlert.first, 14f, true, ink), matchWrap(top = 10))
-            alertCard.addView(label(firstAlert.second, 12f, false, muted))
+            val row = horizontal(Gravity.CENTER_VERTICAL)
+            row.addView(label("!", 18f, true, Color.WHITE).apply {
+                gravity = Gravity.CENTER; background = background(Color.rgb(248, 220, 225), 24f)
+                setTextColor(danger)
+            }, LinearLayout.LayoutParams(dp(46), dp(46)))
+            val text = vertical().apply {
+                addView(label(firstAlert.first, 13.5f, true, ink))
+                addView(label(firstAlert.second, 11.5f, false, muted), matchWrap(top = 3))
+            }
+            row.addView(text, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(12) })
+            row.addView(chip("Cần xử lý", danger))
+            alertCard.addView(row, matchWrap(top = 10))
             alertCard.setOnClickListener { showPage(AppPage.ALERTS) }
         }
         content.addView(alertCard, matchWrap(top = 12))
     }
 
     private fun addDashboardSearch() {
-        val searchCard = card()
-        val input = field("Tìm khách hoặc mã đặt phòng", "")
+        val searchCard = card().apply { setPadding(dp(14), dp(5), dp(14), dp(5)) }
+        val row = horizontal(Gravity.CENTER_VERTICAL)
+        val searchIcon = AnioIconView(this, AnioIcon.SEARCH, Color.rgb(52, 91, 169)).apply {
+            isClickable = true; isFocusable = true; contentDescription = "Tìm kiếm"
+        }
+        val input = field("Tìm khách hoặc mã đặt phòng", "").apply {
+            setBackgroundColor(Color.TRANSPARENT); isSingleLine = true; imeOptions = EditorInfo.IME_ACTION_SEARCH
+            setPadding(dp(8), 0, 0, 0); textSize = 15f
+        }
         val results = vertical()
-        searchCard.addView(input)
-        searchCard.addView(actionButton("Tìm kiếm", android.R.drawable.ic_menu_search, true) {
+        fun performSearch() {
             val query = input.text.toString().trim()
-            if (query.length < 2) return@actionButton toast("Nhập ít nhất 2 ký tự.")
-            val token = accessToken ?: return@actionButton
+            if (query.length < 2) return toast("Nhập ít nhất 2 ký tự.")
+            val token = accessToken ?: return
             runTask({ api.search(apiBase, token, selectedPropertyId, query) }) { data ->
                 results.removeAllViews()
                 val customers = data.optJSONArray("customers") ?: JSONArray()
@@ -239,8 +277,15 @@ class MainActivity : Activity() {
                     results.addView(linkButton("${item.optString("code")} · ${item.optString("guest_name", "Chưa có tên")}") { openBookingDetails(item.optString("id")) })
                 }
             }
-        }, matchWrap(top = 8))
-        searchCard.addView(results, matchWrap(top = 8))
+        }
+        searchIcon.setOnClickListener { performSearch() }
+        input.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) { performSearch(); true } else false
+        }
+        row.addView(searchIcon, LinearLayout.LayoutParams(dp(42), dp(42)))
+        row.addView(input, LinearLayout.LayoutParams(0, dp(54), 1f))
+        searchCard.addView(row)
+        searchCard.addView(results)
         content.addView(searchCard, matchWrap(bottom = 12))
     }
 
@@ -604,7 +649,7 @@ class MainActivity : Activity() {
         content.addView(actionButton("Đăng xuất", android.R.drawable.ic_lock_power_off, false) {
             accessToken = null; currentUser = JSONObject(); properties = JSONArray(); selectedPropertyId = null; showLogin()
         })
-        content.addView(label("ANIO Chủ cơ sở · phiên bản 0.2.0", 11f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 18))
+        content.addView(label("ANIO Chủ cơ sở · phiên bản ${appVersion()}", 11f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 18))
     }
 
     private fun chooseProperty() {
@@ -622,34 +667,73 @@ class MainActivity : Activity() {
     }
 
     private fun bottomNavigation(): View {
-        val bar = horizontal(Gravity.CENTER).apply { setPadding(dp(4), dp(5), dp(4), dp(4)); background = background(surface, 0f, Color.rgb(229, 233, 242)) }
+        val bar = horizontal(Gravity.CENTER).apply {
+            setPadding(dp(4), dp(6), dp(4), dp(4)); background = background(surface, 0f, Color.rgb(233, 237, 246))
+            elevation = dp(8).toFloat()
+        }
         val items = listOf(
-            Triple(AppPage.DASHBOARD, "Trang chủ", android.R.drawable.ic_menu_view),
-            Triple(AppPage.ROOMS, "Phòng", android.R.drawable.ic_menu_agenda),
-            Triple(AppPage.BOOKINGS, "Đặt phòng", android.R.drawable.ic_menu_my_calendar),
-            Triple(AppPage.ALERTS, "Thông báo", android.R.drawable.ic_dialog_alert),
-            Triple(AppPage.ACCOUNT, "Tài khoản", android.R.drawable.ic_menu_myplaces),
+            Triple(AppPage.DASHBOARD, "Trang chủ", AnioIcon.HOME),
+            Triple(AppPage.ROOMS, "Phòng", AnioIcon.BED),
+            Triple(AppPage.BOOKINGS, "Đặt phòng", AnioIcon.CALENDAR),
+            Triple(AppPage.ALERTS, "Cảnh báo", AnioIcon.BELL),
+            Triple(AppPage.ACCOUNT, "Tài khoản", AnioIcon.USER),
         )
         items.forEach { (page, title, icon) ->
-            val button = Button(this).apply {
-                text = title; textSize = 9.5f; isAllCaps = false; gravity = Gravity.CENTER
-                setTextColor(if (page == currentPage) primary else muted)
-                setCompoundDrawablesWithIntrinsicBounds(0, icon, 0, 0)
-                compoundDrawablePadding = dp(2); setBackgroundColor(Color.TRANSPARENT)
-                setPadding(0, 0, 0, 0); minWidth = 0; minimumWidth = 0
-                setOnClickListener { if (page != currentPage) showPage(page) }
+            val active = page == currentPage
+            val item = vertical().apply {
+                gravity = Gravity.CENTER; isClickable = true; isFocusable = true
+                contentDescription = "Mở $title"
+                setOnClickListener { if (!active) showPage(page) }
             }
-            bar.addView(button, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+            val iconHolder = FrameLayout(this)
+            iconHolder.addView(AnioIconView(this, icon, if (active) primary else muted), FrameLayout.LayoutParams(dp(32), dp(32), Gravity.CENTER))
+            if (page == AppPage.ALERTS && alertBadgeCount > 0) {
+                val badge = label(if (alertBadgeCount > 9) "9+" else alertBadgeCount.toString(), 8.5f, true, Color.WHITE).apply {
+                    gravity = Gravity.CENTER; background = background(danger, 10f)
+                }
+                iconHolder.addView(badge, FrameLayout.LayoutParams(dp(19), dp(19), Gravity.TOP or Gravity.END))
+            }
+            item.addView(iconHolder, LinearLayout.LayoutParams(dp(42), dp(38)))
+            item.addView(label(title, 10.5f, active, if (active) primary else muted).apply { gravity = Gravity.CENTER })
+            bar.addView(item, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
         }
         return bar
     }
 
-    private fun kpiCard(title: String, value: String, detail: String, accent: Int): View = card().apply {
-        addView(label(title, 12f, false, muted)); addView(label(value, 21f, true, ink), matchWrap(top = 4)); addView(label(detail, 10.5f, false, accent), matchWrap(top = 3))
+    private fun kpiCard(title: String, value: String, detail: String, icon: AnioIcon, accent: Int, iconBackground: Int): View = card().apply {
+        setPadding(dp(12), dp(13), dp(10), dp(13))
+        val row = horizontal(Gravity.CENTER_VERTICAL)
+        val iconBox = FrameLayout(this@MainActivity).apply { background = background(iconBackground, 13f) }
+        iconBox.addView(AnioIconView(this@MainActivity, icon, accent), FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER))
+        row.addView(iconBox, LinearLayout.LayoutParams(dp(50), dp(50)))
+        val text = vertical().apply {
+            addView(label(title, 11.5f, false, Color.rgb(53, 72, 119)))
+            addView(label(value, if (value.length > 12) 17f else 21f, true, ink), matchWrap(top = 1))
+            addView(label(detail, 10.5f, false, if (accent == warning) danger else muted), matchWrap(top = 1))
+        }
+        row.addView(text, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(11) })
+        addView(row)
     }
 
-    private fun quickAction(title: String, icon: Int, action: () -> Unit): View = actionButton(title, icon, false, action).apply {
-        minHeight = dp(76); gravity = Gravity.CENTER; setTextColor(ink); setTypeface(typeface, Typeface.BOLD); background = background(surface, 14f, Color.rgb(231, 235, 245))
+    private fun quickAction(title: String, icon: AnioIcon, action: () -> Unit): View = vertical().apply {
+        gravity = Gravity.CENTER; setPadding(dp(4), dp(10), dp(4), dp(8)); background = background(surface, 14f)
+        elevation = dp(1).toFloat(); isClickable = true; isFocusable = true; contentDescription = title.replace("\n", " ")
+        setOnClickListener { action() }
+        val iconBox = FrameLayout(this@MainActivity).apply { background = background(primary, 13f) }
+        iconBox.addView(AnioIconView(this@MainActivity, icon, Color.WHITE), FrameLayout.LayoutParams(dp(36), dp(36), Gravity.CENTER))
+        addView(iconBox, LinearLayout.LayoutParams(dp(56), dp(56)))
+        addView(label(title, 11f, true, ink).apply { gravity = Gravity.CENTER }, matchWrap(top = 7))
+    }
+
+    private fun addQuickActionRow(actions: List<View>) {
+        val row = horizontal().apply { weightSum = 4f }
+        actions.forEachIndexed { index, action ->
+            row.addView(action, LinearLayout.LayoutParams(0, dp(112), 1f).apply {
+                leftMargin = if (index == 0) 0 else dp(3)
+                rightMargin = if (index == actions.lastIndex) 0 else dp(3)
+            })
+        }
+        content.addView(row, matchWrap(bottom = 14))
     }
 
     private fun alertItem(title: String, detail: String, accent: Int): LinearLayout = card().apply {
@@ -719,20 +803,29 @@ class MainActivity : Activity() {
     private fun shortDate(value: String): String = value.take(10).takeIf { it.isNotBlank() } ?: "—"
     private fun validDate(value: String): Boolean = runCatching { LocalDate.parse(value, DateTimeFormatter.ISO_DATE) }.isSuccess
     private fun money(value: Double): String = NumberFormat.getNumberInstance(Locale("vi", "VN")).format(value) + "đ"
+    @Suppress("DEPRECATION")
+    private fun appVersion(): String = packageManager.getPackageInfo(packageName, 0).versionName ?: "—"
 
     private fun vertical(): LinearLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     private fun horizontal(gravityValue: Int = Gravity.TOP): LinearLayout = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = gravityValue }
-    private fun card(): LinearLayout = vertical().apply { setPadding(dp(16), dp(15), dp(16), dp(15)); background = background(surface, 15f, Color.rgb(231, 235, 245)) }
+    private fun card(): LinearLayout = vertical().apply {
+        setPadding(dp(16), dp(15), dp(16), dp(15)); background = background(surface, 16f)
+        elevation = dp(1).toFloat()
+    }
     private fun label(value: String, size: Float, bold: Boolean, color: Int): TextView = TextView(this).apply { text = value; textSize = size; setTextColor(color); if (bold) setTypeface(typeface, Typeface.BOLD); setLineSpacing(0f, 1.08f) }
-    private fun sectionTitle(value: String): TextView = label(value, 16f, true, ink)
+    private fun sectionTitle(value: String): TextView = label(value, 18f, true, ink)
     private fun field(hintValue: String, initial: String, password: Boolean = false, number: Boolean = false): EditText = EditText(this).apply {
-        hint = hintValue; setText(initial); textSize = 14f; setTextColor(ink); setHintTextColor(muted); setPadding(dp(13), dp(10), dp(13), dp(10)); background = background(Color.WHITE, 12f, Color.rgb(216, 222, 236))
+        hint = hintValue; setText(initial); textSize = 14f; setTextColor(ink); setHintTextColor(Color.rgb(132, 143, 174)); setPadding(dp(13), dp(10), dp(13), dp(10)); background = background(Color.WHITE, 13f, Color.rgb(222, 229, 242))
         inputType = when { password -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD; number -> InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL; else -> InputType.TYPE_CLASS_TEXT }
     }
     private fun actionButton(title: String, icon: Int = 0, filled: Boolean = false, action: () -> Unit): Button = Button(this).apply {
-        text = title; textSize = 12.5f; isAllCaps = false; minHeight = dp(46); setPadding(dp(10), 0, dp(10), 0)
+        text = title; textSize = 12.5f; isAllCaps = false; minHeight = dp(46); setPadding(dp(10), 0, dp(10), 0); stateListAnimator = null
         setTextColor(if (filled) Color.WHITE else primary); background = background(if (filled) primary else Color.WHITE, 12f, if (filled) primary else Color.rgb(211, 219, 239))
-        if (icon != 0) { setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0); compoundDrawablePadding = dp(6) }
+        if (filled) setTypeface(typeface, Typeface.BOLD)
+        if (icon != 0) {
+            setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0); compoundDrawablePadding = dp(6)
+            compoundDrawableTintList = ColorStateList.valueOf(if (filled) Color.WHITE else primary)
+        }
         setOnClickListener { action() }
     }
     private fun linkButton(title: String, action: () -> Unit): Button = actionButton(title, 0, false, action).apply { setBackgroundColor(Color.TRANSPARENT); minHeight = dp(38); setPadding(dp(6), 0, dp(6), 0) }

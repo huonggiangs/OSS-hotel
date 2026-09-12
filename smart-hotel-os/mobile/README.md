@@ -14,7 +14,7 @@ Android/iOS gọi qua gateway PMS, không truy cập PostgreSQL và không gọi
 
 `android-owner` là ứng dụng native Kotlin, không dùng DB cục bộ. Với emulator, địa chỉ mặc định là `http://10.0.2.2:3100/api/backend`; thiết bị Android trong LAN dùng `http://<IP-máy-chạy-Docker>:3100/api/backend`. Production bắt buộc dùng HTTPS và tắt cleartext trong manifest.
 
-Phiên bản 0.2.0 có năm menu sử dụng dữ liệu thật:
+Phiên bản 0.2.1 có năm menu sử dụng dữ liệu thật:
 
 - **Trang chủ:** KPI, tìm khách/mã đặt phòng, biểu đồ phòng, biểu đồ thu chi và cảnh báo cần xử lý.
 - **Phòng:** lọc/tìm phòng, xem chi tiết, nhận phòng, bật/tắt điện, hoàn tất dọn phòng và báo hỏng.

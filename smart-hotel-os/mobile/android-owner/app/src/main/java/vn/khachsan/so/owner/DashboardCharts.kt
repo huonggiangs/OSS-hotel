@@ -10,9 +10,9 @@ import kotlin.math.max
 
 class RoomDonutView(context: Context) : View(context) {
     private var values = listOf(0f, 0f, 0f, 0f)
-    private val colors = listOf(Color.rgb(0, 200, 83), Color.rgb(40, 74, 177), Color.rgb(250, 181, 5), Color.rgb(204, 47, 66))
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 22f; strokeCap = Paint.Cap.BUTT }
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(20, 29, 55); textAlign = Paint.Align.CENTER; typeface = android.graphics.Typeface.DEFAULT_BOLD }
+    private val colors = listOf(Color.rgb(0, 194, 120), Color.rgb(38, 99, 218), Color.rgb(255, 187, 20), Color.rgb(232, 48, 71))
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = context.resources.displayMetrics.density * 20f; strokeCap = Paint.Cap.BUTT }
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(7, 14, 44); textAlign = Paint.Align.CENTER; typeface = android.graphics.Typeface.DEFAULT_BOLD }
 
     fun setCounts(vacant: Int, occupied: Int, dirty: Int, maintenance: Int) {
         values = listOf(vacant.toFloat(), occupied.toFloat(), dirty.toFloat(), maintenance.toFloat())
@@ -74,7 +74,7 @@ class FinanceLineView(context: Context) : View(context) {
         val top = resources.displayMetrics.density * 10
         val bottom = height - resources.displayMetrics.density * 16
         paint.strokeWidth = 1f
-        paint.color = Color.rgb(233, 236, 243)
+        paint.color = Color.rgb(226, 233, 246)
         repeat(4) { index ->
             val y = top + (bottom - top) * index / 3f
             canvas.drawLine(left, y, right, y, paint)
@@ -97,6 +97,11 @@ class FinanceLineView(context: Context) : View(context) {
         }
         canvas.drawPath(path, paint)
         paint.style = Paint.Style.FILL
+        values.forEachIndexed { index, value ->
+            val x = if (values.size == 1) (left + right) / 2 else left + (right - left) * index / (values.size - 1)
+            val y = bottom - (bottom - top) * value / ceiling
+            canvas.drawCircle(x, y, resources.displayMetrics.density * 3.2f, paint)
+        }
     }
 
     private fun drawSeries(canvas: Canvas, values: List<Float>, ceiling: Float, color: Int, left: Float, right: Float, top: Float, bottom: Float) {

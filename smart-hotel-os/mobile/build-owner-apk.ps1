@@ -90,9 +90,16 @@ if ($LASTEXITCODE -ne 0) { throw "Gradle assembleDebug thất bại với mã $L
 
 $apk = Join-Path $projectDir 'app\build\outputs\apk\debug\app-debug.apk'
 if (-not (Test-Path $apk)) { throw 'Gradle hoàn tất nhưng không thấy file APK đầu ra.' }
-$deliveryApk = Join-Path $PSScriptRoot 'ANIO-Owner-0.2.0-debug.apk'
+$gradleConfig = Get-Content -LiteralPath (Join-Path $projectDir 'app\build.gradle.kts') -Raw
+$versionMatch = [regex]::Match($gradleConfig, 'versionName\s*=\s*"([^"]+)"')
+if (-not $versionMatch.Success) { throw 'Không đọc được versionName từ app/build.gradle.kts.' }
+$versionName = $versionMatch.Groups[1].Value
+$deliveryApk = Join-Path $PSScriptRoot "ANIO-Owner-$versionName-debug.apk"
+$latestApk = Join-Path $PSScriptRoot 'ANIO-Owner-latest-debug.apk'
 Copy-Item -LiteralPath $apk -Destination $deliveryApk -Force
+Copy-Item -LiteralPath $apk -Destination $latestApk -Force
 $hash = (Get-FileHash -LiteralPath $deliveryApk -Algorithm SHA256).Hash
 Write-Output "APK build: $apk"
 Write-Output "APK bàn giao: $deliveryApk"
+Write-Output "APK mới nhất: $latestApk"
 Write-Output "SHA256: $hash"
