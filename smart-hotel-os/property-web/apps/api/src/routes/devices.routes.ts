@@ -87,7 +87,7 @@ devicesRouter.get(
 
 devicesRouter.post(
   "/",
-  requireRole("OWNER", "MANAGER"),
+  requireRole("OWNER", "MANAGER", "TECHNICIAN"),
   asyncHandler(async (req, res) => {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
@@ -106,7 +106,7 @@ devicesRouter.post(
 // tạo/tái sử dụng IoT device idempotent theo mã PMS, tránh PMS gọi thẳng IoT.
 devicesRouter.post(
   "/:id/iot-link",
-  requireRole("OWNER", "MANAGER"),
+  requireRole("OWNER", "MANAGER", "TECHNICIAN"),
   asyncHandler(async (req, res) => {
     const parsed = iotLinkSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
@@ -135,7 +135,7 @@ devicesRouter.delete(
 
 devicesRouter.patch(
   "/:id/power",
-  requireRole("OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING"),
+  requireRole("OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING", "TECHNICIAN"),
   asyncHandler(async (req, res) => {
     const parsed = powerSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());

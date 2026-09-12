@@ -4,6 +4,7 @@ import { ApiError, Errors } from "../utils/errors";
 import type { PropertyUserRole } from "../types/domain";
 import { isRequestIpAllowed } from "./ipAllowlist";
 import { propertiesRepo } from "../repositories/properties.repo";
+import { mobileConnectionsRepo } from "../repositories/mobileConnections.repo";
 
 // AuthUser gắn vào req.user sau khi verify JWT — CHỨA propertyId/tenantId vì
 // property_users luôn thuộc về đúng 1 property (đúng nguyên tắc multi-tenant ở
@@ -15,6 +16,7 @@ export interface AuthUser {
   role: PropertyUserRole;
   propertyId: string;
   tenantId: string;
+  mobileConnectionId?: string;
 }
 
 declare global {
@@ -63,6 +65,11 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     return next(Errors.unauthorized());
   }
   try {
+    if (payload.mobileConnectionId) {
+      const approved = await mobileConnectionsRepo.isApproved(payload.mobileConnectionId, payload.id);
+      if (!approved) return next(Errors.unauthorized());
+      void mobileConnectionsRepo.touch(payload.mobileConnectionId).catch(() => undefined);
+    }
     // Ứng dụng chủ cơ sở có thể quản lý nhiều địa điểm bằng một tài khoản.
     // Header chỉ được chấp nhận cho OWNER/MANAGER và luôn kiểm tra cơ sở thuộc
     // cùng tenant trước khi thay đổi phạm vi truy vấn của request.

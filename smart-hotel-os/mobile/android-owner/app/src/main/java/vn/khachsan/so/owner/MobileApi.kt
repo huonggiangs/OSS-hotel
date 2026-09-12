@@ -47,6 +47,38 @@ class MobileApi {
         JSONObject().put("username", username).put("password", password),
     )
 
+    fun requestPairing(
+        base: String,
+        username: String,
+        deviceId: String,
+        deviceName: String,
+        appVersion: String,
+    ): JSONObject = request(
+        base,
+        "/api/v1/mobile/pairing/request",
+        "POST",
+        JSONObject()
+            .put("username", username)
+            .put("platform", "ANDROID")
+            .put("deviceId", deviceId)
+            .put("deviceName", deviceName)
+            .put("appVersion", appVersion),
+    )
+
+    fun pairingStatus(base: String, pairingId: String, pairingSecret: String): JSONObject = request(
+        base,
+        "/api/v1/mobile/pairing/status",
+        "POST",
+        JSONObject().put("pairingId", pairingId).put("pairingSecret", pairingSecret),
+    )
+
+    fun refreshPairing(base: String, pairingId: String, pairingSecret: String): JSONObject = request(
+        base,
+        "/api/v1/mobile/pairing/refresh",
+        "POST",
+        JSONObject().put("pairingId", pairingId).put("pairingSecret", pairingSecret),
+    )
+
     fun me(base: String, token: String, propertyId: String?): JSONObject =
         request(base, "/api/v1/auth/me", token = token, propertyId = propertyId)
 

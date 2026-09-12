@@ -8,6 +8,7 @@ import { requireAuth } from "../middleware/auth";
 import { requireInternalServiceKey } from "../middleware/internalAuth";
 import { ensureDefaultSettingsForProperty } from "../lib/settingsBootstrap";
 import { settingsRepo } from "../repositories/settings.repo";
+import { mobileConnectionsRepo } from "../repositories/mobileConnections.repo";
 
 export const internalRouter = Router();
 
@@ -150,3 +151,50 @@ internalRouter.get(
     res.json({ items: rows, total: rows.length });
   })
 );
+
+const mobileConnectionActionSchema = z.object({
+  hqUserId: z.string().trim().min(1).max(120),
+  note: z.string().trim().max(500).optional(),
+});
+
+// HQ Console là nơi duyệt/thu hồi thiết bị mobile. Secret ghép nối không bao
+// giờ được trả về endpoint nội bộ này; HQ chỉ đối chiếu mã 6 số trên màn hình.
+internalRouter.get(
+  "/mobile-connections",
+  requireInternalServiceKey,
+  asyncHandler(async (req, res) => {
+    const status = typeof req.query.status === "string" && req.query.status ? req.query.status : undefined;
+    const search = typeof req.query.search === "string" && req.query.search ? req.query.search : undefined;
+    const items = await mobileConnectionsRepo.list({ status, search });
+    res.json({
+      items: items.map(({ request_secret_hash: _secret, ...item }) => item),
+      total: items.length,
+      pending: items.filter((item) => item.status === "PENDING").length,
+    });
+  })
+);
+
+for (const [path, status] of [
+  ["approve", "APPROVED"], ["reject", "REJECTED"], ["revoke", "REVOKED"],
+] as const) {
+  internalRouter.post(
+    `/mobile-connections/:id/${path}`,
+    requireInternalServiceKey,
+    asyncHandler(async (req, res) => {
+      const parsed = mobileConnectionActionSchema.safeParse(req.body);
+      if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+      const existing = await mobileConnectionsRepo.findById(req.params.id);
+      if (!existing) throw Errors.notFound("yêu cầu kết nối ứng dụng");
+      if ((path === "approve" || path === "reject") && existing.status !== "PENDING") {
+        throw Errors.conflict(path === "approve" ? "Chỉ có thể duyệt yêu cầu đang chờ." : "Chỉ có thể từ chối yêu cầu đang chờ.");
+      }
+      if (path === "revoke" && existing.status !== "APPROVED") {
+        throw Errors.conflict("Chỉ có thể thu hồi thiết bị đang kết nối.");
+      }
+      const updated = await mobileConnectionsRepo.setStatus(req.params.id, status, parsed.data.hqUserId, parsed.data.note);
+      if (!updated) throw Errors.notFound("yêu cầu kết nối ứng dụng");
+      const { request_secret_hash: _secret, ...safe } = updated;
+      res.json(safe);
+    })
+  );
+}

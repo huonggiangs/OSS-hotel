@@ -11,6 +11,7 @@ const NAV = [
   { href: "/suppliers", label: "Nhà cung cấp" },
   { href: "/customers", label: "Khách hàng" },
   { href: "/hardware-assets", label: "Thiết bị phần cứng" },
+  { href: "/mobile-connections", label: "Kết nối ứng dụng" },
   { href: "/commissions", label: "Hoa hồng" },
   { href: "/purchase-orders", label: "Mua hàng / tồn kho" },
   { href: "/releases", label: "Release Console" },
@@ -34,12 +35,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-64 shrink-0 border-r border-gray-200 bg-white">
+      <aside className="flex min-h-screen w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-5 py-4">
           <p className="text-sm font-semibold text-gray-900">HQ Console</p>
           <p className="text-xs text-gray-500">Smart Hotel Group</p>
         </div>
-        <nav className="space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {NAV.map((item) => {
             const active = pathname?.startsWith(item.href);
             return (
@@ -63,7 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto bg-gray-50 px-8 py-6">{children}</main>
+      <main className="min-w-0 flex-1 overflow-y-auto bg-gray-50 px-8 py-6">{children}</main>
     </div>
   );
 }

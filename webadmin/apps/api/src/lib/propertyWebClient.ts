@@ -66,6 +66,77 @@ export interface ProvisionedProperty {
   setup_steps: string[];
 }
 
+export type MobileConnectionStatus = "PENDING" | "APPROVED" | "REJECTED" | "REVOKED";
+
+export interface MobileConnection {
+  id: string;
+  user_id: string;
+  property_id: string;
+  tenant_id: string;
+  username: string;
+  platform: "ANDROID" | "IOS";
+  device_id: string;
+  device_name: string | null;
+  app_version: string | null;
+  status: MobileConnectionStatus;
+  pairing_code: string;
+  approval_note: string | null;
+  requested_at: string;
+  approved_at: string | null;
+  rejected_at: string | null;
+  revoked_at: string | null;
+  last_seen_at: string | null;
+  full_name: string;
+  role: string;
+  user_status: string;
+  property_name: string;
+}
+
+async function propertyWebJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (!INTERNAL_SERVICE_KEY) throw new Error("INTERNAL_SERVICE_KEY chưa cấu hình.");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const res = await fetch(`${PROPERTY_WEB_API_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Service-Key": INTERNAL_SERVICE_KEY,
+        ...(init.headers ?? {}),
+      },
+      signal: controller.signal,
+    });
+    const body = (await res.json().catch(() => ({}))) as { message?: unknown };
+    if (!res.ok) {
+      throw new Error(typeof body.message === "string" ? body.message : `property-web trả về ${res.status}`);
+    }
+    return body as T;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function fetchMobileConnections(filters: { status?: string; search?: string } = {}) {
+  const params = new URLSearchParams();
+  if (filters.status) params.set("status", filters.status);
+  if (filters.search) params.set("search", filters.search);
+  const query = params.toString();
+  return propertyWebJson<{ items: MobileConnection[]; total: number; pending: number }>(
+    `/api/v1/internal/mobile-connections${query ? `?${query}` : ""}`
+  );
+}
+
+export async function updateMobileConnection(
+  id: string,
+  action: "approve" | "reject" | "revoke",
+  input: { hqUserId: string; note?: string }
+) {
+  return propertyWebJson<MobileConnection>(`/api/v1/internal/mobile-connections/${encodeURIComponent(id)}/${action}`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 /** Tạo idempotent cơ sở + OWNER ở PMS; lỗi được throw để HQ lưu trạng thái retry. */
 export async function provisionProperty(input: {
   tenantId: string;

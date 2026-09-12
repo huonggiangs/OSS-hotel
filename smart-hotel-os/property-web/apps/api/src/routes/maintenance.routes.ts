@@ -58,7 +58,7 @@ maintenanceRouter.get(
 
 maintenanceRouter.post(
   "/",
-  requireRole("OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING"),
+  requireRole("OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING", "TECHNICIAN"),
   asyncHandler(async (req, res) => {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
@@ -78,7 +78,7 @@ maintenanceRouter.post(
 // qua JWT và kiểm tra property_id.
 maintenanceRouter.post(
   "/:id/issues/:issueId/media",
-  requireRole("OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING"),
+  requireRole("OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING", "TECHNICIAN"),
   express.raw({ type: () => true, limit: MAX_MEDIA_BYTES }),
   asyncHandler(async (req, res) => {
     const mime = req.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
@@ -117,7 +117,7 @@ maintenanceRouter.get(
 
 maintenanceRouter.patch(
   "/:id/status",
-  requireRole("OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING"),
+  requireRole("OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING", "TECHNICIAN"),
   asyncHandler(async (req, res) => {
     const parsed = statusSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());

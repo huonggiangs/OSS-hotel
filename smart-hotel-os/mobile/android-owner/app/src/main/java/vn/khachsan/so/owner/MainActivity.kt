@@ -6,7 +6,11 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
@@ -38,64 +42,155 @@ class MainActivity : Activity() {
     private val canvasColor = Color.rgb(244, 248, 255)
 
     private lateinit var content: LinearLayout
-    private lateinit var apiInput: EditText
     private lateinit var userInput: EditText
-    private lateinit var passwordInput: EditText
     private var currentPage = AppPage.DASHBOARD
     private var accessToken: String? = null
-    private var apiBase = "http://10.0.2.2:3100/api/backend"
+    private var apiBase = ""
     private var currentUser = JSONObject()
     private var properties = JSONArray()
+    private var capabilities = JSONArray()
     private var selectedPropertyId: String? = null
     private var lastRooms = JSONArray()
     private var roomStatusFilter: String? = null
     private var pendingBookingRoomId: String? = null
     private var alertBadgeCount = 0
+    private val pairingHandler = Handler(Looper.getMainLooper())
+    private var pairingPollGeneration = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = canvasColor
         window.navigationBarColor = surface
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        apiBase = getSharedPreferences("anio", MODE_PRIVATE).getString("api_base", apiBase) ?: apiBase
-        showLogin()
+        apiBase = defaultApiBase()
+        val preferences = getSharedPreferences("anio", MODE_PRIVATE)
+        val pairingId = preferences.getString("pairing_id", null)
+        val pairingSecret = preferences.getString("pairing_secret", null)
+        if (!pairingId.isNullOrBlank() && !pairingSecret.isNullOrBlank()) resumePairing(pairingId, pairingSecret)
+        else showLogin()
     }
 
     private fun showLogin() {
+        pairingPollGeneration++
+        pairingHandler.removeCallbacksAndMessages(null)
+        val savedUsername = getSharedPreferences("anio", MODE_PRIVATE).getString("username", "").orEmpty()
         val body = vertical().apply { setPadding(dp(24), dp(50), dp(24), dp(24)) }
         body.addView(label("ANIO", 34f, true, ink))
-        body.addView(label("Ứng dụng chủ cơ sở", 19f, true, primary))
-        body.addView(label("Theo dõi phòng, đặt phòng, cảnh báo và vận hành nhiều cơ sở ngay trên điện thoại.", 14f, false, muted), matchWrap(top = 8, bottom = 26))
-        apiInput = field("Địa chỉ API", apiBase)
-        userInput = field("Tên đăng nhập", "")
-        passwordInput = field("Mật khẩu", "", true)
-        body.addView(apiInput, matchWrap(bottom = 12))
-        body.addView(userInput, matchWrap(bottom = 12))
-        body.addView(passwordInput, matchWrap(bottom = 18))
-        body.addView(actionButton("Đăng nhập", android.R.drawable.ic_lock_lock, true) { login() }, matchWrap())
+        body.addView(label("Ứng dụng vận hành cơ sở", 19f, true, primary))
+        body.addView(label("Chỉ cần nhập tên đăng nhập. HQ sẽ duyệt thiết bị và ứng dụng tự mở đúng chức năng của chủ cơ sở, lễ tân, buồng phòng hoặc kỹ thuật viên.", 14f, false, muted), matchWrap(top = 8, bottom = 26))
+        userInput = field("Tên đăng nhập", savedUsername).apply {
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_DONE) { requestPairing(); true } else false
+            }
+        }
+        body.addView(userInput, matchWrap(bottom = 18))
+        body.addView(actionButton("Gửi yêu cầu kết nối", android.R.drawable.ic_lock_lock, true) { requestPairing() }, matchWrap())
+        body.addView(label("Máy chủ được cấu hình tự động · Không cần nhập địa chỉ hay mật khẩu trên điện thoại", 11.5f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 16))
         val scroll = ScrollView(this).apply { isFillViewport = true; setBackgroundColor(canvasColor); addView(body) }
         setContentView(scroll)
     }
 
-    private fun login() {
-        val base = apiInput.text.toString().trim().trimEnd('/')
+    private fun requestPairing() {
         val username = userInput.text.toString().trim()
-        val password = passwordInput.text.toString()
-        if (base.isBlank() || username.isBlank() || password.isBlank()) return toast("Hãy nhập địa chỉ API, tài khoản và mật khẩu.")
-        toast("Đang đăng nhập…")
-        runTask({ api.login(base, username, password) }) { result ->
-            accessToken = result.optString("access_token")
-            currentUser = result.optJSONObject("user") ?: JSONObject()
-            apiBase = base
-            getSharedPreferences("anio", MODE_PRIVATE).edit().putString("api_base", apiBase).apply()
-            loadBootstrap()
+        if (username.isBlank()) return toast("Hãy nhập tên đăng nhập.")
+        toast("Đang gửi yêu cầu tới HQ…")
+        runTask({ api.requestPairing(apiBase, username, deviceId(), deviceName(), appVersion()) }) { result ->
+            val pairingId = result.optString("pairing_id")
+            val pairingSecret = result.optString("pairing_secret")
+            getSharedPreferences("anio", MODE_PRIVATE).edit()
+                .putString("username", username)
+                .putString("pairing_id", pairingId)
+                .putString("pairing_secret", pairingSecret)
+                .apply()
+            showPairingPending(pairingId, pairingSecret, result.optString("pairing_code"), result.optString("property_name"))
         }
+    }
+
+    private fun showPairingPending(pairingId: String, pairingSecret: String, code: String, propertyName: String) {
+        pairingPollGeneration++
+        val generation = pairingPollGeneration
+        pairingHandler.removeCallbacksAndMessages(null)
+        val body = vertical().apply { setPadding(dp(24), dp(50), dp(24), dp(24)) }
+        body.addView(label("Chờ HQ duyệt thiết bị", 26f, true, ink))
+        body.addView(label(propertyName.ifBlank { "Cơ sở lưu trú" }, 15f, true, primary), matchWrap(top = 6))
+        body.addView(label("Đối chiếu mã sau tại HQ → Kết nối ứng dụng", 14f, false, muted), matchWrap(top = 22))
+        val codeView = label(code, 38f, true, primary).apply {
+            gravity = Gravity.CENTER
+            letterSpacing = 0.16f
+            setPadding(dp(16), dp(24), dp(16), dp(24))
+            background = background(Color.WHITE, 18f, Color.rgb(201, 216, 248))
+        }
+        body.addView(codeView, matchWrap(top = 12, bottom = 18))
+        body.addView(label("Sau khi HQ chọn Duyệt thiết bị, ứng dụng sẽ tự đăng nhập. Không chia sẻ mã này với người không phụ trách.", 13f, false, muted), matchWrap(bottom = 18))
+        body.addView(actionButton("Kiểm tra ngay", android.R.drawable.ic_popup_sync, true) {
+            checkPairing(pairingId, pairingSecret, generation, false)
+        })
+        body.addView(actionButton("Đổi tài khoản", android.R.drawable.ic_menu_close_clear_cancel, false) {
+            clearPairing(); showLogin()
+        }, matchWrap(top = 8))
+        val scroll = ScrollView(this).apply { isFillViewport = true; setBackgroundColor(canvasColor); addView(body) }
+        setContentView(scroll)
+        checkPairing(pairingId, pairingSecret, generation, true)
+    }
+
+    private fun resumePairing(pairingId: String, pairingSecret: String) {
+        val body = vertical().apply { gravity = Gravity.CENTER; setPadding(dp(24), dp(50), dp(24), dp(24)); setBackgroundColor(canvasColor) }
+        body.addView(label("ANIO", 32f, true, ink).apply { gravity = Gravity.CENTER })
+        body.addView(label("Đang khôi phục kết nối đã được HQ duyệt…", 14f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 12))
+        setContentView(body)
+        val generation = ++pairingPollGeneration
+        checkPairing(pairingId, pairingSecret, generation, false)
+    }
+
+    private fun checkPairing(pairingId: String, pairingSecret: String, generation: Int, repeatIfPending: Boolean) {
+        if (generation != pairingPollGeneration) return
+        executor.execute {
+            try {
+                val result = api.pairingStatus(apiBase, pairingId, pairingSecret)
+                runOnUiThread {
+                    if (generation != pairingPollGeneration) return@runOnUiThread
+                    when (result.optString("status")) {
+                        "APPROVED" -> {
+                            accessToken = result.optString("access_token")
+                            currentUser = result.optJSONObject("user") ?: JSONObject()
+                            pairingHandler.removeCallbacksAndMessages(null)
+                            loadBootstrap()
+                        }
+                        "PENDING" -> if (repeatIfPending) pairingHandler.postDelayed({
+                            checkPairing(pairingId, pairingSecret, generation, true)
+                        }, 3_000) else showPairingPending(pairingId, pairingSecret, result.optString("pairing_code"), "")
+                        "REJECTED" -> { toast("HQ đã từ chối yêu cầu. Hãy liên hệ người quản trị."); clearPairing(); showLogin() }
+                        "REVOKED" -> { toast("Quyền của thiết bị đã bị thu hồi."); clearPairing(); showLogin() }
+                        else -> { clearPairing(); showLogin() }
+                    }
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    if (generation != pairingPollGeneration) return@runOnUiThread
+                    toast(error.message ?: "Không thể kết nối máy chủ.")
+                    if (repeatIfPending) pairingHandler.postDelayed({
+                        checkPairing(pairingId, pairingSecret, generation, true)
+                    }, 5_000) else showLogin()
+                }
+            }
+        }
+    }
+
+    private fun clearPairing() {
+        accessToken = null
+        currentUser = JSONObject()
+        properties = JSONArray()
+        capabilities = JSONArray()
+        selectedPropertyId = null
+        getSharedPreferences("anio", MODE_PRIVATE).edit().remove("pairing_id").remove("pairing_secret").apply()
     }
 
     private fun loadBootstrap() {
         val token = accessToken ?: return showLogin()
         runTask({ api.bootstrap(apiBase, token, selectedPropertyId) }) { data ->
             properties = data.optJSONArray("properties") ?: JSONArray()
+            capabilities = data.optJSONArray("capabilities") ?: JSONArray()
             selectedPropertyId = data.optString("current_property_id").takeIf { it.isNotBlank() }
                 ?: currentUser.optString("property_id").takeIf { it.isNotBlank() }
             showPage(AppPage.DASHBOARD)
@@ -103,6 +198,9 @@ class MainActivity : Activity() {
     }
 
     private fun showPage(page: AppPage) {
+        pairingPollGeneration++
+        pairingHandler.removeCallbacksAndMessages(null)
+        if (!pageAllowed(page)) return showPage(AppPage.DASHBOARD)
         currentPage = page
         val root = vertical().apply { setBackgroundColor(canvasColor) }
         val scroll = ScrollView(this).apply { isFillViewport = true }
@@ -164,7 +262,7 @@ class MainActivity : Activity() {
             (queue.optJSONArray("device_alerts")?.length() ?: 0) +
             (queue.optJSONArray("maintenance")?.length() ?: 0)
         header("Tổng quan")
-        addDashboardSearch()
+        if (hasCapability("bookings")) addDashboardSearch()
         val summary = overview.optJSONObject("summary") ?: JSONObject()
         val counts = overview.optJSONObject("counts") ?: JSONObject()
         val rooms = counts.optJSONObject("rooms") ?: JSONObject()
@@ -174,24 +272,27 @@ class MainActivity : Activity() {
         val financial = summary.optJSONArray("financial_daily") ?: JSONArray()
         val todayRevenue = if (financial.length() == 0) 0.0 else financial.optJSONObject(financial.length() - 1)?.optDouble("revenue") ?: 0.0
         val queueCount = alertBadgeCount
-        addTwoColumnCards(listOf(
+        val kpis = mutableListOf(
             kpiCard("Công suất phòng", "$occupancy%", "$occupied/$totalRooms phòng", AnioIcon.BARS, success, Color.rgb(225, 249, 237)),
-            kpiCard("Doanh thu hôm nay", money(todayRevenue), "Đã ghi nhận", AnioIcon.COINS, primary, Color.rgb(230, 239, 255)),
             kpiCard("Phòng đang ở", "$occupied phòng", "Trên tổng $totalRooms phòng", AnioIcon.BED, primary, Color.rgb(230, 242, 255)),
             kpiCard("Việc cần xử lý", "$queueCount việc", "Cảnh báo và bảo trì", AnioIcon.TASKS, warning, Color.rgb(255, 245, 211)),
-        ))
+        )
+        if (hasCapability("finance")) kpis.add(1, kpiCard("Doanh thu hôm nay", money(todayRevenue), "Đã ghi nhận", AnioIcon.COINS, primary, Color.rgb(230, 239, 255)))
+        addTwoColumnCards(kpis)
 
-        addQuickActionRow(listOf(
-            quickAction("Nhận phòng", AnioIcon.USER_ADD) { roomStatusFilter = "VACANT"; showPage(AppPage.ROOMS) },
-            quickAction("Đặt phòng", AnioIcon.CALENDAR) { pendingBookingRoomId = ""; showPage(AppPage.BOOKINGS) },
-            quickAction("Trạng thái\nphòng", AnioIcon.BED) { roomStatusFilter = null; showPage(AppPage.ROOMS) },
-            quickAction("Báo hỏng", AnioIcon.WRENCH) { openMaintenanceForm() },
-        ))
+        val quickActions = mutableListOf<View>()
+        if (hasCapability("bookings")) {
+            quickActions += quickAction("Nhận phòng", AnioIcon.USER_ADD) { roomStatusFilter = "VACANT"; showPage(AppPage.ROOMS) }
+            quickActions += quickAction("Đặt phòng", AnioIcon.CALENDAR) { pendingBookingRoomId = ""; showPage(AppPage.BOOKINGS) }
+        }
+        if (hasCapability("rooms")) quickActions += quickAction("Trạng thái\nphòng", AnioIcon.BED) { roomStatusFilter = null; showPage(AppPage.ROOMS) }
+        if (hasCapability("maintenance")) quickActions += quickAction("Báo hỏng", AnioIcon.WRENCH) { openMaintenanceForm() }
+        addQuickActionRow(quickActions)
 
         val roomCard = card()
         val roomHeader = horizontal(Gravity.CENTER_VERTICAL)
         roomHeader.addView(sectionTitle("Trạng thái phòng"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        roomHeader.addView(linkButton("Tình trạng phòng  ›") { showPage(AppPage.ROOMS) })
+        if (hasCapability("rooms")) roomHeader.addView(linkButton("Tình trạng phòng  ›") { showPage(AppPage.ROOMS) })
         roomCard.addView(roomHeader)
         val chartRow = horizontal(Gravity.CENTER_VERTICAL)
         chartRow.addView(RoomDonutView(this).apply { setCounts(rooms.optInt("VACANT"), occupied, rooms.optInt("DIRTY"), rooms.optInt("MAINTENANCE")) }, LinearLayout.LayoutParams(dp(132), dp(132)))
@@ -204,6 +305,7 @@ class MainActivity : Activity() {
         roomCard.addView(chartRow)
         content.addView(roomCard, matchWrap(top = 12))
 
+        if (hasCapability("finance")) {
         val financeCard = card()
         val financeHeader = horizontal(Gravity.CENTER_VERTICAL)
         financeHeader.addView(sectionTitle("Thu nhập & chi phí"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -222,12 +324,13 @@ class MainActivity : Activity() {
         totals.addView(label("● Chi phí  ${money(expenses.sum().toDouble())}", 12f, true, danger), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         financeCard.addView(totals)
         content.addView(financeCard, matchWrap(top = 12))
+        }
 
         val firstAlert = firstQueueItem(queue)
         val alertCard = card()
         val alertHeader = horizontal(Gravity.CENTER_VERTICAL)
         alertHeader.addView(sectionTitle("Cảnh báo cần xử lý"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        alertHeader.addView(linkButton("Xem tất cả ›") { showPage(AppPage.ALERTS) })
+        if (pageAllowed(AppPage.ALERTS)) alertHeader.addView(linkButton("Xem tất cả ›") { showPage(AppPage.ALERTS) })
         alertCard.addView(alertHeader)
         if (firstAlert == null) alertCard.addView(label("Không có việc tồn đọng.", 13f, false, success), matchWrap(top = 10))
         else {
@@ -243,7 +346,7 @@ class MainActivity : Activity() {
             row.addView(text, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(12) })
             row.addView(chip("Cần xử lý", danger))
             alertCard.addView(row, matchWrap(top = 10))
-            alertCard.setOnClickListener { showPage(AppPage.ALERTS) }
+            if (pageAllowed(AppPage.ALERTS)) alertCard.setOnClickListener { showPage(AppPage.ALERTS) }
         }
         content.addView(alertCard, matchWrap(top = 12))
     }
@@ -343,14 +446,14 @@ class MainActivity : Activity() {
         box.addView(label("Giá hiện tại: ${money(room.optDouble("room_type_price"))} · Điện: ${if (room.optBoolean("power_on")) "Đang bật" else "Đang tắt"}", 12f, false, muted), matchWrap(top = 5))
         val actions = mutableListOf<Pair<String, () -> Unit>>()
         actions += "Xem chi tiết" to { showRoomDetails(room) }
-        actions += (if (room.optBoolean("power_on")) "Tắt điện" else "Bật điện") to { changeRoomPower(room) }
+        if (hasCapability("devices")) actions += (if (room.optBoolean("power_on")) "Tắt điện" else "Bật điện") to { changeRoomPower(room) }
         when (room.optString("status")) {
-            "VACANT" -> actions += "Nhận phòng" to { pendingBookingRoomId = room.optString("id"); showPage(AppPage.BOOKINGS) }
-            "OCCUPIED" -> room.optString("active_booking_id").takeIf { it.isNotBlank() && it != "null" }?.let { id -> actions += "Xem lưu trú" to { openBookingDetails(id) } }
-            "DIRTY" -> actions += "Đã dọn xong" to { completeRoom(room) }
-            "MAINTENANCE" -> actions += "Xem cảnh báo" to { showPage(AppPage.ALERTS) }
+            "VACANT" -> if (hasCapability("bookings")) actions += "Nhận phòng" to { pendingBookingRoomId = room.optString("id"); showPage(AppPage.BOOKINGS) }
+            "OCCUPIED" -> if (hasCapability("bookings")) room.optString("active_booking_id").takeIf { it.isNotBlank() && it != "null" }?.let { id -> actions += "Xem lưu trú" to { openBookingDetails(id) } }
+            "DIRTY" -> if (hasCapability("housekeeping") || currentUser.optString("role") in setOf("OWNER", "MANAGER")) actions += "Đã dọn xong" to { completeRoom(room) }
+            "MAINTENANCE" -> if (pageAllowed(AppPage.ALERTS)) actions += "Xem cảnh báo" to { showPage(AppPage.ALERTS) }
         }
-        actions += "Báo hỏng" to { openMaintenanceForm(room.optString("id")) }
+        if (hasCapability("maintenance")) actions += "Báo hỏng" to { openMaintenanceForm(room.optString("id")) }
         addActionGrid(box, actions)
         return box
     }
@@ -633,13 +736,8 @@ class MainActivity : Activity() {
 
         val connection = card()
         connection.addView(sectionTitle("Kết nối máy chủ"))
-        val input = field("Địa chỉ API", apiBase)
-        connection.addView(input, matchWrap(top = 8, bottom = 8))
-        connection.addView(actionButton("Lưu địa chỉ", android.R.drawable.ic_menu_save, true) {
-            val value = input.text.toString().trim().trimEnd('/')
-            if (!value.startsWith("http://") && !value.startsWith("https://")) toast("Địa chỉ phải bắt đầu bằng http:// hoặc https://")
-            else { apiBase = value; getSharedPreferences("anio", MODE_PRIVATE).edit().putString("api_base", value).apply(); toast("Đã lưu địa chỉ API.") }
-        })
+        connection.addView(label("Được HQ cấu hình tự động", 15f, true, success), matchWrap(top = 8))
+        connection.addView(label("Thiết bị này đã được duyệt và sẽ tự kết nối lại. Người dùng không cần nhập địa chỉ máy chủ hoặc mật khẩu.", 12.5f, false, muted), matchWrap(top = 5, bottom = 10))
         connection.addView(actionButton("Kiểm tra kết nối", android.R.drawable.ic_popup_sync, false) {
             val token = accessToken ?: return@actionButton
             runTask({ api.me(apiBase, token, selectedPropertyId) }) { toast("Kết nối thành công với ${it.optString("full_name", "máy chủ PMS")}.") }
@@ -647,9 +745,9 @@ class MainActivity : Activity() {
         content.addView(connection, matchWrap(bottom = 12))
         content.addView(actionButton("Làm mới toàn bộ dữ liệu", android.R.drawable.ic_popup_sync, false) { loadBootstrap() }, matchWrap(bottom = 8))
         content.addView(actionButton("Đăng xuất", android.R.drawable.ic_lock_power_off, false) {
-            accessToken = null; currentUser = JSONObject(); properties = JSONArray(); selectedPropertyId = null; showLogin()
+            confirm("Gỡ kết nối tài khoản khỏi thiết bị này?") { clearPairing(); showLogin() }
         })
-        content.addView(label("ANIO Chủ cơ sở · phiên bản ${appVersion()}", 11f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 18))
+        content.addView(label("ANIO Vận hành · phiên bản ${appVersion()}", 11f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 18))
     }
 
     private fun chooseProperty() {
@@ -677,7 +775,7 @@ class MainActivity : Activity() {
             Triple(AppPage.BOOKINGS, "Đặt phòng", AnioIcon.CALENDAR),
             Triple(AppPage.ALERTS, "Cảnh báo", AnioIcon.BELL),
             Triple(AppPage.ACCOUNT, "Tài khoản", AnioIcon.USER),
-        )
+        ).filter { pageAllowed(it.first) }
         items.forEach { (page, title, icon) ->
             val active = page == currentPage
             val item = vertical().apply {
@@ -800,6 +898,21 @@ class MainActivity : Activity() {
     private fun deviceStatusLabel(status: String) = mapOf("ONLINE" to "Đang kết nối", "OFFLINE" to "Mất kết nối", "ERROR" to "Báo lỗi")[status] ?: status
     private fun stayTypeLabel(value: String) = mapOf("DAILY" to "Theo ngày", "OVERNIGHT" to "Qua đêm", "HOURLY" to "Theo giờ")[value] ?: value
     private fun roleLabel(value: String) = mapOf("OWNER" to "Chủ cơ sở", "MANAGER" to "Quản lý", "RECEPTIONIST" to "Lễ tân", "HOUSEKEEPING" to "Buồng phòng", "TECHNICIAN" to "Kỹ thuật viên")[value] ?: value
+    private fun hasCapability(value: String): Boolean = (0 until capabilities.length()).any { capabilities.optString(it) == value }
+    private fun pageAllowed(page: AppPage): Boolean = when (page) {
+        AppPage.DASHBOARD, AppPage.ACCOUNT -> true
+        AppPage.ROOMS -> hasCapability("rooms")
+        AppPage.BOOKINGS -> hasCapability("bookings")
+        AppPage.ALERTS -> hasCapability("maintenance") || hasCapability("devices") || hasCapability("housekeeping")
+    }
+    private fun defaultApiBase(): String {
+        val emulator = Build.FINGERPRINT.lowercase(Locale.getDefault()).contains("generic") ||
+            Build.MODEL.lowercase(Locale.getDefault()).contains("emulator") ||
+            Build.MODEL.lowercase(Locale.getDefault()).contains("sdk_gphone")
+        return if (emulator) "http://10.0.2.2:3100/api/backend" else "http://sonanio25:3100/api/backend"
+    }
+    private fun deviceId(): String = "android-${Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown-device"}"
+    private fun deviceName(): String = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
     private fun shortDate(value: String): String = value.take(10).takeIf { it.isNotBlank() } ?: "—"
     private fun validDate(value: String): Boolean = runCatching { LocalDate.parse(value, DateTimeFormatter.ISO_DATE) }.isSuccess
     private fun money(value: Double): String = NumberFormat.getNumberInstance(Locale("vi", "VN")).format(value) + "đ"
@@ -859,5 +972,5 @@ class MainActivity : Activity() {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = selected(position)
     }
 
-    override fun onDestroy() { executor.shutdownNow(); super.onDestroy() }
+    override fun onDestroy() { pairingHandler.removeCallbacksAndMessages(null); executor.shutdownNow(); super.onDestroy() }
 }
