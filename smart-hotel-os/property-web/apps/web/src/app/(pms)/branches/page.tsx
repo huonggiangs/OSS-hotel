@@ -14,6 +14,8 @@ interface ApiBranch {
   id: string;
   name: string;
   address: string | null;
+  phone: string | null;
+  login_code: string;
   status: "ACTIVE" | "SUSPENDED";
   room_count: number;
 }
@@ -42,7 +44,7 @@ export default function BranchesPage() {
     }
   }
 
-  async function handleCreate(input: { name: string; address: string }) {
+  async function handleCreate(input: { name: string; address: string; phone: string }) {
     try {
       await api.post("/api/v1/branches", input);
       setShowAdd(false);
@@ -75,7 +77,7 @@ export default function BranchesPage() {
           <table className="w-full min-w-[680px] border-collapse text-[13px]">
             <thead>
               <tr>
-                {["STT", "Tên cơ sở", "Địa chỉ", "Số phòng", "Trạng thái", "Thao tác"].map((h) => (
+                {["STT", "Tên cơ sở", "Mã cơ sở", "Địa chỉ", "Số phòng", "Trạng thái", "Thao tác"].map((h) => (
                   <th key={h} className="border-b border-pms-border px-2 py-2.5 text-left font-medium text-pms-muted">
                     {h}
                   </th>
@@ -87,6 +89,7 @@ export default function BranchesPage() {
                 <tr key={b.id}>
                   <td className="border-b border-pms-divider px-2 py-3">{i + 1}</td>
                   <td className="border-b border-pms-divider px-2 py-3">{b.name}</td>
+                  <td className="border-b border-pms-divider px-2 py-3 font-semibold text-pms-primary">{b.login_code}</td>
                   <td className="border-b border-pms-divider px-2 py-3">{b.address ?? "—"}</td>
                   <td className="border-b border-pms-divider px-2 py-3">{b.room_count}</td>
                   <td

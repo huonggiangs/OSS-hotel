@@ -7,6 +7,7 @@ import { requireAuth, signAccessToken } from "../middleware/auth";
 import { propertyUsersRepo } from "../repositories/propertyUsers.repo";
 import { writeAuditLog } from "../middleware/audit";
 import { isRequestIpAllowed, requestIp } from "../middleware/ipAllowlist";
+import { assertLoginAllowed, recordLoginAttempt } from "../lib/loginProtection";
 
 export const authRouter = Router();
 
@@ -14,8 +15,11 @@ export const authRouter = Router();
 // housekeeping) LẪN email đầy đủ (tương thích ngược) — KHÔNG dùng z.string().email()
 // vì sẽ từ chối tên đăng nhập ngắn không có ký tự "@".
 const loginSchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(1),
+  propertyCode: z.string().trim().regex(/^\d{6}$/, "Mã cơ sở phải gồm đúng 6 chữ số."),
+  username: z.string().trim().min(1).max(320),
+  password: z.string().min(1).max(128),
+  clientType: z.enum(["WEB", "ANDROID", "IOS"]).default("WEB"),
+  deviceId: z.string().trim().max(255).optional(),
 });
 
 authRouter.post(
@@ -24,15 +28,20 @@ authRouter.post(
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
 
-    const { username, password } = parsed.data;
-    const user = await propertyUsersRepo.findByUsernameOrEmail(username);
-    if (!user || user.status !== "ACTIVE") throw Errors.invalidCredentials();
+    const { propertyCode, username, password, clientType, deviceId } = parsed.data;
+    const ip = requestIp(req) || "unknown";
+    await assertLoginAllowed({ propertyCode, identifier: username, ip });
+    const user = await propertyUsersRepo.findForLogin(propertyCode, username);
 
-    const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) throw Errors.invalidCredentials();
+    const ok = user?.status === "ACTIVE" && await bcrypt.compare(password, user.password_hash);
+    if (!user || !ok) {
+      await recordLoginAttempt({ propertyCode, identifier: username, ip, clientType, deviceId, succeeded: false });
+      throw Errors.invalidCredentials();
+    }
     if (!(await isRequestIpAllowed(req, user.property_id))) {
       throw new ApiError(403, "IP_NOT_ALLOWED", `IP ${requestIp(req) || "hiện tại"} không nằm trong danh sách được phép.`);
     }
+    await recordLoginAttempt({ propertyCode, identifier: username, ip, clientType, deviceId, succeeded: true });
 
     const token = signAccessToken({
       id: user.id,
@@ -58,6 +67,7 @@ authRouter.post(
         role: user.role,
         property_id: user.property_id,
         tenant_id: user.tenant_id,
+        property_code: propertyCode,
       },
     });
   })

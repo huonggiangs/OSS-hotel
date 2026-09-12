@@ -23,25 +23,23 @@ mobileConnectionsRouter.get(
 
 const actionSchema = z.object({ note: z.string().trim().max(500).optional() });
 
-for (const action of ["approve", "reject", "revoke"] as const) {
-  mobileConnectionsRouter.post(
-    `/:id/${action}`,
-    asyncHandler(async (req, res) => {
-      const parsed = actionSchema.safeParse(req.body ?? {});
-      if (!parsed.success) throw Errors.validation(parsed.error.flatten());
-      if (!req.user) throw Errors.unauthorized();
-      const result = await updateMobileConnection(req.params.id, action, {
-        hqUserId: req.user.id,
-        note: parsed.data.note,
-      });
-      await writeAuditLog({
-        req,
-        action: `${action.toUpperCase()}_MOBILE_CONNECTION`,
-        entityType: "mobile_connection",
-        entityId: req.params.id,
-        afterData: result,
-      });
-      res.json(result);
-    })
-  );
-}
+mobileConnectionsRouter.post(
+  "/:id/revoke",
+  asyncHandler(async (req, res) => {
+    const parsed = actionSchema.safeParse(req.body ?? {});
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    if (!req.user) throw Errors.unauthorized();
+    const result = await updateMobileConnection(req.params.id, {
+      hqUserId: req.user.id,
+      note: parsed.data.note,
+    });
+    await writeAuditLog({
+      req,
+      action: "REVOKE_MOBILE_CONNECTION",
+      entityType: "mobile_connection",
+      entityId: req.params.id,
+      afterData: result,
+    });
+    res.json(result);
+  })
+);

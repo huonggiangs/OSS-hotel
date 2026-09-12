@@ -17,6 +17,7 @@ export async function sendOnboardingEmail(input: {
   recipient: string;
   ownerName: string;
   propertyName: string;
+  propertyCode: string;
   username: string;
   pmsUrl: string;
 }): Promise<OnboardingEmailResult> {
@@ -42,11 +43,12 @@ export async function sendOnboardingEmail(input: {
         "",
         `Cơ sở ${input.propertyName} đã được khởi tạo trên Smart Hotel OS.`,
         `Đăng nhập: ${input.pmsUrl}`,
+        `Mã cơ sở: ${input.propertyCode}`,
         `Tên đăng nhập: ${input.username}`,
         "Mật khẩu tạm được bàn giao riêng bởi quản trị viên HQ; email này không chứa mật khẩu.",
         "Sau khi đăng nhập, vui lòng đổi mật khẩu và hoàn tất các bước cài đặt cơ sở.",
       ].join("\n"),
-      html: `<p>Xin chào ${escapeHtml(input.ownerName)},</p><p>Cơ sở <strong>${escapeHtml(input.propertyName)}</strong> đã được khởi tạo trên Smart Hotel OS.</p><p>Đăng nhập: <a href="${escapeHtml(input.pmsUrl)}">${escapeHtml(input.pmsUrl)}</a><br>Tên đăng nhập: <strong>${escapeHtml(input.username)}</strong></p><p>Mật khẩu tạm được bàn giao riêng bởi quản trị viên HQ; email này không chứa mật khẩu.</p><p>Vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên và hoàn tất các bước cài đặt cơ sở.</p>`,
+      html: `<p>Xin chào ${escapeHtml(input.ownerName)},</p><p>Cơ sở <strong>${escapeHtml(input.propertyName)}</strong> đã được khởi tạo trên Smart Hotel OS.</p><p>Đăng nhập: <a href="${escapeHtml(input.pmsUrl)}">${escapeHtml(input.pmsUrl)}</a><br>Mã cơ sở: <strong>${escapeHtml(input.propertyCode)}</strong><br>Tên đăng nhập: <strong>${escapeHtml(input.username)}</strong></p><p>Mật khẩu tạm được bàn giao riêng bởi quản trị viên HQ; email này không chứa mật khẩu.</p><p>Vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên và hoàn tất các bước cài đặt cơ sở.</p>`,
     });
     return { status: "SENT", sentAt: new Date().toISOString() };
   } catch (err) {

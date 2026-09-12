@@ -16,7 +16,10 @@ interface MobileConnection {
   device_id: string;
   app_version: string | null;
   status: ConnectionStatus;
-  pairing_code: string;
+  auth_method: string;
+  is_emulator: boolean;
+  attestation_provider: string | null;
+  attestation_verdict: string | null;
   requested_at: string;
   approved_at: string | null;
   revoked_at: string | null;
@@ -26,7 +29,7 @@ interface MobileConnection {
 }
 
 const STATUS_TEXT: Record<ConnectionStatus, string> = {
-  PENDING: "Chờ duyệt",
+  PENDING: "Dữ liệu cũ",
   APPROVED: "Đã kết nối",
   REJECTED: "Đã từ chối",
   REVOKED: "Đã thu hồi",
@@ -54,7 +57,6 @@ function formatDate(value: string | null) {
 
 export default function MobileConnectionsPage() {
   const [items, setItems] = useState<MobileConnection[]>([]);
-  const [pending, setPending] = useState(0);
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,6 @@ export default function MobileConnectionsPage() {
         `/api/v1/mobile-connections${query ? `?${query}` : ""}`
       );
       setItems(result.items);
-      setPending(result.pending);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Không tải được danh sách kết nối ứng dụng.");
     } finally {
@@ -93,27 +94,16 @@ export default function MobileConnectionsPage() {
     setSearch(searchInput.trim());
   }
 
-  async function runAction(item: MobileConnection, action: "approve" | "reject" | "revoke") {
-    const message =
-      action === "approve"
-        ? `Duyệt thiết bị ${item.device_name || item.device_id} cho ${item.full_name}?`
-        : action === "reject"
-          ? `Từ chối yêu cầu của ${item.full_name}? Người dùng phải gửi yêu cầu mới để thử lại.`
-          : `Thu hồi quyền đăng nhập trên ${item.device_name || item.device_id}?`;
+  async function revoke(item: MobileConnection) {
+    const message = `Thu hồi phiên đăng nhập trên ${item.device_name || item.device_id}? Thiết bị sẽ phải đăng nhập lại bằng mật khẩu.`;
     if (!window.confirm(message)) return;
 
     setWorkingId(item.id);
     setError(null);
     setNotice(null);
     try {
-      await api.post(`/api/v1/mobile-connections/${item.id}/${action}`, {});
-      setNotice(
-        action === "approve"
-          ? "Đã duyệt. Ứng dụng sẽ tự đăng nhập với đúng phân quyền."
-          : action === "reject"
-            ? "Đã từ chối yêu cầu kết nối."
-            : "Đã thu hồi. Thiết bị không thể tiếp tục gọi API."
-      );
+      await api.post(`/api/v1/mobile-connections/${item.id}/revoke`, {});
+      setNotice("Đã thu hồi. Thiết bị không thể tiếp tục gọi API và phải đăng nhập lại bằng mật khẩu.");
       await load();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Không cập nhật được kết nối ứng dụng.");
@@ -124,15 +114,17 @@ export default function MobileConnectionsPage() {
 
   const approved = items.filter((item) => item.status === "APPROVED").length;
   const revoked = items.filter((item) => item.status === "REVOKED" || item.status === "REJECTED").length;
+  const android = items.filter((item) => item.platform === "ANDROID").length;
+  const ios = items.filter((item) => item.platform === "IOS").length;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-950">Kết nối ứng dụng Android & iOS</h1>
+          <h1 className="text-2xl font-bold text-gray-950">Thiết bị đăng nhập ứng dụng</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-600">
-            Nhân viên chỉ nhập tên đăng nhập trên ứng dụng. HQ đối chiếu mã 6 số và duyệt thiết bị một lần;
-            vai trò và quyền sử dụng được lấy tự động từ PMS.
+            Người dùng đăng nhập trực tiếp bằng mã cơ sở, tên đăng nhập và mật khẩu. HQ không cần duyệt;
+            màn hình này dùng để theo dõi và thu hồi phiên của thiết bị bị mất hoặc có dấu hiệu bất thường.
           </p>
         </div>
         <button
@@ -146,17 +138,17 @@ export default function MobileConnectionsPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Summary label="Đang chờ duyệt" value={pending} tone="amber" />
         <Summary label="Đang kết nối" value={approved} tone="green" />
-        <Summary label="Đã chặn / từ chối" value={revoked} tone="gray" />
+        <Summary label="Đã thu hồi / dữ liệu cũ" value={revoked} tone="gray" />
+        <Summary label="Android / iOS" value={`${android} / ${ios}`} tone="blue" />
       </div>
 
       <section className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-950">
-        <p className="font-semibold">Cách bàn giao ứng dụng</p>
+        <p className="font-semibold">Cách đăng nhập và bảo vệ tài khoản</p>
         <ol className="mt-2 grid gap-2 sm:grid-cols-3">
-          <li><b>1.</b> Người dùng mở ứng dụng và nhập tên đăng nhập.</li>
-          <li><b>2.</b> Đối chiếu mã 6 số trên điện thoại với danh sách này.</li>
-          <li><b>3.</b> Chọn Duyệt; ứng dụng tự đăng nhập và chỉ hiện chức năng đúng vai trò.</li>
+          <li><b>1.</b> Nhập mã cơ sở, tên đăng nhập và mật khẩu trong lần đầu.</li>
+          <li><b>2.</b> Hệ thống ghi nhận mã thiết bị và tự đăng nhập ở các lần sau.</li>
+          <li><b>3.</b> Nếu mất máy hoặc nghi ngờ truy cập, chọn Thu hồi phiên tại đây.</li>
         </ol>
       </section>
 
@@ -173,9 +165,8 @@ export default function MobileConnectionsPage() {
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
         >
           <option value="">Tất cả trạng thái</option>
-          <option value="PENDING">Chờ duyệt</option>
           <option value="APPROVED">Đã kết nối</option>
-          <option value="REJECTED">Đã từ chối</option>
+          <option value="REJECTED">Dữ liệu cũ đã từ chối</option>
           <option value="REVOKED">Đã thu hồi</option>
         </select>
         <button type="submit" className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700">
@@ -190,8 +181,8 @@ export default function MobileConnectionsPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">Đang tải danh sách...</div>
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
-          <p className="font-semibold text-gray-800">Chưa có yêu cầu phù hợp</p>
-          <p className="mt-1 text-sm text-gray-500">Yêu cầu mới sẽ xuất hiện sau khi người dùng nhập tên đăng nhập trên ứng dụng.</p>
+          <p className="font-semibold text-gray-800">Chưa có thiết bị phù hợp</p>
+          <p className="mt-1 text-sm text-gray-500">Thiết bị sẽ xuất hiện sau lần đăng nhập thành công đầu tiên.</p>
         </div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
@@ -209,11 +200,11 @@ export default function MobileConnectionsPage() {
               </div>
 
               <div className="mt-4 grid gap-3 rounded-lg bg-gray-50 p-4 text-sm sm:grid-cols-2">
-                <Info label="Mã đối chiếu" value={item.pairing_code} prominent />
+                <Info label="Cách xác thực" value={item.auth_method === "PASSWORD" ? "Mã cơ sở + mật khẩu" : "Dữ liệu ghép nối cũ"} />
                 <Info label="Nền tảng" value={item.platform === "IOS" ? "iPhone / iPad" : "Android"} />
                 <Info label="Thiết bị" value={item.device_name || "Chưa nhận diện tên"} />
                 <Info label="Phiên bản ứng dụng" value={item.app_version || "Chưa cung cấp"} />
-                <Info label="Gửi yêu cầu" value={formatDate(item.requested_at)} />
+                <Info label="Đăng nhập lần đầu" value={formatDate(item.requested_at)} />
                 <Info label="Hoạt động gần nhất" value={formatDate(item.last_seen_at)} />
               </div>
 
@@ -221,30 +212,10 @@ export default function MobileConnectionsPage() {
               {item.approval_note && <p className="mt-2 text-sm text-gray-600">Ghi chú: {item.approval_note}</p>}
 
               <div className="mt-4 flex flex-wrap justify-end gap-2">
-                {item.status === "PENDING" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => runAction(item, "reject")}
-                      disabled={workingId === item.id}
-                      className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-                    >
-                      Từ chối
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => runAction(item, "approve")}
-                      disabled={workingId === item.id}
-                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      {workingId === item.id ? "Đang xử lý..." : "Duyệt thiết bị"}
-                    </button>
-                  </>
-                )}
                 {item.status === "APPROVED" && (
                   <button
                     type="button"
-                    onClick={() => runAction(item, "revoke")}
+                    onClick={() => revoke(item)}
                     disabled={workingId === item.id}
                     className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
                   >
@@ -260,8 +231,8 @@ export default function MobileConnectionsPage() {
   );
 }
 
-function Summary({ label, value, tone }: { label: string; value: number; tone: "amber" | "green" | "gray" }) {
-  const toneClass = tone === "amber" ? "text-amber-700" : tone === "green" ? "text-emerald-700" : "text-gray-700";
+function Summary({ label, value, tone }: { label: string; value: number | string; tone: "green" | "gray" | "blue" }) {
+  const toneClass = tone === "green" ? "text-emerald-700" : tone === "blue" ? "text-blue-700" : "text-gray-700";
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <p className="text-sm text-gray-500">{label}</p>
@@ -270,13 +241,11 @@ function Summary({ label, value, tone }: { label: string; value: number; tone: "
   );
 }
 
-function Info({ label, value, prominent = false }: { label: string; value: string; prominent?: boolean }) {
+function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
       <p className="text-xs text-gray-500">{label}</p>
-      <p className={`${prominent ? "text-xl font-black tracking-[0.2em] text-blue-700" : "truncate font-semibold text-gray-800"}`}>
-        {value}
-      </p>
+      <p className="truncate font-semibold text-gray-800">{value}</p>
     </div>
   );
 }

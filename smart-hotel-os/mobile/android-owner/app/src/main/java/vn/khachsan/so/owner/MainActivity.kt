@@ -8,8 +8,6 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
 import android.text.Editable
 import android.text.InputType
@@ -34,6 +32,7 @@ private enum class AppPage { DASHBOARD, ROOMS, BOOKINGS, ALERTS, ACCOUNT }
 class MainActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
     private val api = MobileApi()
+    private lateinit var credentialStore: DeviceCredentialStore
     private val primary = Color.rgb(38, 99, 218)
     private val success = Color.rgb(0, 194, 120)
     private val warning = Color.rgb(255, 171, 15)
@@ -44,7 +43,9 @@ class MainActivity : Activity() {
     private val canvasColor = Color.rgb(244, 248, 255)
 
     private lateinit var content: LinearLayout
+    private lateinit var propertyCodeInput: EditText
     private lateinit var userInput: EditText
+    private lateinit var passwordInput: EditText
     private var currentPage = AppPage.DASHBOARD
     private var accessToken: String? = null
     private var apiBase = ""
@@ -56,136 +57,100 @@ class MainActivity : Activity() {
     private var roomStatusFilter: String? = null
     private var pendingBookingRoomId: String? = null
     private var alertBadgeCount = 0
-    private val pairingHandler = Handler(Looper.getMainLooper())
-    private var pairingPollGeneration = 0
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = canvasColor
         window.navigationBarColor = surface
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         apiBase = defaultApiBase()
+        credentialStore = DeviceCredentialStore(this)
         val preferences = getSharedPreferences("anio", MODE_PRIVATE)
-        val pairingId = preferences.getString("pairing_id", null)
-        val pairingSecret = preferences.getString("pairing_secret", null)
-        if (!pairingId.isNullOrBlank() && !pairingSecret.isNullOrBlank()) resumePairing(pairingId, pairingSecret)
+        preferences.edit().remove("pairing_id").remove("pairing_secret").remove("connection_id").remove("device_secret").apply()
+        val credential = credentialStore.load()
+        if (credential != null) resumeDeviceSession(credential.connectionId, credential.deviceSecret)
         else showLogin()
     }
 
     private fun showLogin() {
-        pairingPollGeneration++
-        pairingHandler.removeCallbacksAndMessages(null)
-        val savedUsername = getSharedPreferences("anio", MODE_PRIVATE).getString("username", "").orEmpty()
+        val preferences = getSharedPreferences("anio", MODE_PRIVATE)
+        val savedPropertyCode = preferences.getString("property_code", "").orEmpty()
+        val savedUsername = preferences.getString("username", "").orEmpty()
         val body = vertical().apply { setPadding(dp(24), dp(50), dp(24), dp(24)) }
         body.addView(label("ANIO", 34f, true, ink))
         body.addView(label("Ứng dụng vận hành cơ sở", 19f, true, primary))
-        body.addView(label("Chỉ cần nhập tên đăng nhập. HQ sẽ duyệt thiết bị và ứng dụng tự mở đúng chức năng của chủ cơ sở, lễ tân, buồng phòng hoặc kỹ thuật viên.", 14f, false, muted), matchWrap(top = 8, bottom = 26))
-        userInput = field("Tên đăng nhập", savedUsername).apply {
+        body.addView(label("Lần đầu nhập mã cơ sở, tên đăng nhập và mật khẩu. Thiết bị được ghi nhận an toàn để những lần sau tự đăng nhập theo đúng quyền được cấp.", 14f, false, muted), matchWrap(top = 8, bottom = 22))
+        propertyCodeInput = field("Mã cơ sở (6 số)", savedPropertyCode, number = true).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            filters = arrayOf(android.text.InputFilter.LengthFilter(6))
+        }
+        body.addView(propertyCodeInput, matchWrap(bottom = 10))
+        userInput = field("Tên đăng nhập", savedUsername)
+        body.addView(userInput, matchWrap(bottom = 10))
+        passwordInput = field("Mật khẩu", "", password = true).apply {
             imeOptions = EditorInfo.IME_ACTION_DONE
             setOnEditorActionListener { _, actionId, _ ->
-                if (actionId == EditorInfo.IME_ACTION_DONE) { requestPairing(); true } else false
+                if (actionId == EditorInfo.IME_ACTION_DONE) { loginDevice(); true } else false
             }
         }
-        body.addView(userInput, matchWrap(bottom = 18))
-        body.addView(actionButton("Gửi yêu cầu kết nối", android.R.drawable.ic_lock_lock, true) { requestPairing() }, matchWrap())
-        body.addView(label("Máy chủ được cấu hình tự động · Không cần nhập địa chỉ hay mật khẩu trên điện thoại", 11.5f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 16))
+        body.addView(passwordInput, matchWrap(bottom = 18))
+        body.addView(actionButton("Đăng nhập", android.R.drawable.ic_lock_lock, true) { loginDevice() }, matchWrap())
+        body.addView(label("Không lưu mật khẩu · Không cần HQ duyệt · Thiết bị giả lập bị từ chối", 11.5f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 16))
         val scroll = ScrollView(this).apply { isFillViewport = true; setBackgroundColor(canvasColor); addView(body) }
         setContentView(scroll)
     }
 
-    private fun requestPairing() {
+    private fun loginDevice() {
+        val propertyCode = propertyCodeInput.text.toString().trim()
         val username = userInput.text.toString().trim()
+        val password = passwordInput.text.toString()
+        if (!propertyCode.matches(Regex("\\d{6}"))) return toast("Mã cơ sở phải gồm đúng 6 chữ số.")
         if (username.isBlank()) return toast("Hãy nhập tên đăng nhập.")
-        toast("Đang gửi yêu cầu tới HQ…")
-        runTask({ api.requestPairing(apiBase, username, deviceId(), deviceName(), appVersion()) }) { result ->
-            val pairingId = result.optString("pairing_id")
-            val pairingSecret = result.optString("pairing_secret")
+        if (password.isBlank()) return toast("Hãy nhập mật khẩu.")
+        if (isProbablyEmulator()) return toast("Thiết bị giả lập không được phép đăng nhập.")
+        toast("Đang đăng nhập…")
+        runTask({ api.deviceLogin(apiBase, propertyCode, username, password, deviceId(), deviceName(), appVersion(), false) }) { result ->
+            accessToken = result.optString("access_token")
+            currentUser = result.optJSONObject("user") ?: JSONObject()
             getSharedPreferences("anio", MODE_PRIVATE).edit()
+                .putString("property_code", propertyCode)
                 .putString("username", username)
-                .putString("pairing_id", pairingId)
-                .putString("pairing_secret", pairingSecret)
                 .apply()
-            showPairingPending(pairingId, pairingSecret, result.optString("pairing_code"), result.optString("property_name"))
+            credentialStore.save(result.optString("connection_id"), result.optString("device_secret"))
+            passwordInput.setText("")
+            loadBootstrap()
         }
     }
 
-    private fun showPairingPending(pairingId: String, pairingSecret: String, code: String, propertyName: String) {
-        pairingPollGeneration++
-        val generation = pairingPollGeneration
-        pairingHandler.removeCallbacksAndMessages(null)
-        val body = vertical().apply { setPadding(dp(24), dp(50), dp(24), dp(24)) }
-        body.addView(label("Chờ HQ duyệt thiết bị", 26f, true, ink))
-        body.addView(label(propertyName.ifBlank { "Cơ sở lưu trú" }, 15f, true, primary), matchWrap(top = 6))
-        body.addView(label("Đối chiếu mã sau tại HQ → Kết nối ứng dụng", 14f, false, muted), matchWrap(top = 22))
-        val codeView = label(code, 38f, true, primary).apply {
-            gravity = Gravity.CENTER
-            letterSpacing = 0.16f
-            setPadding(dp(16), dp(24), dp(16), dp(24))
-            background = background(Color.WHITE, 18f, Color.rgb(201, 216, 248))
-        }
-        body.addView(codeView, matchWrap(top = 12, bottom = 18))
-        body.addView(label("Sau khi HQ chọn Duyệt thiết bị, ứng dụng sẽ tự đăng nhập. Không chia sẻ mã này với người không phụ trách.", 13f, false, muted), matchWrap(bottom = 18))
-        body.addView(actionButton("Kiểm tra ngay", android.R.drawable.ic_popup_sync, true) {
-            checkPairing(pairingId, pairingSecret, generation, false)
-        })
-        body.addView(actionButton("Đổi tài khoản", android.R.drawable.ic_menu_close_clear_cancel, false) {
-            clearPairing(); showLogin()
-        }, matchWrap(top = 8))
-        val scroll = ScrollView(this).apply { isFillViewport = true; setBackgroundColor(canvasColor); addView(body) }
-        setContentView(scroll)
-        checkPairing(pairingId, pairingSecret, generation, true)
-    }
-
-    private fun resumePairing(pairingId: String, pairingSecret: String) {
+    private fun resumeDeviceSession(connectionId: String, deviceSecret: String) {
         val body = vertical().apply { gravity = Gravity.CENTER; setPadding(dp(24), dp(50), dp(24), dp(24)); setBackgroundColor(canvasColor) }
         body.addView(label("ANIO", 32f, true, ink).apply { gravity = Gravity.CENTER })
-        body.addView(label("Đang khôi phục kết nối đã được HQ duyệt…", 14f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 12))
+        body.addView(label("Đang xác thực thiết bị đã ghi nhận…", 14f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 12))
         setContentView(body)
-        val generation = ++pairingPollGeneration
-        checkPairing(pairingId, pairingSecret, generation, false)
-    }
-
-    private fun checkPairing(pairingId: String, pairingSecret: String, generation: Int, repeatIfPending: Boolean) {
-        if (generation != pairingPollGeneration) return
         executor.execute {
             try {
-                val result = api.pairingStatus(apiBase, pairingId, pairingSecret)
+                val result = api.deviceRefresh(apiBase, connectionId, deviceSecret)
                 runOnUiThread {
-                    if (generation != pairingPollGeneration) return@runOnUiThread
-                    when (result.optString("status")) {
-                        "APPROVED" -> {
-                            accessToken = result.optString("access_token")
-                            currentUser = result.optJSONObject("user") ?: JSONObject()
-                            pairingHandler.removeCallbacksAndMessages(null)
-                            loadBootstrap()
-                        }
-                        "PENDING" -> if (repeatIfPending) pairingHandler.postDelayed({
-                            checkPairing(pairingId, pairingSecret, generation, true)
-                        }, 3_000) else showPairingPending(pairingId, pairingSecret, result.optString("pairing_code"), "")
-                        "REJECTED" -> { toast("HQ đã từ chối yêu cầu. Hãy liên hệ người quản trị."); clearPairing(); showLogin() }
-                        "REVOKED" -> { toast("Quyền của thiết bị đã bị thu hồi."); clearPairing(); showLogin() }
-                        else -> { clearPairing(); showLogin() }
-                    }
+                    accessToken = result.optString("access_token")
+                    currentUser = result.optJSONObject("user") ?: JSONObject()
+                    loadBootstrap()
                 }
             } catch (error: Exception) {
                 runOnUiThread {
-                    if (generation != pairingPollGeneration) return@runOnUiThread
-                    toast(error.message ?: "Không thể kết nối máy chủ.")
-                    if (repeatIfPending) pairingHandler.postDelayed({
-                        checkPairing(pairingId, pairingSecret, generation, true)
-                    }, 5_000) else showLogin()
+                    toast("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.")
+                    clearDeviceSession()
+                    showLogin()
                 }
             }
         }
     }
 
-    private fun clearPairing() {
+    private fun clearDeviceSession() {
         accessToken = null
         currentUser = JSONObject()
         properties = JSONArray()
         capabilities = JSONArray()
         selectedPropertyId = null
-        getSharedPreferences("anio", MODE_PRIVATE).edit().remove("pairing_id").remove("pairing_secret").apply()
+        credentialStore.clear()
     }
 
     private fun loadBootstrap() {
@@ -200,8 +165,6 @@ class MainActivity : Activity() {
     }
 
     private fun showPage(page: AppPage) {
-        pairingPollGeneration++
-        pairingHandler.removeCallbacksAndMessages(null)
         if (!pageAllowed(page)) return showPage(AppPage.DASHBOARD)
         currentPage = page
         val root = vertical().apply { setBackgroundColor(canvasColor) }
@@ -738,8 +701,8 @@ class MainActivity : Activity() {
 
         val connection = card()
         connection.addView(sectionTitle("Kết nối máy chủ"))
-        connection.addView(label("Được HQ cấu hình tự động", 15f, true, success), matchWrap(top = 8))
-        connection.addView(label("Thiết bị này đã được duyệt và sẽ tự kết nối lại. Người dùng không cần nhập địa chỉ máy chủ hoặc mật khẩu.", 12.5f, false, muted), matchWrap(top = 5, bottom = 10))
+        connection.addView(label("Thiết bị đã được ghi nhận", 15f, true, success), matchWrap(top = 8))
+        connection.addView(label("Lần đăng nhập đầu tiên đã xác thực bằng mật khẩu. Thiết bị sẽ tự kết nối lại cho đến khi người dùng đăng xuất hoặc HQ thu hồi phiên.", 12.5f, false, muted), matchWrap(top = 5, bottom = 10))
         connection.addView(actionButton("Kiểm tra kết nối", android.R.drawable.ic_popup_sync, false) {
             val token = accessToken ?: return@actionButton
             runTask({ api.me(apiBase, token, selectedPropertyId) }) { toast("Kết nối thành công với ${it.optString("full_name", "máy chủ PMS")}.") }
@@ -747,7 +710,7 @@ class MainActivity : Activity() {
         content.addView(connection, matchWrap(bottom = 12))
         content.addView(actionButton("Làm mới toàn bộ dữ liệu", android.R.drawable.ic_popup_sync, false) { loadBootstrap() }, matchWrap(bottom = 8))
         content.addView(actionButton("Đăng xuất", android.R.drawable.ic_lock_power_off, false) {
-            confirm("Gỡ kết nối tài khoản khỏi thiết bị này?") { clearPairing(); showLogin() }
+            confirm("Gỡ phiên đăng nhập khỏi thiết bị này?") { clearDeviceSession(); showLogin() }
         })
         content.addView(label("ANIO Vận hành · phiên bản ${appVersion()}", 11f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 18))
     }
@@ -925,6 +888,16 @@ class MainActivity : Activity() {
     }
     private fun deviceId(): String = "android-${Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown-device"}"
     private fun deviceName(): String = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
+    private fun isProbablyEmulator(): Boolean {
+        val fingerprint = Build.FINGERPRINT.lowercase(Locale.getDefault())
+        val model = Build.MODEL.lowercase(Locale.getDefault())
+        val product = Build.PRODUCT.lowercase(Locale.getDefault())
+        val hardware = Build.HARDWARE.lowercase(Locale.getDefault())
+        return fingerprint.startsWith("generic") || fingerprint.contains("vbox") || fingerprint.contains("test-keys") ||
+            model.contains("emulator") || model.contains("sdk_gphone") || model.contains("genymotion") ||
+            product.contains("sdk") || product.contains("emulator") ||
+            hardware.contains("goldfish") || hardware.contains("ranchu")
+    }
     private fun shortDate(value: String): String = value.take(10).takeIf { it.isNotBlank() } ?: "—"
     private fun validDate(value: String): Boolean = runCatching { LocalDate.parse(value, DateTimeFormatter.ISO_DATE) }.isSuccess
     private fun money(value: Double): String = NumberFormat.getNumberInstance(Locale("vi", "VN")).format(value) + "đ"
@@ -992,5 +965,5 @@ class MainActivity : Activity() {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = selected(position)
     }
 
-    override fun onDestroy() { pairingHandler.removeCallbacksAndMessages(null); executor.shutdownNow(); super.onDestroy() }
+    override fun onDestroy() { executor.shutdownNow(); super.onDestroy() }
 }

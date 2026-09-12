@@ -30,7 +30,8 @@ export interface Property {
   tenant_id: string;
   name: string;
   address: string | null;
-  phone: string | null;
+    phone: string | null;
+    login_code: string;
   timezone: string;
   currency: string;
   status: PropertyStatus;

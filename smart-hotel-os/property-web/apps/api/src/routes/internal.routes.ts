@@ -16,7 +16,7 @@ const propertyProvisionSchema = z.object({
   tenantId: z.string().trim().min(1).max(120),
   propertyName: z.string().trim().min(1).max(255),
   address: z.string().trim().max(500).optional().nullable(),
-  phone: z.string().trim().max(60).optional().nullable(),
+  phone: z.string().trim().max(60).refine((value) => value.replace(/\D/g, "").length >= 6, "Số điện thoại phải có ít nhất 6 chữ số."),
   owner: z.object({
     username: z.string().trim().min(3).max(80).regex(/^[a-zA-Z0-9._-]+$/),
     email: z.string().email().max(320),
@@ -25,6 +25,8 @@ const propertyProvisionSchema = z.object({
     phone: z.string().trim().max(60).optional().nullable(),
   }),
 });
+
+const propertyCodeFromPhone = (phone: string) => phone.replace(/\D/g, "").slice(-6);
 
 /**
  * Provision idempotent một cơ sở + tài khoản OWNER từ HQ Console.
@@ -38,24 +40,25 @@ internalRouter.post(
     const parsed = propertyProvisionSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
     const input = parsed.data;
+    const propertyCode = propertyCodeFromPhone(input.phone);
     const provisioned = await pool.transaction(async (tx) => {
-      let property: { id: string; tenant_id: string; name: string; address: string | null; phone: string | null };
+      let property: { id: string; tenant_id: string; name: string; address: string | null; phone: string; login_code: string };
       let owner: { id: string; username: string; email: string; full_name: string; role: string };
       let credentialsCreated = false;
       const existingProperty = await tx.query<typeof property>(
-        `SELECT id, tenant_id, name, address, phone FROM properties WHERE tenant_id = $1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE`,
+        `SELECT id, tenant_id, name, address, phone, login_code FROM properties WHERE tenant_id = $1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE`,
         [input.tenantId]
       );
       if (existingProperty.rows[0]) {
         const row = await tx.query<typeof property>(
-          `UPDATE properties SET name = $2, address = $3, phone = $4, status = 'ACTIVE', updated_at = now() WHERE id = $1 RETURNING id, tenant_id, name, address, phone`,
-          [existingProperty.rows[0].id, input.propertyName, input.address ?? null, input.phone ?? null]
+          `UPDATE properties SET name = $2, address = $3, phone = $4, login_code = $5, status = 'ACTIVE', updated_at = now() WHERE id = $1 RETURNING id, tenant_id, name, address, phone, login_code`,
+          [existingProperty.rows[0].id, input.propertyName, input.address ?? null, input.phone, propertyCode]
         );
         property = row.rows[0];
       } else {
         const row = await tx.query<typeof property>(
-          `INSERT INTO properties (id, tenant_id, name, address, phone, status) VALUES (gen_random_uuid()::text, $1, $2, $3, $4, 'ACTIVE') RETURNING id, tenant_id, name, address, phone`,
-          [input.tenantId, input.propertyName, input.address ?? null, input.phone ?? null]
+          `INSERT INTO properties (id, tenant_id, name, address, phone, login_code, status) VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, 'ACTIVE') RETURNING id, tenant_id, name, address, phone, login_code`,
+          [input.tenantId, input.propertyName, input.address ?? null, input.phone, propertyCode]
         );
         property = row.rows[0];
       }
@@ -68,8 +71,8 @@ internalRouter.post(
         owner = existingOwner.rows[0];
       } else {
         const conflictingUser = await tx.query<{ id: string }>(
-          `SELECT id FROM property_users WHERE username = $1 OR email = $2 LIMIT 1`,
-          [input.owner.username, input.owner.email]
+          `SELECT id FROM property_users WHERE email = $2 OR (property_id = $3 AND lower(username) = lower($1)) LIMIT 1`,
+          [input.owner.username, input.owner.email, property.id]
         );
         if (conflictingUser.rows[0]) throw Errors.conflict("Username hoặc email OWNER đã tồn tại ở cơ sở khác.");
         const passwordHash = await bcrypt.hash(input.owner.password, 12);
@@ -95,7 +98,7 @@ internalRouter.post(
       owner: { ...existingOwner, fullName: owner.full_name, email: owner.email, phone: input.owner.phone ?? "" },
     });
     res.json({
-      property: { id: property.id, tenant_id: property.tenant_id, name: property.name, address: property.address, phone: property.phone },
+      property: { id: property.id, tenant_id: property.tenant_id, name: property.name, address: property.address, phone: property.phone, login_code: property.login_code },
       owner,
       credentials_created: credentialsCreated,
       setup_steps: ["Cập nhật thông tin cơ sở", "Thêm tầng và phòng", "Cài loại phòng và giá", "Gán asset_code cho thiết bị", "Kiểm thử Edge/IoT"],
@@ -157,8 +160,8 @@ const mobileConnectionActionSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 
-// HQ Console là nơi duyệt/thu hồi thiết bị mobile. Secret ghép nối không bao
-// giờ được trả về endpoint nội bộ này; HQ chỉ đối chiếu mã 6 số trên màn hình.
+// Thiết bị được tự động ghi nhận sau khi đăng nhập đúng. HQ chỉ giám sát và
+// thu hồi phiên khi mất thiết bị/nghi ngờ truy cập; secret không bao giờ lộ ra.
 internalRouter.get(
   "/mobile-connections",
   requireInternalServiceKey,
@@ -174,27 +177,18 @@ internalRouter.get(
   })
 );
 
-for (const [path, status] of [
-  ["approve", "APPROVED"], ["reject", "REJECTED"], ["revoke", "REVOKED"],
-] as const) {
-  internalRouter.post(
-    `/mobile-connections/:id/${path}`,
-    requireInternalServiceKey,
-    asyncHandler(async (req, res) => {
-      const parsed = mobileConnectionActionSchema.safeParse(req.body);
-      if (!parsed.success) throw Errors.validation(parsed.error.flatten());
-      const existing = await mobileConnectionsRepo.findById(req.params.id);
-      if (!existing) throw Errors.notFound("yêu cầu kết nối ứng dụng");
-      if ((path === "approve" || path === "reject") && existing.status !== "PENDING") {
-        throw Errors.conflict(path === "approve" ? "Chỉ có thể duyệt yêu cầu đang chờ." : "Chỉ có thể từ chối yêu cầu đang chờ.");
-      }
-      if (path === "revoke" && existing.status !== "APPROVED") {
-        throw Errors.conflict("Chỉ có thể thu hồi thiết bị đang kết nối.");
-      }
-      const updated = await mobileConnectionsRepo.setStatus(req.params.id, status, parsed.data.hqUserId, parsed.data.note);
-      if (!updated) throw Errors.notFound("yêu cầu kết nối ứng dụng");
-      const { request_secret_hash: _secret, ...safe } = updated;
-      res.json(safe);
-    })
-  );
-}
+internalRouter.post(
+  "/mobile-connections/:id/revoke",
+  requireInternalServiceKey,
+  asyncHandler(async (req, res) => {
+    const parsed = mobileConnectionActionSchema.safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    const existing = await mobileConnectionsRepo.findById(req.params.id);
+    if (!existing) throw Errors.notFound("thiết bị đăng nhập");
+    if (existing.status !== "APPROVED") throw Errors.conflict("Chỉ có thể thu hồi thiết bị đang kết nối.");
+    const updated = await mobileConnectionsRepo.setStatus(req.params.id, "REVOKED", parsed.data.hqUserId, parsed.data.note);
+    if (!updated) throw Errors.notFound("thiết bị đăng nhập");
+    const { request_secret_hash: _secret, ...safe } = updated;
+    res.json(safe);
+  })
+);

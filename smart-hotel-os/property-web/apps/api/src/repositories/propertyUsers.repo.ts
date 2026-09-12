@@ -12,6 +12,18 @@ export const propertyUsersRepo = {
     return rows[0] ?? null;
   },
 
+  async findForLogin(propertyCode: string, identifier: string): Promise<PropertyUser | null> {
+    const { rows } = await pool.query<PropertyUser>(
+      `SELECT pu.* FROM property_users pu
+       JOIN properties p ON p.id = pu.property_id
+       WHERE p.login_code = $1
+         AND (lower(pu.username) = lower($2) OR lower(pu.email) = lower($2))
+       LIMIT 1`,
+      [propertyCode, identifier]
+    );
+    return rows[0] ?? null;
+  },
+
   async findById(id: string): Promise<PropertyUser | null> {
     const { rows } = await pool.query<PropertyUser>(`SELECT * FROM property_users WHERE id = $1`, [id]);
     return rows[0] ?? null;

@@ -7,16 +7,17 @@ import { Modal, ButtonGhost, ButtonPrimary } from "@/components/ui/Modal";
 // chỉ OWNER được gọi — xem apps/api/src/routes/branches.routes.ts). 2 trường
 // còn thiếu bảng nguồn phù hợp (Tỉnh/Thành, Phường/Xã — địa giới hành chính,
 // Tên tòa/Số tầng — chưa có cột riêng) giữ placeholder tĩnh đúng bản gốc.
-export function AddBranchModal({ onClose, onCreate }: { onClose: () => void; onCreate: (input: { name: string; address: string }) => void }) {
+export function AddBranchModal({ onClose, onCreate }: { onClose: () => void; onCreate: (input: { name: string; address: string; phone: string }) => void }) {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit() {
-    if (!name.trim()) return;
+    if (!name.trim() || phone.replace(/\D/g, "").length < 6) return;
     setSaving(true);
     try {
-      onCreate({ name, address });
+      onCreate({ name, address, phone });
     } finally {
       setSaving(false);
     }
@@ -43,6 +44,20 @@ export function AddBranchModal({ onClose, onCreate }: { onClose: () => void; onC
             className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
             placeholder="Tên cơ sở/khu vực"
           />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-[12px]">Số điện thoại <span className="text-red-600">*</span></label>
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            type="tel"
+            required
+            className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px]"
+            placeholder="6 số cuối tạo thành mã cơ sở"
+          />
+          {phone.replace(/\D/g, "").length >= 6 && (
+            <p className="mt-1 text-[11px] text-pms-muted">Mã cơ sở: <b>{phone.replace(/\D/g, "").slice(-6)}</b></p>
+          )}
         </div>
         <div>
           <label className="mb-1.5 block text-[12px]">Tỉnh/ Thành Phố</label>

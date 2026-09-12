@@ -60,7 +60,7 @@ export async function fetchPropertyWebBranches(): Promise<PropertyWebBranch[] | 
 }
 
 export interface ProvisionedProperty {
-  property: { id: string; tenant_id: string; name: string; address: string | null; phone: string | null };
+  property: { id: string; tenant_id: string; name: string; address: string | null; phone: string; login_code: string };
   owner: { id: string; username: string; email: string; full_name: string; role: string };
   credentials_created: boolean;
   setup_steps: string[];
@@ -80,6 +80,10 @@ export interface MobileConnection {
   app_version: string | null;
   status: MobileConnectionStatus;
   pairing_code: string;
+  auth_method: string;
+  is_emulator: boolean;
+  attestation_provider: string | null;
+  attestation_verdict: string | null;
   approval_note: string | null;
   requested_at: string;
   approved_at: string | null;
@@ -128,10 +132,9 @@ export async function fetchMobileConnections(filters: { status?: string; search?
 
 export async function updateMobileConnection(
   id: string,
-  action: "approve" | "reject" | "revoke",
   input: { hqUserId: string; note?: string }
 ) {
-  return propertyWebJson<MobileConnection>(`/api/v1/internal/mobile-connections/${encodeURIComponent(id)}/${action}`, {
+  return propertyWebJson<MobileConnection>(`/api/v1/internal/mobile-connections/${encodeURIComponent(id)}/revoke`, {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -142,7 +145,7 @@ export async function provisionProperty(input: {
   tenantId: string;
   propertyName: string;
   address?: string | null;
-  phone?: string | null;
+  phone: string;
   owner: { username: string; email: string; fullName: string; password: string; phone?: string | null };
 }): Promise<ProvisionedProperty> {
   if (!INTERNAL_SERVICE_KEY) throw new Error("INTERNAL_SERVICE_KEY chưa cấu hình.");

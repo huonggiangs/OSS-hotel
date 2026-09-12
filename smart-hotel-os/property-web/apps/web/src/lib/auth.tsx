@@ -18,12 +18,13 @@ export interface CurrentUser {
   role: Role;
   property_id: string;
   tenant_id?: string;
+  property_code?: string;
 }
 
 interface AuthContextValue {
   user: CurrentUser | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (propertyCode: string, username: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -50,10 +51,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (username: string, password: string) => {
+    async (propertyCode: string, username: string, password: string) => {
       const result = await api.post<{ access_token: string; user: CurrentUser }>("/api/v1/auth/login", {
+        propertyCode,
         username,
         password,
+        clientType: "WEB",
       });
       setToken(result.access_token);
       setUser(result.user);

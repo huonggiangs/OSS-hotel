@@ -12,6 +12,7 @@ import { useAuth, isApiError } from "@/lib/auth";
 // phần còn lại của app.
 export default function LoginPage() {
   const { login } = useAuth();
+  const [propertyCode, setPropertyCode] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +23,7 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(username, password);
+      await login(propertyCode, username, password);
     } catch (err) {
       setError(isApiError(err) ? err.message : "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {
@@ -44,15 +45,29 @@ export default function LoginPage() {
         </div>
 
         <h1 className="mb-1 text-[19px] font-bold">Đăng nhập</h1>
-        <p className="mb-6 text-[13px] text-pms-muted">Đăng nhập bằng tài khoản cấp cơ sở để tiếp tục.</p>
+        <p className="mb-6 text-[13px] text-pms-muted">Nhập mã cơ sở được HQ bàn giao cùng tài khoản của bạn.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div>
+            <label className="mb-1.5 block text-[12px] font-medium text-pms-text">Mã cơ sở <span className="text-red-600">*</span></label>
+            <input
+              type="text"
+              required
+              autoFocus
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              value={propertyCode}
+              onChange={(e) => setPropertyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="6 chữ số cuối số điện thoại"
+              className="w-full rounded-lg border border-pms-border px-3 py-2.5 text-[13px] tracking-[0.2em] outline-none focus:border-pms-primary"
+            />
+          </div>
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-pms-text">Tên đăng nhập</label>
             <input
               type="text"
               required
-              autoFocus
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="manager"
@@ -83,7 +98,7 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 rounded-lg bg-pms-divider px-3.5 py-3 text-[11.5px] text-pms-muted">
-          <b className="mb-1 block text-pms-text">Tài khoản demo (mật khẩu chung: Anio2026@)</b>
+          <b className="mb-1 block text-pms-text">Demo: mã cơ sở 334444 · mật khẩu Anio2026@</b>
           owner · OWNER
           <br />
           manager · MANAGER

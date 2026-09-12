@@ -47,10 +47,10 @@ async function main() {
 
   // ---- property ----
   await client.query(
-    `INSERT INTO properties (id, tenant_id, name, address, phone, status)
-     VALUES ($1, $2, $3, $4, $5, 'ACTIVE')
+    `INSERT INTO properties (id, tenant_id, name, address, phone, login_code, status)
+     VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE')
      ON CONFLICT (id) DO NOTHING`,
-    [PROPERTY_ID, TENANT_ID, "ANIO Riverside Hotel", "12 Trần Phú, Hà Nội", "024 3333 4444"]
+    [PROPERTY_ID, TENANT_ID, "ANIO Riverside Hotel", "12 Trần Phú, Hà Nội", "024 3333 4444", "334444"]
   );
 
   // ---- property_users (4 vai trò tối thiểu: OWNER, MANAGER, RECEPTIONIST, HOUSEKEEPING).
@@ -61,7 +61,7 @@ async function main() {
     await client.query(
       `INSERT INTO property_users (id, property_id, tenant_id, username, email, password_hash, full_name, role)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       ON CONFLICT (username) DO NOTHING`,
+       ON CONFLICT DO NOTHING`,
       [randomUUID(), PROPERTY_ID, TENANT_ID, username, email, passwordHash, fullName, role]
     );
   }

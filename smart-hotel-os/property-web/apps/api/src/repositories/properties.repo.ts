@@ -34,12 +34,13 @@ export const propertiesRepo = {
     return Number(rows[0]?.count ?? 0);
   },
 
-  async create(tenantId: string, input: { name: string; address?: string | null; phone?: string | null }): Promise<Property> {
+  async create(tenantId: string, input: { name: string; address?: string | null; phone: string }): Promise<Property> {
+    const loginCode = input.phone.replace(/\D/g, "").slice(-6);
     const { rows } = await pool.query<Property>(
-      `INSERT INTO properties (id, tenant_id, name, address, phone, status)
-       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, 'ACTIVE')
+      `INSERT INTO properties (id, tenant_id, name, address, phone, login_code, status)
+       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, 'ACTIVE')
        RETURNING *`,
-      [tenantId, input.name, input.address ?? null, input.phone ?? null]
+      [tenantId, input.name, input.address ?? null, input.phone, loginCode]
     );
     return rows[0];
   },

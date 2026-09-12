@@ -42,41 +42,35 @@ class MobileApi {
         }
     }
 
-    fun login(base: String, username: String, password: String): JSONObject = request(
-        base, "/api/v1/auth/login", "POST",
-        JSONObject().put("username", username).put("password", password),
-    )
-
-    fun requestPairing(
+    fun deviceLogin(
         base: String,
+        propertyCode: String,
         username: String,
+        password: String,
         deviceId: String,
         deviceName: String,
         appVersion: String,
+        isEmulator: Boolean,
     ): JSONObject = request(
         base,
-        "/api/v1/mobile/pairing/request",
+        "/api/v1/mobile/device-login",
         "POST",
         JSONObject()
+            .put("propertyCode", propertyCode)
             .put("username", username)
+            .put("password", password)
             .put("platform", "ANDROID")
             .put("deviceId", deviceId)
             .put("deviceName", deviceName)
-            .put("appVersion", appVersion),
+            .put("appVersion", appVersion)
+            .put("isEmulator", isEmulator),
     )
 
-    fun pairingStatus(base: String, pairingId: String, pairingSecret: String): JSONObject = request(
+    fun deviceRefresh(base: String, connectionId: String, deviceSecret: String): JSONObject = request(
         base,
-        "/api/v1/mobile/pairing/status",
+        "/api/v1/mobile/device-refresh",
         "POST",
-        JSONObject().put("pairingId", pairingId).put("pairingSecret", pairingSecret),
-    )
-
-    fun refreshPairing(base: String, pairingId: String, pairingSecret: String): JSONObject = request(
-        base,
-        "/api/v1/mobile/pairing/refresh",
-        "POST",
-        JSONObject().put("pairingId", pairingId).put("pairingSecret", pairingSecret),
+        JSONObject().put("connectionId", connectionId).put("deviceSecret", deviceSecret),
     )
 
     fun me(base: String, token: String, propertyId: String?): JSONObject =

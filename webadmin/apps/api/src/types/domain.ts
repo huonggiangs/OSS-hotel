@@ -95,6 +95,7 @@ export interface CustomerUnified {
   kiosk_customer_id: string | null;
   billing_status: BillingStatus;
   pms_property_id: string | null;
+  property_login_code: string | null;
   onboarding_status: CustomerOnboardingStatus;
   onboarding_email_sent_at: Date | null;
   onboarding_last_error: string | null;

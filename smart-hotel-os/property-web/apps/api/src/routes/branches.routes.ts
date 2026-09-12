@@ -21,7 +21,7 @@ export const branchesRouter = Router();
 const createSchema = z.object({
   name: z.string().min(1),
   address: z.string().optional(),
-  phone: z.string().optional(),
+  phone: z.string().trim().refine((value) => value.replace(/\D/g, "").length >= 6, "Số điện thoại phải có ít nhất 6 chữ số."),
 });
 
 branchesRouter.get(

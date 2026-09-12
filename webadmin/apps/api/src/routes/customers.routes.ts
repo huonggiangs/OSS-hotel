@@ -13,12 +13,15 @@ import { sendOnboardingEmail } from "../lib/onboardingMail";
 export const customersRouter = Router();
 customersRouter.use(requireAuth);
 
+const phoneSchema = z.string().trim().min(6).max(60)
+  .refine((value) => value.replace(/\D/g, "").length >= 6, "Số điện thoại phải có ít nhất 6 chữ số.");
+
 const upsertSchema = z.object({
   name: z.string().min(1),
   address: z.string().optional(),
   contactName: z.string().optional(),
   contactEmail: z.string().email().optional().or(z.literal("")),
-  contactPhone: z.string().optional(),
+  contactPhone: phoneSchema,
   partnerId: z.string().uuid().optional().nullable(),
   usesKiosk: z.boolean().default(false),
   usesSmartHotelOs: z.boolean().default(false),
@@ -32,7 +35,7 @@ const provisionSchema = z.object({
   address: z.string().trim().max(500).optional(),
   contactName: z.string().trim().max(255).optional(),
   contactEmail: z.string().email(),
-  contactPhone: z.string().trim().max(60).optional(),
+  contactPhone: phoneSchema,
   ownerFullName: z.string().trim().min(1).max(255),
   ownerEmail: z.string().email(),
   ownerPhone: z.string().trim().max(60).optional(),
@@ -103,11 +106,12 @@ customersRouter.post(
       });
       const pmsUrl = process.env.PMS_PUBLIC_URL ?? "http://SONANIO25:3100";
       const emailResult = input.sendEmail
-        ? await sendOnboardingEmail({ recipient: input.ownerEmail, ownerName: input.ownerFullName, propertyName: input.name, username: provisioned.owner.username, pmsUrl })
+        ? await sendOnboardingEmail({ recipient: input.ownerEmail, ownerName: input.ownerFullName, propertyName: input.name, propertyCode: provisioned.property.login_code, username: provisioned.owner.username, pmsUrl })
         : { status: "NOT_CONFIGURED" as const, error: "Người tạo chưa yêu cầu gửi email." };
       const status = emailResult.status === "SENT" ? "EMAIL_SENT" : emailResult.status === "FAILED" ? "EMAIL_FAILED" : "EMAIL_NOT_CONFIGURED";
       const saved = await customersRepo.updateOnboarding(customer.id, {
         pmsPropertyId: provisioned.property.id,
+        propertyLoginCode: provisioned.property.login_code,
         shoTenantId: provisioned.property.tenant_id,
         status,
         emailSentAt: emailResult.sentAt ?? null,
@@ -115,7 +119,7 @@ customersRouter.post(
       });
       const response = {
         customer: saved,
-        pms: { property_id: provisioned.property.id, property_name: provisioned.property.name, login_url: pmsUrl, setup_steps: provisioned.setup_steps },
+        pms: { property_id: provisioned.property.id, property_name: provisioned.property.name, property_code: provisioned.property.login_code, login_url: pmsUrl, setup_steps: provisioned.setup_steps },
         owner: { id: provisioned.owner.id, username: provisioned.owner.username, email: provisioned.owner.email, full_name: provisioned.owner.full_name, role: provisioned.owner.role },
         credentials: provisioned.credentials_created ? { username: provisioned.owner.username, temporary_password: temporaryPassword, display_once: true } : null,
         email: { status: emailResult.status, recipient: input.ownerEmail, sent_at: emailResult.sentAt ?? null, error: emailResult.error ?? null },

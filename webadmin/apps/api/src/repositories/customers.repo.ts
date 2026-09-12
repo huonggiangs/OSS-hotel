@@ -14,6 +14,7 @@ export interface CustomerInput {
   kioskCustomerId?: string | null;
   billingStatus?: "ACTIVE" | "OVERDUE" | "SUSPENDED";
   pmsPropertyId?: string | null;
+  propertyLoginCode?: string | null;
   onboardingStatus?: "NOT_STARTED" | "PROVISIONING" | "READY" | "EMAIL_SENT" | "EMAIL_NOT_CONFIGURED" | "EMAIL_FAILED";
   onboardingEmailSentAt?: string | null;
   onboardingLastError?: string | null;
@@ -25,7 +26,7 @@ export const customersRepo = {
     const params: unknown[] = [];
     if (opts.search) {
       params.push(`%${opts.search}%`);
-      clauses.push(`name ILIKE $${params.length}`);
+      clauses.push(`(name ILIKE $${params.length} OR contact_phone ILIKE $${params.length} OR contact_email ILIKE $${params.length} OR property_login_code ILIKE $${params.length})`);
     }
     if (opts.product === "KIOSK") clauses.push(`uses_kiosk = true`);
     if (opts.product === "SMART_HOTEL_OS") clauses.push(`uses_smart_hotel_os = true`);
@@ -52,8 +53,8 @@ export const customersRepo = {
     const { rows } = await pool.query<CustomerUnified>(
       `INSERT INTO customers_unified
         (id, name, address, contact_name, contact_email, contact_phone, partner_id, uses_kiosk, uses_smart_hotel_os, sho_tenant_id, kiosk_customer_id, billing_status,
-         pms_property_id, onboarding_status, onboarding_email_sent_at, onboarding_last_error)
-       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+         pms_property_id, property_login_code, onboarding_status, onboarding_email_sent_at, onboarding_last_error)
+       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING *`,
       [
         input.name,
@@ -68,6 +69,7 @@ export const customersRepo = {
         input.kioskCustomerId ?? null,
         input.billingStatus ?? "ACTIVE",
         input.pmsPropertyId ?? null,
+        input.propertyLoginCode ?? input.contactPhone?.replace(/\D/g, "").slice(-6) ?? null,
         input.onboardingStatus ?? "NOT_STARTED",
         input.onboardingEmailSentAt ?? null,
         input.onboardingLastError ?? null,
@@ -92,6 +94,7 @@ export const customersRepo = {
       kiosk_customer_id: input.kioskCustomerId,
       billing_status: input.billingStatus,
       pms_property_id: input.pmsPropertyId,
+      property_login_code: input.propertyLoginCode,
       onboarding_status: input.onboardingStatus,
       onboarding_email_sent_at: input.onboardingEmailSentAt,
       onboarding_last_error: input.onboardingLastError,
@@ -113,6 +116,7 @@ export const customersRepo = {
 
   async updateOnboarding(id: string, input: {
     pmsPropertyId?: string | null;
+    propertyLoginCode?: string | null;
     shoTenantId?: string | null;
     status: "NOT_STARTED" | "PROVISIONING" | "READY" | "EMAIL_SENT" | "EMAIL_NOT_CONFIGURED" | "EMAIL_FAILED";
     emailSentAt?: string | null;
@@ -122,13 +126,14 @@ export const customersRepo = {
       `UPDATE customers_unified
        SET pms_property_id = COALESCE($2, pms_property_id),
            sho_tenant_id = COALESCE($3, sho_tenant_id),
-           onboarding_status = $4,
-           onboarding_email_sent_at = $5,
-           onboarding_last_error = $6,
+           property_login_code = COALESCE($4, property_login_code),
+           onboarding_status = $5,
+           onboarding_email_sent_at = $6,
+           onboarding_last_error = $7,
            updated_at = now()
        WHERE id = $1
        RETURNING *`,
-      [id, input.pmsPropertyId ?? null, input.shoTenantId ?? null, input.status, input.emailSentAt ?? null, input.lastError ?? null]
+      [id, input.pmsPropertyId ?? null, input.shoTenantId ?? null, input.propertyLoginCode ?? null, input.status, input.emailSentAt ?? null, input.lastError ?? null]
     );
     return rows[0] ?? null;
   },

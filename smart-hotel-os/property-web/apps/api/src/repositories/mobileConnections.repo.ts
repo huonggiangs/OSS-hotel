@@ -51,6 +51,54 @@ export const mobileConnectionsRepo = {
     return rows[0] ?? null;
   },
 
+  async findUserForLogin(propertyCode: string, identifier: string) {
+    const { rows } = await pool.query<{
+      id: string; property_id: string; tenant_id: string; username: string; email: string;
+      password_hash: string; full_name: string; role: string; status: string; property_name: string;
+    }>(
+      `SELECT pu.id, pu.property_id, pu.tenant_id, pu.username, pu.email, pu.password_hash,
+              pu.full_name, pu.role::text, pu.status::text, p.name AS property_name
+       FROM property_users pu JOIN properties p ON p.id = pu.property_id
+       WHERE p.login_code = $1
+         AND (lower(pu.username) = lower($2) OR lower(pu.email) = lower($2))
+       LIMIT 1`,
+      [propertyCode, identifier]
+    );
+    return rows[0] ?? null;
+  },
+
+  async authorize(input: {
+    userId: string; propertyId: string; tenantId: string; username: string;
+    platform: MobilePlatform; deviceId: string; deviceName: string; appVersion?: string | null;
+    pairingCode: string; requestSecretHash: string; isEmulator: boolean;
+    attestationProvider?: string | null; attestationVerdict?: string | null;
+  }): Promise<MobileConnectionView> {
+    const { rows } = await pool.query<{ id: string }>(
+      `INSERT INTO mobile_connections
+        (user_id, property_id, tenant_id, username, platform, device_id, device_name, app_version,
+         status, pairing_code, request_secret_hash, requested_at, approved_at, rejected_at, revoked_at,
+         approved_by_hq_user_id, approval_note, auth_method, is_emulator, attestation_provider,
+         attestation_verdict, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'APPROVED',$9,$10,now(),now(),NULL,NULL,
+               NULL,'Tự động xác thực bằng mã cơ sở, username và mật khẩu.','PASSWORD',$11,$12,$13,now())
+       ON CONFLICT (user_id, device_id) DO UPDATE SET
+         property_id = EXCLUDED.property_id, tenant_id = EXCLUDED.tenant_id,
+         username = EXCLUDED.username, platform = EXCLUDED.platform,
+         device_name = EXCLUDED.device_name, app_version = EXCLUDED.app_version,
+         status = 'APPROVED', pairing_code = EXCLUDED.pairing_code,
+         request_secret_hash = EXCLUDED.request_secret_hash, requested_at = now(), approved_at = now(),
+         rejected_at = NULL, revoked_at = NULL, approved_by_hq_user_id = NULL,
+         approval_note = EXCLUDED.approval_note, auth_method = 'PASSWORD',
+         is_emulator = EXCLUDED.is_emulator, attestation_provider = EXCLUDED.attestation_provider,
+         attestation_verdict = EXCLUDED.attestation_verdict, updated_at = now()
+       RETURNING id`,
+      [input.userId, input.propertyId, input.tenantId, input.username, input.platform, input.deviceId,
+       input.deviceName, input.appVersion ?? null, input.pairingCode, input.requestSecretHash,
+       input.isEmulator, input.attestationProvider ?? null, input.attestationVerdict ?? null]
+    );
+    return (await this.findById(rows[0].id))!;
+  },
+
   async request(input: {
     userId: string; propertyId: string; tenantId: string; username: string;
     platform: MobilePlatform; deviceId: string; deviceName: string; appVersion?: string | null;
