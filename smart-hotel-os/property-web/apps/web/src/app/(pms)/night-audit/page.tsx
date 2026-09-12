@@ -5,9 +5,7 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { api, isApiError } from "@/lib/api-client";
 
 // Trang "Kế toán đêm" — ĐÃ NỐI API THẬT: GET /api/v1/dashboard/night-audit
-// (mới thêm, tính từ invoices/rooms thật, xem apps/api/src/repositories/dashboard.repo.ts
-// hàm nightAudit). Nút "Chạy kế toán đêm" giữ tĩnh đúng bản gốc (không có
-// onClick trong thiết kế gốc).
+// (mới thêm, tính từ invoices/rooms thật). Hành động chạy được ghi vào nhật ký hệ thống.
 interface ApiInvoice {
   id: string;
   code: string;
@@ -46,6 +44,8 @@ export default function NightAuditPage() {
   const [summary, setSummary] = useState<NightAuditSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     load();
@@ -64,11 +64,21 @@ export default function NightAuditPage() {
     }
   }
 
+  async function runAudit() {
+    setRunning(true); setError(null); setMessage(null);
+    try {
+      const res = await api.post<NightAuditSummary & { completed_at: string }>("/api/v1/dashboard/night-audit/run", {});
+      setSummary(res);
+      setMessage(`Đã đối soát và ghi nhật ký lúc ${new Date(res.completed_at).toLocaleString("vi-VN")}.`);
+    } catch (err) { setError(isApiError(err) ? err.message : "Không chạy được kế toán đêm."); }
+    finally { setRunning(false); }
+  }
+
   if (loading) return <div className="text-[13px] text-pms-muted">Đang tải dữ liệu...</div>;
   if (error || !summary)
     return (
       <div className="rounded-xl bg-white p-6 text-[13px] text-pms-danger shadow-card">
-        {error} <span className="cursor-pointer font-semibold text-pms-primary" onClick={load}>Thử lại</span>
+        {error} <button type="button" className="border-0 bg-transparent p-0 font-semibold text-pms-primary" onClick={load}>Thử lại</button>
       </div>
     );
 
@@ -83,6 +93,8 @@ export default function NightAuditPage() {
     <div>
       <h1 className="mb-1 text-[22px] font-bold">Kế toán đêm</h1>
       <p className="mb-[22px] text-[13px] text-pms-muted">Đối soát doanh thu cuối ngày</p>
+      {message && <p className="rounded-lg bg-pms-success-bg px-3 py-2 text-[12px] text-pms-success">{message}</p>}
+      {error && <p className="rounded-lg bg-pms-danger-bg px-3 py-2 text-[12px] text-pms-danger">{error}</p>}
 
       <div className="mb-5 grid grid-cols-2 gap-4 xl:grid-cols-4">
         {stats.map((s) => (
@@ -96,9 +108,9 @@ export default function NightAuditPage() {
       <div className="rounded-xl bg-white p-6 shadow-card">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="m-0 text-[15px] font-semibold">Hoá đơn cần đối soát</h3>
-          <div className="cursor-pointer rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white">
-            Chạy kế toán đêm
-          </div>
+          <button type="button" disabled={running} onClick={() => void runAudit()} className="rounded-[10px] border-0 bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white disabled:opacity-50">
+            {running ? "Đang đối soát..." : "Chạy kế toán đêm"}
+          </button>
         </div>
         <table className="w-full border-collapse text-[13px]">
           <thead>

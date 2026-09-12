@@ -23,7 +23,7 @@ const createSchema = z.object({
 
 const DailyEntrySchema = z.object({
   id: z.string(), type: z.enum(["Thu", "Chi"]), typeColor: z.string(), desc: z.string(), amount: z.string(), by: z.string(),
-  status: z.enum(["approved", "pending", "rejected"]), source: z.string().optional(), expenseId: z.string().optional(), requestedByRole: z.enum(["OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING"]).optional(),
+  status: z.enum(["approved", "pending", "rejected"]), source: z.string().optional(), expenseId: z.string().optional(), requestedByRole: z.enum(["OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING", "TECHNICIAN"]).optional(),
   expenseDraft: z.object({ category: z.string(), description: z.string().optional(), amount: z.number(), expenseDate: z.string().optional() }).optional(),
 });
 type DailyEntry = z.infer<typeof DailyEntrySchema>;

@@ -23,7 +23,7 @@ export interface RolesData {
 // 4 vai trò THẬT SỰ được middleware requireRole(...) kiểm tra ở backend (xem
 // apps/api/src/types/domain.ts -> PropertyUserRole). Đây là danh sách CỐ ĐỊNH,
 // không đổi theo dữ liệu người dùng nhập ở đây.
-const REAL_ROLE_NAMES = ["OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING"] as const;
+const REAL_ROLE_NAMES = ["OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING", "TECHNICIAN"] as const;
 
 const COMBINING_MARKS_RE = new RegExp("[\\u0300-\\u036f]", "g");
 

@@ -68,7 +68,7 @@ export default function PartnersPage() {
           <h1 className="text-lg font-semibold text-gray-900">Đối tác / Đại lý</h1>
           <p className="mt-1 text-sm text-gray-500">Quản lý hồ sơ, khu vực phụ trách và tỷ lệ hoa hồng mặc định.</p>
         </div>
-        <button
+        <button type="button"
           onClick={() => setShowForm((v) => !v)}
           className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
         >

@@ -20,6 +20,8 @@ interface ApiBooking {
   status: string;
   checkin_date: string;
   checkout_date: string;
+  room_id?: string | null;
+  notes?: string | null;
   created_at?: string;
   arrival_confirmation_status?: "PENDING" | "WILL_ARRIVE" | "NO_SHOW";
 }
@@ -51,6 +53,11 @@ function formatDate(iso: string): string {
 function mapBooking(b: ApiBooking): BookingRow {
   const s = STATUS_INFO[b.status] ?? STATUS_INFO.PENDING;
   return {
+    backendId: b.id,
+    roomId: b.room_id,
+    rawCheckinDate: b.checkin_date.slice(0, 10),
+    rawCheckoutDate: b.checkout_date.slice(0, 10),
+    notes: b.notes,
     id: b.code,
     guest: b.guest_name ?? "—",
     room: b.room_number ? `${b.room_number} · ${b.room_type_name ?? ""}` : "—",
@@ -76,6 +83,7 @@ export default function BookingPage() {
   const [viewBooking, setViewBooking] = useState<BookingRow | null>(null);
   const [editBooking, setEditBooking] = useState<BookingRow | null>(null);
   const [showContract, setShowContract] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     load();
@@ -94,6 +102,15 @@ export default function BookingPage() {
     }
   }
 
+  async function saveBooking(booking: BookingRow, changes: { roomId: string; checkinDate: string; checkoutDate: string; notes: string }) {
+    if (!booking.backendId) throw new Error("Hợp đồng không có mã dữ liệu để cập nhật.");
+    await api.patch(`/api/v1/bookings/${booking.backendId}`, changes);
+    await load();
+    setEditBooking(null);
+  }
+
+  const visibleBookings = bookings.filter((booking) => !search.trim() || `${booking.id} ${booking.guest} ${booking.room} ${booking.channel} ${booking.status}`.toLowerCase().includes(search.trim().toLowerCase()));
+
   return (
     <div>
       <h1 className="mb-1 text-[22px] font-bold">Quản lý hợp đồng / đặt phòng</h1>
@@ -103,7 +120,7 @@ export default function BookingPage() {
         <div className="mb-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="m-0 text-[15px] font-semibold">Danh sách hợp đồng</h3>
           <div className="grid grid-cols-2 gap-2 sm:flex">
-            <div className="col-span-2 hidden items-center gap-2 rounded-[10px] bg-pms-divider px-3.5 py-2.5 text-[13px] text-pms-muted sm:flex">Tìm kiếm</div>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Tìm hợp đồng" placeholder="Tìm mã, khách, phòng..." className="col-span-2 rounded-[10px] border border-pms-border bg-pms-divider px-3.5 py-2.5 text-[13px] outline-none focus:border-pms-primary sm:w-[210px]" />
             <button type="button"
               className="cursor-pointer whitespace-nowrap rounded-[10px] border border-pms-border px-[18px] py-2.5 text-[13px] font-semibold"
               onClick={() => setShowContract(true)}
@@ -123,12 +140,12 @@ export default function BookingPage() {
           <div className="py-6 text-center text-[13px] text-pms-muted">Đang tải...</div>
         ) : error ? (
           <div className="py-6 text-center text-[13px] text-pms-danger">
-            {error} <span className="cursor-pointer font-semibold text-pms-primary" onClick={load}>Thử lại</span>
+            {error} <button type="button" className="border-0 bg-transparent p-0 font-semibold text-pms-primary" onClick={load}>Thử lại</button>
           </div>
         ) : (
           <>
           <div className="space-y-3 md:hidden">
-            {bookings.map((b) => <article key={b.id} className="rounded-lg border border-pms-divider p-3"><div className="flex items-start justify-between gap-3"><div><b className="block text-[13px]">{b.guest}</b><span className="text-[11.5px] text-pms-muted">{b.id} · {b.room}</span></div><StatusPill bg={b.bg} fg={b.fg}>{b.status}</StatusPill></div><p className="mt-2 text-[12px] text-pms-muted">{b.checkin} → {b.checkout} · {b.channel}</p><div className="mt-3 flex gap-4 text-[12px]"><button type="button" className="font-semibold text-pms-primary" onClick={() => setViewBooking(b)}>Xem</button><button type="button" className="font-semibold text-pms-muted" onClick={() => setEditBooking(b)}>Sửa</button></div></article>)}{bookings.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có hợp đồng.</p>}</div>
+            {visibleBookings.map((b) => <article key={b.id} className="rounded-lg border border-pms-divider p-3"><div className="flex items-start justify-between gap-3"><div><b className="block text-[13px]">{b.guest}</b><span className="text-[11.5px] text-pms-muted">{b.id} · {b.room}</span></div><StatusPill bg={b.bg} fg={b.fg}>{b.status}</StatusPill></div><p className="mt-2 text-[12px] text-pms-muted">{b.checkin} → {b.checkout} · {b.channel}</p><div className="mt-3 flex gap-4 text-[12px]"><button type="button" className="font-semibold text-pms-primary" onClick={() => setViewBooking(b)}>Xem</button><button type="button" className="font-semibold text-pms-muted" onClick={() => setEditBooking(b)}>Sửa</button></div></article>)}{visibleBookings.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có hợp đồng.</p>}</div>
           <table className="hidden w-full border-collapse text-[13px] md:table">
             <thead>
               <tr>
@@ -140,7 +157,7 @@ export default function BookingPage() {
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => (
+              {visibleBookings.map((b) => (
                 <tr key={b.id}>
                   <td className="border-b border-pms-divider px-2 py-3">{b.id}</td>
                   <td className="border-b border-pms-divider px-2 py-3">{b.guest}</td>
@@ -154,12 +171,12 @@ export default function BookingPage() {
                     </StatusPill>
                   </td>
                   <td className="whitespace-nowrap border-b border-pms-divider px-2 py-3">
-                    <span className="cursor-pointer font-semibold text-pms-primary" onClick={() => setViewBooking(b)}>
+                    <button type="button" className="border-0 bg-transparent p-0 font-semibold text-pms-primary" onClick={() => setViewBooking(b)}>
                       Xem
-                    </span>
-                    <span className="ml-2.5 cursor-pointer font-semibold text-pms-muted" onClick={() => setEditBooking(b)}>
+                    </button>
+                    <button type="button" className="ml-2.5 border-0 bg-transparent p-0 font-semibold text-pms-muted" onClick={() => setEditBooking(b)}>
                       Sửa
-                    </span>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -173,7 +190,7 @@ export default function BookingPage() {
       {viewBooking && (
         <ViewBookingModal booking={viewBooking} onClose={() => setViewBooking(null)} onOpenContractTemplate={() => setShowContract(true)} />
       )}
-      {editBooking && <EditBookingModal booking={editBooking} onClose={() => setEditBooking(null)} />}
+      {editBooking && <EditBookingModal booking={editBooking} onClose={() => setEditBooking(null)} onSave={saveBooking} />}
       {showContract && (
         <ContractTemplateModal guestName={(viewBooking || editBooking)?.guest ?? ""} onClose={() => setShowContract(false)} />
       )}

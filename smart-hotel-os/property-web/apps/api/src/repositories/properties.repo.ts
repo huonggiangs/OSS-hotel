@@ -13,6 +13,11 @@ export const propertiesRepo = {
     return rows;
   },
 
+  async findByIdForTenant(propertyId: string, tenantId: string): Promise<Property | null> {
+    const { rows } = await pool.query<Property>(`SELECT * FROM properties WHERE id = $1 AND tenant_id = $2 LIMIT 1`, [propertyId, tenantId]);
+    return rows[0] ?? null;
+  },
+
   // Dùng cho lời gọi NỘI BỘ từ webadmin (X-Internal-Service-Key, xem
   // middleware/internalAuth.ts) — HQ Console cần thấy TOÀN BỘ cơ sở của MỌI
   // tenant (khách hàng) để làm dropdown "gán vào cơ sở" khi khai báo thiết bị,

@@ -20,12 +20,12 @@ const createSchema = z.object({
   username: z.string().min(3),
   email: z.string().email(),
   fullName: z.string().min(1),
-  role: z.enum(["OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING"]),
+  role: z.enum(["OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING", "TECHNICIAN"]),
   password: z.string().min(6).optional(),
 });
 
 const updateSchema = z.object({
-  role: z.enum(["OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING"]).optional(),
+  role: z.enum(["OWNER", "MANAGER", "RECEPTIONIST", "HOUSEKEEPING", "TECHNICIAN"]).optional(),
   status: z.enum(["ACTIVE", "DISABLED"]).optional(),
 });
 

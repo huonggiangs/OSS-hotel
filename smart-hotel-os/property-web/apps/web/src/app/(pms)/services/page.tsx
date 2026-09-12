@@ -135,23 +135,23 @@ export default function ServicesPage() {
                   {s.statusLabel}
                 </td>
                 <td className={`${TD} relative`}>
-                  <div className="cursor-pointer px-2 py-1 text-center" onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}>
+                  <button type="button" aria-label={`Mở thao tác dịch vụ ${s.name}`} className="w-full border-0 bg-transparent px-2 py-1 text-center" onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}>
                     ⋯
-                  </div>
+                  </button>
                   {openMenuId === s.id && (
                     <div className="absolute right-2 top-8 z-50 min-w-[120px] rounded-[10px] border border-pms-border bg-white shadow-popover">
-                      <div
-                        className="cursor-pointer px-3.5 py-2.5 text-[12.5px]"
+                      <button type="button"
+                        className="block w-full border-0 bg-transparent px-3.5 py-2.5 text-left text-[12.5px]"
                         onClick={() => {
                           setEditingId(s.id);
                           setOpenMenuId(null);
                         }}
                       >
                         Sửa dịch vụ
-                      </div>
-                      <div className="cursor-pointer px-3.5 py-2.5 text-[12.5px] text-pms-danger" onClick={() => handleDelete(s.id)}>
+                      </button>
+                      <button type="button" className="block w-full border-0 bg-transparent px-3.5 py-2.5 text-left text-[12.5px] text-pms-danger" onClick={() => void handleDelete(s.id)}>
                         Xóa
-                      </div>
+                      </button>
                     </div>
                   )}
                 </td>
@@ -167,12 +167,12 @@ export default function ServicesPage() {
       <div className="rounded-xl bg-white p-6 shadow-card">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="m-0 text-[15px] font-semibold">Đối tác xung quanh</h3>
-          <div
-            className="cursor-pointer rounded-[10px] bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
+          <button type="button"
+            className="rounded-[10px] border-0 bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white"
             onClick={() => setShowAddPartner(true)}
           >
             + Thêm đối tác
-          </div>
+          </button>
         </div>
         <div className="space-y-3 md:hidden">{data.partners.map((s, index) => <article key={`${s.name}-${index}`} className="rounded-lg border border-pms-divider p-3"><div className="flex items-start justify-between gap-3"><b className="break-words text-[13px]">{s.name}</b><StatusPill bg={s.linked ? "#E9FBEF" : "#F4F5F6"} fg={s.linked ? "#00C853" : "#777E90"}>{s.linked ? "Đang liên kết" : "Chưa liên kết"}</StatusPill></div><p className="m-0 mt-2 break-words text-[12px] text-pms-muted">{s.category} · {s.distance || "Chưa cập nhật"} · Hoa hồng {s.commission || "Chưa cập nhật"}</p><div className="mt-3 flex gap-3 text-[12px] font-semibold"><button type="button" onClick={() => setViewingPartnerIndex(index)} className="text-pms-primary">👁 Xem</button><button type="button" onClick={() => setEditingPartnerIndex(index)} className="text-pms-primary">✎ Sửa</button><button type="button" onClick={() => void handleDeletePartner(index)} className="text-pms-danger">🗑 Xóa</button></div></article>)}{data.partners.length === 0 && <p className="py-4 text-center text-[13px] text-pms-muted">Chưa có đối tác.</p>}</div>
         <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[760px] border-collapse text-[13px]">
@@ -214,7 +214,7 @@ export default function ServicesPage() {
       )}
       {showAddPartner && <AddPartnerModal onClose={() => setShowAddPartner(false)} onSave={handleAddPartner} />}
       {editingPartnerIndex !== null && data.partners[editingPartnerIndex] && <AddPartnerModal initial={data.partners[editingPartnerIndex]} onClose={() => setEditingPartnerIndex(null)} onSave={handleEditPartner} />}
-      {viewingPartnerIndex !== null && data.partners[viewingPartnerIndex] && <Modal title="Chi tiết đối tác" onClose={() => setViewingPartnerIndex(null)} width={520}><div className="space-y-2 px-6 py-5 text-[13px]"><b className="block text-[16px]">{data.partners[viewingPartnerIndex].name}</b><p className="m-0">Loại hình: {data.partners[viewingPartnerIndex].category}</p><p className="m-0">Khoảng cách: {data.partners[viewingPartnerIndex].distance || "Chưa cập nhật"}</p><p className="m-0">Hoa hồng: {data.partners[viewingPartnerIndex].commission || "Chưa cập nhật"}</p><p className="m-0">Trạng thái: {data.partners[viewingPartnerIndex].linked ? "Đang liên kết" : "Chưa liên kết"}</p></div></Modal>}
+      {viewingPartnerIndex !== null && data.partners[viewingPartnerIndex] && <Modal title="Chi tiết đối tác" onClose={() => setViewingPartnerIndex(null)} width={520}><div className="space-y-2 px-6 py-5 text-[13px]"><b className="block text-[16px]">{data.partners[viewingPartnerIndex].name}</b><p className="m-0">Loại hình: {data.partners[viewingPartnerIndex].category}</p><p className="m-0">Khoảng cách: {data.partners[viewingPartnerIndex].distance || "Chưa cập nhật"}</p><p className="m-0">Hoa hồng: {data.partners[viewingPartnerIndex].commission || "Chưa cập nhật"}</p><p className="m-0">Địa chỉ: {data.partners[viewingPartnerIndex].address || "Chưa cập nhật"}</p><p className="m-0">Điện thoại: {data.partners[viewingPartnerIndex].phone || "Chưa cập nhật"}</p><p className="m-0">Email: {data.partners[viewingPartnerIndex].email || "Chưa cập nhật"}</p><p className="m-0">Người liên hệ: {data.partners[viewingPartnerIndex].contactName || "Chưa cập nhật"}</p><p className="m-0">Trạng thái: {data.partners[viewingPartnerIndex].linked ? "Đang liên kết" : "Chưa liên kết"}</p></div></Modal>}
       {showAddService && <AddServiceModal onClose={() => setShowAddService(false)} onSave={handleAddService} />}
     </div>
   );

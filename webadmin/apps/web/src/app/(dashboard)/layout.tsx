@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="mt-auto border-t border-gray-200 px-5 py-4">
           <p className="text-sm text-gray-700">{user.full_name}</p>
           <p className="text-xs text-gray-500">{user.role}</p>
-          <button onClick={logout} className="mt-2 text-xs font-medium text-brand-600 hover:underline">
+          <button type="button" onClick={logout} className="mt-2 text-xs font-medium text-brand-600 hover:underline">
             Đăng xuất
           </button>
         </div>

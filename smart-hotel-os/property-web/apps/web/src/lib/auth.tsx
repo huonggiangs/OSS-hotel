@@ -8,7 +8,7 @@ import { api, ApiClientError, getToken, setToken, clearToken } from "./api-clien
 // role gốc trong tài liệu dùng tên PROPERTY_MANAGER/FRONT_DESK, ở đây đổi thành
 // MANAGER/RECEPTIONIST cho khớp đúng yêu cầu tối thiểu OWNER/MANAGER/RECEPTIONIST/
 // HOUSEKEEPING đã nêu — xem PROGRESS.md mục quyết định).
-export type Role = "OWNER" | "MANAGER" | "RECEPTIONIST" | "HOUSEKEEPING";
+export type Role = "OWNER" | "MANAGER" | "RECEPTIONIST" | "HOUSEKEEPING" | "TECHNICIAN";
 
 export interface CurrentUser {
   id: string;
@@ -86,4 +86,5 @@ export const roleLabel: Record<Role, string> = {
   MANAGER: "Quản lý",
   RECEPTIONIST: "Lễ tân",
   HOUSEKEEPING: "Buồng phòng",
+  TECHNICIAN: "Kỹ thuật viên",
 };

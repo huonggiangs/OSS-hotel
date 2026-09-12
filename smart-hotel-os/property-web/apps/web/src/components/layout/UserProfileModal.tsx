@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth, roleLabel } from "@/lib/auth";
-import { Modal, ButtonGhost, ButtonPrimary } from "@/components/ui/Modal";
+import { Modal, ButtonGhost } from "@/components/ui/Modal";
 
 function initialsOf(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
@@ -9,11 +9,7 @@ function initialsOf(fullName: string): string {
   return last2.map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
-// Modal "Thông tin người dùng" mở từ Topbar — pixel-perfect theo khối showUserProfile
-// trong bản gốc: 2 cột (Thông tin cá nhân | Đổi mật khẩu + Đăng nhập gần đây). Đã nối
-// tên/vai trò thật từ tài khoản đăng nhập (useAuth) thay vì mock currentUser, và bổ
-// sung nút "Đăng xuất" ở footer (không có trong bản gốc — hợp lý vì bản gốc không có
-// màn đăng nhập nên cũng không cần đăng xuất).
+// Chỉ hiển thị dữ liệu tài khoản có thật; không tạo nút cập nhật giả khi chưa có API hồ sơ.
 export function UserProfileModal({ onClose }: { onClose: () => void }) {
   const { user, logout } = useAuth();
   if (!user) return null;
@@ -26,8 +22,7 @@ export function UserProfileModal({ onClose }: { onClose: () => void }) {
       footer={
         <>
           <ButtonGhost onClick={logout}>Đăng xuất</ButtonGhost>
-          <ButtonGhost onClick={onClose}>Hủy</ButtonGhost>
-          <ButtonPrimary onClick={onClose}>Cập nhật</ButtonPrimary>
+          <ButtonGhost onClick={onClose}>Đóng</ButtonGhost>
         </>
       }
     >
@@ -42,37 +37,21 @@ export function UserProfileModal({ onClose }: { onClose: () => void }) {
           </div>
           <span className="ml-auto rounded-full bg-[#E9FBEF] px-3 py-1 text-[11px] font-semibold text-pms-success">Đang hoạt động</span>
         </div>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div className="flex flex-col gap-3.5">
             <b className="text-[13.5px]">Thông tin cá nhân</b>
             <Field label="Họ và tên" value={user.full_name} />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Email" value={user.email} muted />
-              <Field label="Số điện thoại" value="090 xxx xx xx" muted />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Chức vụ" value={roleLabel[user.role]} muted />
               <Field label="Vai trò hệ thống" value={user.role} muted />
             </div>
           </div>
           <div className="flex flex-col gap-3.5">
-            <b className="text-[13.5px]">Đổi mật khẩu</b>
-            <Field label="Mật khẩu hiện tại" value="••••••••" muted />
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Mật khẩu mới" value="••••••••" muted />
-              <Field label="Xác nhận mật khẩu mới" value="••••••••" muted />
-            </div>
-            <div className="mt-0.5 border-t border-pms-divider pt-3.5">
-              <b className="text-[13.5px]">Đăng nhập gần đây</b>
-            </div>
-            <div className="flex justify-between text-[12px] text-pms-muted">
-              <span>Hôm nay, 08:12</span>
-              <span>Chrome · Windows</span>
-            </div>
-            <div className="flex justify-between text-[12px] text-pms-muted">
-              <span>Hôm qua, 21:40</span>
-              <span>Safari · iPhone</span>
-            </div>
+            <b className="text-[13.5px]">Bảo mật tài khoản</b>
+            <p className="m-0 rounded-lg bg-pms-divider p-3 text-[12px] leading-5 text-pms-muted">Mật khẩu không hiển thị trong hồ sơ. Chủ cơ sở hoặc người quản trị có thể đặt lại mật khẩu tại mục Người dùng và phân quyền.</p>
           </div>
         </div>
       </div>

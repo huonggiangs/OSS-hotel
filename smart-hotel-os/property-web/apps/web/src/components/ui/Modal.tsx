@@ -30,9 +30,9 @@ export function Modal({
           <b className="text-[16px]">{title}</b>
           <div className="flex items-center gap-3">
             {titleExtra}
-            <div className="cursor-pointer text-[18px] text-pms-muted" onClick={onClose}>
+            <button type="button" aria-label="Đóng" title="Đóng" className="border-0 bg-transparent p-1 text-[18px] text-pms-muted" onClick={onClose}>
               ✕
-            </div>
+            </button>
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
@@ -61,18 +61,18 @@ export function FieldBox({ children, placeholder = false }: { children: ReactNod
   );
 }
 
-export function ButtonPrimary({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
+export function ButtonPrimary({ children, onClick, disabled = false }: { children: ReactNode; onClick: () => void; disabled?: boolean }) {
   return (
-    <div className="cursor-pointer rounded-lg bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white" onClick={onClick}>
+    <button type="button" disabled={disabled} className="rounded-lg border-0 bg-pms-primary px-[18px] py-2.5 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={onClick}>
       {children}
-    </div>
+    </button>
   );
 }
 
-export function ButtonGhost({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
+export function ButtonGhost({ children, onClick, disabled = false }: { children: ReactNode; onClick: () => void; disabled?: boolean }) {
   return (
-    <div className="cursor-pointer px-[18px] py-2.5 text-[13px] font-semibold text-pms-muted" onClick={onClick}>
+    <button type="button" disabled={disabled} className="border-0 bg-transparent px-[18px] py-2.5 text-[13px] font-semibold text-pms-muted disabled:cursor-not-allowed disabled:opacity-50" onClick={onClick}>
       {children}
-    </div>
+    </button>
   );
 }

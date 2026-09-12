@@ -27,6 +27,7 @@ import { valueRouter } from "./routes/value.routes";
 import { commercialRouter } from "./routes/commercial.routes";
 import { otaReconciliationRouter } from "./routes/otaReconciliation.routes";
 import { marketingRouter } from "./routes/marketing.routes";
+import { mobileRouter } from "./routes/mobile.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { pool, DB_MODE, embeddedDb } from "./lib/db";
@@ -83,6 +84,7 @@ app.use("/api/v1/value", valueRouter);
 app.use("/api/v1/commercial", commercialRouter);
 app.use("/api/v1/ota-reconciliation", otaReconciliationRouter);
 app.use("/api/v1/marketing", marketingRouter);
+app.use("/api/v1/mobile", mobileRouter);
 // Router SePay (public webhook + API xác thực) phải đăng ký TRƯỚC
 // invoicesRouter — Express khớp route theo THỨ TỰ đăng ký chứ không theo độ
 // cụ thể, nên nếu invoicesRouter (có requireAuth) đăng ký trước thì

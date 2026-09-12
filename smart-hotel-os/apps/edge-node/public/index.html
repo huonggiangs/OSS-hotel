@@ -59,7 +59,7 @@
   <h2>Đăng nhập</h2>
   <input id="login-username" placeholder="Tên đăng nhập (vd. reception)" autocomplete="username" />
   <input id="login-password" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
-  <button onclick="doLogin()">Đăng nhập</button>
+  <button type="button" onclick="doLogin()">Đăng nhập</button>
   <div id="login-error"></div>
 </div>
 
@@ -67,8 +67,8 @@
   <div class="top-row">
     <span class="user-chip" id="user-chip"></span>
     <span>
-      <button class="btn sync-btn" onclick="triggerSync()">Đồng bộ ngay</button>
-      <span class="logout-link" onclick="doLogout()">Đăng xuất</span>
+      <button type="button" class="btn sync-btn" onclick="triggerSync()">Đồng bộ ngay</button>
+      <button type="button" class="logout-link" onclick="doLogout()">Đăng xuất</button>
     </span>
   </div>
 
@@ -207,8 +207,8 @@
           <td>${b.room_number || "—"}</td>
           <td><span class="badge ${b.status}">${bookingStatusLabel(b.status)}</span></td>
           <td class="row-actions">
-            ${b.status !== "CHECKED_IN" && b.status !== "CHECKED_OUT" && b.status !== "CANCELLED" ? `<button class="primary" onclick="checkin('${b.id}')">Nhận phòng</button>` : ""}
-            ${b.status === "CHECKED_IN" ? `<button class="danger" onclick="checkout('${b.id}')">Trả phòng</button>` : ""}
+            ${b.status !== "CHECKED_IN" && b.status !== "CHECKED_OUT" && b.status !== "CANCELLED" ? `<button type="button" class="primary" onclick="checkin('${b.id}')">Nhận phòng</button>` : ""}
+            ${b.status === "CHECKED_IN" ? `<button type="button" class="danger" onclick="checkout('${b.id}')">Trả phòng</button>` : ""}
           </td>
         </tr>`).join("");
     } catch (e) {
@@ -228,8 +228,8 @@
           <td><span class="badge ${d.status === "ONLINE" ? "ON" : "OFF"}">${d.status}</span></td>
           <td><span class="badge ${d.power_on ? "ON" : "OFF"}">${d.power_on ? "Bật" : "Tắt"}</span></td>
           <td class="row-actions">
-            <button class="primary" onclick="sendCommand('${d.id}', 'POWER_ON')">Bật</button>
-            <button class="danger" onclick="sendCommand('${d.id}', 'POWER_OFF')">Tắt</button>
+            <button type="button" class="primary" onclick="sendCommand('${d.id}', 'POWER_ON')">Bật</button>
+            <button type="button" class="danger" onclick="sendCommand('${d.id}', 'POWER_OFF')">Tắt</button>
           </td>
         </tr>`).join("");
     } catch (e) {

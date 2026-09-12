@@ -7,7 +7,7 @@ import { RolePopupModal, RoleScope, RolesData } from "@/components/users/RolePop
 
 const FALLBACK: RolesData = { scopes: [], permissionGroups: [] };
 
-type Role = "OWNER" | "MANAGER" | "RECEPTIONIST" | "HOUSEKEEPING";
+type Role = "OWNER" | "MANAGER" | "RECEPTIONIST" | "HOUSEKEEPING" | "TECHNICIAN";
 interface AccountRow {
   id: string;
   username: string;
@@ -17,7 +17,7 @@ interface AccountRow {
   status: "ACTIVE" | "DISABLED";
 }
 
-const ROLE_LABEL: Record<Role, string> = { OWNER: "Chủ sở hữu", MANAGER: "Quản lý", RECEPTIONIST: "Lễ tân", HOUSEKEEPING: "Buồng phòng" };
+const ROLE_LABEL: Record<Role, string> = { OWNER: "Chủ sở hữu", MANAGER: "Quản lý", RECEPTIONIST: "Lễ tân", HOUSEKEEPING: "Buồng phòng", TECHNICIAN: "Kỹ thuật viên" };
 
 // Trang "Người dùng & phân quyền" (mở từ panel Cài đặt) — ĐÃ NỐI API THẬT, gồm 2
 // phần: (1) "Danh sách vai trò" — giữ pixel-perfect bản gốc (`isUsers` dòng

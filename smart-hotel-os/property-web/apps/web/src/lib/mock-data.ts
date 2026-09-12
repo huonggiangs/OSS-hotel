@@ -98,6 +98,11 @@ export function buildMonthBookingBars(activeDay: number) {
 // ---------- Booking (đặt phòng / hợp đồng) ----------
 
 export interface BookingRow {
+  backendId?: string;
+  roomId?: string | null;
+  rawCheckinDate?: string;
+  rawCheckoutDate?: string;
+  notes?: string | null;
   id: string;
   guest: string;
   room: string;
@@ -543,6 +548,11 @@ export interface PartnerServiceRow {
   distance: string;
   commission: string;
   linked: boolean;
+  address?: string;
+  phone?: string;
+  email?: string;
+  contactName?: string;
+  imageDataUrls?: string[];
 }
 
 // partnerServicesList (mảng dữ liệu mẫu) đã XOÁ cùng lý do trên.

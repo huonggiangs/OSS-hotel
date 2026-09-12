@@ -1,0 +1,770 @@
+package vn.khachsan.so.owner
+
+import android.app.Activity
+import android.app.AlertDialog
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.os.Bundle
+import android.text.Editable
+import android.text.InputType
+import android.text.TextWatcher
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.*
+import org.json.JSONArray
+import org.json.JSONObject
+import java.text.NumberFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.util.concurrent.Executors
+
+private enum class AppPage { DASHBOARD, ROOMS, BOOKINGS, ALERTS, ACCOUNT }
+
+class MainActivity : Activity() {
+    private val executor = Executors.newSingleThreadExecutor()
+    private val api = MobileApi()
+    private val primary = Color.rgb(40, 74, 177)
+    private val success = Color.rgb(0, 168, 74)
+    private val warning = Color.rgb(232, 151, 0)
+    private val danger = Color.rgb(204, 47, 66)
+    private val ink = Color.rgb(20, 29, 55)
+    private val muted = Color.rgb(102, 112, 139)
+    private val surface = Color.WHITE
+    private val canvasColor = Color.rgb(246, 248, 255)
+
+    private lateinit var content: LinearLayout
+    private lateinit var apiInput: EditText
+    private lateinit var userInput: EditText
+    private lateinit var passwordInput: EditText
+    private var currentPage = AppPage.DASHBOARD
+    private var accessToken: String? = null
+    private var apiBase = "http://10.0.2.2:3100/api/backend"
+    private var currentUser = JSONObject()
+    private var properties = JSONArray()
+    private var selectedPropertyId: String? = null
+    private var lastRooms = JSONArray()
+    private var roomStatusFilter: String? = null
+    private var pendingBookingRoomId: String? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        apiBase = getSharedPreferences("anio", MODE_PRIVATE).getString("api_base", apiBase) ?: apiBase
+        showLogin()
+    }
+
+    private fun showLogin() {
+        val body = vertical().apply { setPadding(dp(24), dp(50), dp(24), dp(24)) }
+        body.addView(label("ANIO", 34f, true, ink))
+        body.addView(label("Ứng dụng chủ cơ sở", 19f, true, primary))
+        body.addView(label("Theo dõi phòng, đặt phòng, cảnh báo và vận hành nhiều cơ sở ngay trên điện thoại.", 14f, false, muted), matchWrap(top = 8, bottom = 26))
+        apiInput = field("Địa chỉ API", apiBase)
+        userInput = field("Tên đăng nhập", "")
+        passwordInput = field("Mật khẩu", "", true)
+        body.addView(apiInput, matchWrap(bottom = 12))
+        body.addView(userInput, matchWrap(bottom = 12))
+        body.addView(passwordInput, matchWrap(bottom = 18))
+        body.addView(actionButton("Đăng nhập", android.R.drawable.ic_lock_lock, true) { login() }, matchWrap())
+        val scroll = ScrollView(this).apply { isFillViewport = true; setBackgroundColor(canvasColor); addView(body) }
+        setContentView(scroll)
+    }
+
+    private fun login() {
+        val base = apiInput.text.toString().trim().trimEnd('/')
+        val username = userInput.text.toString().trim()
+        val password = passwordInput.text.toString()
+        if (base.isBlank() || username.isBlank() || password.isBlank()) return toast("Hãy nhập địa chỉ API, tài khoản và mật khẩu.")
+        toast("Đang đăng nhập…")
+        runTask({ api.login(base, username, password) }) { result ->
+            accessToken = result.optString("access_token")
+            currentUser = result.optJSONObject("user") ?: JSONObject()
+            apiBase = base
+            getSharedPreferences("anio", MODE_PRIVATE).edit().putString("api_base", apiBase).apply()
+            loadBootstrap()
+        }
+    }
+
+    private fun loadBootstrap() {
+        val token = accessToken ?: return showLogin()
+        runTask({ api.bootstrap(apiBase, token, selectedPropertyId) }) { data ->
+            properties = data.optJSONArray("properties") ?: JSONArray()
+            selectedPropertyId = data.optString("current_property_id").takeIf { it.isNotBlank() }
+                ?: currentUser.optString("property_id").takeIf { it.isNotBlank() }
+            showPage(AppPage.DASHBOARD)
+        }
+    }
+
+    private fun showPage(page: AppPage) {
+        currentPage = page
+        val root = vertical().apply { setBackgroundColor(canvasColor) }
+        val scroll = ScrollView(this).apply { isFillViewport = true }
+        content = vertical().apply { setPadding(dp(16), dp(22), dp(16), dp(22)) }
+        scroll.addView(content)
+        root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        root.addView(bottomNavigation(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(72)))
+        setContentView(root)
+        when (page) {
+            AppPage.DASHBOARD -> loadDashboard()
+            AppPage.ROOMS -> loadRooms()
+            AppPage.BOOKINGS -> loadBookings()
+            AppPage.ALERTS -> loadAlerts()
+            AppPage.ACCOUNT -> renderAccount()
+        }
+    }
+
+    private fun header(title: String, showBell: Boolean = true) {
+        val row = horizontal(Gravity.CENTER_VERTICAL)
+        val left = vertical()
+        left.addView(label(title, 28f, true, ink))
+        left.addView(actionButton(propertyName(), 0, false) { chooseProperty() }.apply {
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            setPadding(0, 0, dp(8), 0)
+        }, matchWrap(top = 2))
+        row.addView(left, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        if (showBell) row.addView(actionButton("🔔", 0, false) { showPage(AppPage.ALERTS) }, LinearLayout.LayoutParams(dp(52), dp(52)))
+        content.addView(row, matchWrap(bottom = 16))
+    }
+
+    private fun loadDashboard() {
+        content.removeAllViews()
+        header("Tổng quan")
+        content.addView(label("Đang tải dữ liệu thực tế…", 13f, false, muted))
+        val token = accessToken ?: return
+        runTask({
+            JSONObject().put("overview", api.overview(apiBase, token, selectedPropertyId))
+                .put("queue", api.workQueue(apiBase, token, selectedPropertyId))
+        }) { data -> renderDashboard(data.getJSONObject("overview"), data.getJSONObject("queue")) }
+    }
+
+    private fun renderDashboard(overview: JSONObject, queue: JSONObject) {
+        content.removeAllViews()
+        header("Tổng quan")
+        addDashboardSearch()
+        val summary = overview.optJSONObject("summary") ?: JSONObject()
+        val counts = overview.optJSONObject("counts") ?: JSONObject()
+        val rooms = counts.optJSONObject("rooms") ?: JSONObject()
+        val totalRooms = listOf("VACANT", "OCCUPIED", "DIRTY", "MAINTENANCE").sumOf { rooms.optInt(it) }
+        val occupied = rooms.optInt("OCCUPIED")
+        val occupancy = if (totalRooms == 0) 0 else occupied * 100 / totalRooms
+        val financial = summary.optJSONArray("financial_daily") ?: JSONArray()
+        val todayRevenue = if (financial.length() == 0) 0.0 else financial.optJSONObject(financial.length() - 1)?.optDouble("revenue") ?: 0.0
+        val queueCount = (queue.optJSONArray("housekeeping")?.length() ?: 0) + (queue.optJSONArray("device_alerts")?.length() ?: 0) + (queue.optJSONArray("maintenance")?.length() ?: 0)
+        val kpis = listOf(
+            Triple("Công suất phòng", "$occupancy%", "$occupied/$totalRooms phòng"),
+            Triple("Doanh thu hôm nay", money(todayRevenue), "Từ giao dịch đã ghi nhận"),
+            Triple("Phòng đang ở", "$occupied phòng", "Trên tổng $totalRooms phòng"),
+            Triple("Việc cần xử lý", "$queueCount việc", "Cảnh báo, dọn phòng, bảo trì"),
+        )
+        addTwoColumnCards(kpis.mapIndexed { index, item -> kpiCard(item.first, item.second, item.third, listOf(success, primary, primary, warning)[index]) })
+
+        content.addView(sectionTitle("Thao tác nhanh"), matchWrap(top = 4, bottom = 8))
+        addTwoColumnCards(listOf(
+            quickAction("Nhận phòng", android.R.drawable.ic_input_add) { roomStatusFilter = "VACANT"; showPage(AppPage.ROOMS) },
+            quickAction("Đặt phòng", android.R.drawable.ic_menu_my_calendar) { pendingBookingRoomId = ""; showPage(AppPage.BOOKINGS) },
+            quickAction("Trạng thái phòng", android.R.drawable.ic_menu_view) { roomStatusFilter = null; showPage(AppPage.ROOMS) },
+            quickAction("Báo hỏng", android.R.drawable.ic_menu_manage) { openMaintenanceForm() },
+        ))
+
+        val roomCard = card()
+        val roomHeader = horizontal(Gravity.CENTER_VERTICAL)
+        roomHeader.addView(sectionTitle("Trạng thái phòng"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        roomHeader.addView(linkButton("Xem phòng ›") { showPage(AppPage.ROOMS) })
+        roomCard.addView(roomHeader)
+        val chartRow = horizontal(Gravity.CENTER_VERTICAL)
+        chartRow.addView(RoomDonutView(this).apply { setCounts(rooms.optInt("VACANT"), occupied, rooms.optInt("DIRTY"), rooms.optInt("MAINTENANCE")) }, LinearLayout.LayoutParams(dp(150), dp(150)))
+        val legend = vertical()
+        addLegend(legend, "Trống", rooms.optInt("VACANT"), totalRooms, success)
+        addLegend(legend, "Đang ở", occupied, totalRooms, primary)
+        addLegend(legend, "Chờ dọn", rooms.optInt("DIRTY"), totalRooms, Color.rgb(250, 181, 5))
+        addLegend(legend, "Bảo trì", rooms.optInt("MAINTENANCE"), totalRooms, danger)
+        chartRow.addView(legend, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        roomCard.addView(chartRow)
+        content.addView(roomCard, matchWrap(top = 12))
+
+        val financeCard = card()
+        val financeHeader = horizontal(Gravity.CENTER_VERTICAL)
+        financeHeader.addView(sectionTitle("Thu nhập & chi phí"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        financeHeader.addView(chip("30 ngày", primary))
+        financeCard.addView(financeHeader)
+        val revenues = mutableListOf<Float>()
+        val expenses = mutableListOf<Float>()
+        for (index in 0 until financial.length()) {
+            revenues.add(financial.optJSONObject(index)?.optDouble("revenue")?.toFloat() ?: 0f)
+            expenses.add(financial.optJSONObject(index)?.optDouble("expense")?.toFloat() ?: 0f)
+        }
+        financeCard.addView(FinanceLineView(this).apply { setData(revenues, expenses) }, matchWrap(top = 8))
+        val totals = horizontal(Gravity.CENTER_VERTICAL)
+        totals.addView(label("● Thu nhập  ${money(revenues.sum().toDouble())}", 12f, true, primary), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        totals.addView(label("● Chi phí  ${money(expenses.sum().toDouble())}", 12f, true, danger), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        financeCard.addView(totals)
+        content.addView(financeCard, matchWrap(top = 12))
+
+        val firstAlert = firstQueueItem(queue)
+        val alertCard = card()
+        val alertHeader = horizontal(Gravity.CENTER_VERTICAL)
+        alertHeader.addView(sectionTitle("Cảnh báo cần xử lý"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        alertHeader.addView(linkButton("Xem tất cả ›") { showPage(AppPage.ALERTS) })
+        alertCard.addView(alertHeader)
+        if (firstAlert == null) alertCard.addView(label("Không có việc tồn đọng.", 13f, false, success), matchWrap(top = 10))
+        else {
+            alertCard.addView(label(firstAlert.first, 14f, true, ink), matchWrap(top = 10))
+            alertCard.addView(label(firstAlert.second, 12f, false, muted))
+            alertCard.setOnClickListener { showPage(AppPage.ALERTS) }
+        }
+        content.addView(alertCard, matchWrap(top = 12))
+    }
+
+    private fun addDashboardSearch() {
+        val searchCard = card()
+        val input = field("Tìm khách hoặc mã đặt phòng", "")
+        val results = vertical()
+        searchCard.addView(input)
+        searchCard.addView(actionButton("Tìm kiếm", android.R.drawable.ic_menu_search, true) {
+            val query = input.text.toString().trim()
+            if (query.length < 2) return@actionButton toast("Nhập ít nhất 2 ký tự.")
+            val token = accessToken ?: return@actionButton
+            runTask({ api.search(apiBase, token, selectedPropertyId, query) }) { data ->
+                results.removeAllViews()
+                val customers = data.optJSONArray("customers") ?: JSONArray()
+                val bookings = data.optJSONArray("bookings") ?: JSONArray()
+                if (customers.length() + bookings.length() == 0) results.addView(label("Không tìm thấy kết quả phù hợp.", 12f, false, muted))
+                for (index in 0 until minOf(customers.length(), 4)) {
+                    val item = customers.getJSONObject(index)
+                    results.addView(linkButton("Khách: ${item.optString("full_name")} · ${item.optString("phone")}") { showObjectDetails("Thông tin khách", item) })
+                }
+                for (index in 0 until minOf(bookings.length(), 4)) {
+                    val item = bookings.getJSONObject(index)
+                    results.addView(linkButton("${item.optString("code")} · ${item.optString("guest_name", "Chưa có tên")}") { openBookingDetails(item.optString("id")) })
+                }
+            }
+        }, matchWrap(top = 8))
+        searchCard.addView(results, matchWrap(top = 8))
+        content.addView(searchCard, matchWrap(bottom = 12))
+    }
+
+    private fun loadRooms() {
+        content.removeAllViews()
+        header("Phòng")
+        content.addView(label("Đang tải danh sách phòng…", 13f, false, muted))
+        val token = accessToken ?: return
+        runTask({ api.rooms(apiBase, token, selectedPropertyId) }) { rooms -> lastRooms = rooms; renderRooms(rooms) }
+    }
+
+    private fun renderRooms(rooms: JSONArray) {
+        content.removeAllViews()
+        header("Phòng")
+        val search = field("Tìm số phòng, tầng hoặc khu", "")
+        val filters = Spinner(this)
+        val filterLabels = listOf("Tất cả trạng thái", "Phòng trống", "Đang ở", "Chờ dọn", "Bảo trì")
+        val filterValues = listOf<String?>(null, "VACANT", "OCCUPIED", "DIRTY", "MAINTENANCE")
+        filters.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, filterLabels)
+        filters.setSelection(filterValues.indexOf(roomStatusFilter).coerceAtLeast(0))
+        val controls = card().apply { addView(search); addView(filters, matchWrap(top = 8)) }
+        content.addView(controls, matchWrap(bottom = 10))
+        val list = vertical()
+        content.addView(list)
+        fun applyFilter() {
+            val query = search.text.toString().trim().lowercase(Locale.getDefault())
+            val status = filterValues[filters.selectedItemPosition]
+            list.removeAllViews()
+            var visible = 0
+            for (index in 0 until rooms.length()) {
+                val room = rooms.getJSONObject(index)
+                val haystack = "${room.optString("number")} ${room.optString("floor")} ${room.optString("zone")} ${room.optString("room_type_name")}".lowercase(Locale.getDefault())
+                if ((status == null || room.optString("status") == status) && (query.isBlank() || haystack.contains(query))) {
+                    list.addView(roomCard(room), matchWrap(bottom = 10)); visible++
+                }
+            }
+            if (visible == 0) list.addView(emptyState("Không có phòng phù hợp."))
+        }
+        search.addTextChangedListener(simpleWatcher { applyFilter() })
+        filters.onItemSelectedListener = simpleSelection { roomStatusFilter = filterValues[it]; applyFilter() }
+        applyFilter()
+    }
+
+    private fun roomCard(room: JSONObject): View {
+        val box = card()
+        val top = horizontal(Gravity.CENTER_VERTICAL)
+        val title = vertical()
+        title.addView(label("Phòng ${room.optString("number")}", 18f, true, ink))
+        title.addView(label("${room.optString("room_type_name")} · Tầng ${room.optString("floor")} · ${room.optString("zone")}", 12f, false, muted))
+        top.addView(title, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        top.addView(chip(roomStatusLabel(room.optString("status")), roomStatusColor(room.optString("status"))))
+        box.addView(top)
+        val guest = room.optString("active_guest_name")
+        if (guest.isNotBlank() && guest != "null") box.addView(label("Khách: $guest", 13f, true, ink), matchWrap(top = 8))
+        box.addView(label("Giá hiện tại: ${money(room.optDouble("room_type_price"))} · Điện: ${if (room.optBoolean("power_on")) "Đang bật" else "Đang tắt"}", 12f, false, muted), matchWrap(top = 5))
+        val actions = mutableListOf<Pair<String, () -> Unit>>()
+        actions += "Xem chi tiết" to { showRoomDetails(room) }
+        actions += (if (room.optBoolean("power_on")) "Tắt điện" else "Bật điện") to { changeRoomPower(room) }
+        when (room.optString("status")) {
+            "VACANT" -> actions += "Nhận phòng" to { pendingBookingRoomId = room.optString("id"); showPage(AppPage.BOOKINGS) }
+            "OCCUPIED" -> room.optString("active_booking_id").takeIf { it.isNotBlank() && it != "null" }?.let { id -> actions += "Xem lưu trú" to { openBookingDetails(id) } }
+            "DIRTY" -> actions += "Đã dọn xong" to { completeRoom(room) }
+            "MAINTENANCE" -> actions += "Xem cảnh báo" to { showPage(AppPage.ALERTS) }
+        }
+        actions += "Báo hỏng" to { openMaintenanceForm(room.optString("id")) }
+        addActionGrid(box, actions)
+        return box
+    }
+
+    private fun showRoomDetails(room: JSONObject) {
+        val message = "Số phòng: ${room.optString("number")}\nLoại phòng: ${room.optString("room_type_name")}\nTầng: ${room.optString("floor")}\nKhu: ${room.optString("zone")}\nTrạng thái: ${roomStatusLabel(room.optString("status"))}\nĐiện: ${if (room.optBoolean("power_on")) "Đang bật" else "Đang tắt"}\nMã phòng: ${room.optString("room_code")}\nGhi chú: ${room.optString("note").takeIf { it.isNotBlank() && it != "null" } ?: "Không có"}"
+        AlertDialog.Builder(this).setTitle("Phòng ${room.optString("number")}").setMessage(message)
+            .setPositiveButton("Đóng", null).setNeutralButton("Báo hỏng") { _, _ -> openMaintenanceForm(room.optString("id")) }.show()
+    }
+
+    private fun changeRoomPower(room: JSONObject) {
+        val turnOn = !room.optBoolean("power_on")
+        confirm(if (turnOn) "Bật điện phòng ${room.optString("number")}?" else "Tắt điện phòng ${room.optString("number")}?" ) {
+            val token = accessToken ?: return@confirm
+            runTask({ api.setRoomPower(apiBase, token, selectedPropertyId, room.getString("id"), turnOn) }) {
+                toast(if (turnOn) "Đã gửi lệnh bật điện." else "Đã gửi lệnh tắt điện."); loadRooms()
+            }
+        }
+    }
+
+    private fun completeRoom(room: JSONObject) {
+        confirm("Xác nhận phòng ${room.optString("number")} đã dọn xong?") {
+            val token = accessToken ?: return@confirm
+            runTask({ api.completeHousekeeping(apiBase, token, selectedPropertyId, room.getString("id")) }) { toast("Phòng đã chuyển sang trạng thái trống."); loadRooms() }
+        }
+    }
+
+    private fun loadBookings() {
+        content.removeAllViews()
+        header("Đặt phòng")
+        content.addView(label("Đang tải danh sách đặt phòng…", 13f, false, muted))
+        val token = accessToken ?: return
+        runTask({ api.bookings(apiBase, token, selectedPropertyId) }) { bookings ->
+            renderBookings(bookings)
+            if (pendingBookingRoomId != null) {
+                val prefill = pendingBookingRoomId
+                pendingBookingRoomId = null
+                openCreateBooking(prefill)
+            }
+        }
+    }
+
+    private fun renderBookings(bookings: JSONArray) {
+        content.removeAllViews()
+        header("Đặt phòng")
+        content.addView(actionButton("Tạo đặt phòng mới", android.R.drawable.ic_input_add, true) { openCreateBooking() }, matchWrap(bottom = 10))
+        val search = field("Tìm mã đặt phòng hoặc tên khách", "")
+        content.addView(search, matchWrap(bottom = 10))
+        val list = vertical()
+        content.addView(list)
+        fun applyFilter() {
+            val query = search.text.toString().trim().lowercase(Locale.getDefault())
+            list.removeAllViews(); var count = 0
+            for (index in 0 until bookings.length()) {
+                val booking = bookings.getJSONObject(index)
+                val haystack = "${booking.optString("code")} ${booking.optString("guest_name")} ${booking.optString("room_number")}".lowercase(Locale.getDefault())
+                if (query.isBlank() || haystack.contains(query)) { list.addView(bookingCard(booking), matchWrap(bottom = 10)); count++ }
+            }
+            if (count == 0) list.addView(emptyState("Không có đặt phòng phù hợp."))
+        }
+        search.addTextChangedListener(simpleWatcher { applyFilter() })
+        applyFilter()
+    }
+
+    private fun bookingCard(booking: JSONObject): View {
+        val box = card()
+        val top = horizontal(Gravity.CENTER_VERTICAL)
+        val title = vertical()
+        title.addView(label(booking.optString("code"), 16f, true, ink))
+        title.addView(label(booking.optString("guest_name").takeIf { it.isNotBlank() && it != "null" } ?: "Chưa có tên khách", 13f, false, muted))
+        top.addView(title, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        top.addView(chip(bookingStatusLabel(booking.optString("status")), bookingStatusColor(booking.optString("status"))))
+        box.addView(top)
+        box.addView(label("Phòng ${booking.optString("room_number", "—")} · ${shortDate(booking.optString("checkin_date"))} → ${shortDate(booking.optString("checkout_date"))}", 12f, false, muted), matchWrap(top = 8))
+        box.addView(label("Tổng tiền ${money(booking.optDouble("total_price"))} · Cọc ${money(booking.optDouble("deposit"))}", 12f, true, ink), matchWrap(top = 4))
+        val id = booking.optString("id")
+        val actions = mutableListOf<Pair<String, () -> Unit>>("Xem chi tiết" to { openBookingDetails(id) })
+        when (booking.optString("status")) {
+            "PENDING" -> {
+                actions += "Khách sẽ đến" to { bookingAction(id, "arrival-confirmation", JSONObject().put("willArrive", true), "Đã xác nhận khách sẽ đến.") }
+                actions += "Khách không đến" to { markNoShow(id) }
+            }
+            "CONFIRMED" -> actions += "Nhận phòng" to { bookingAction(id, "checkin", JSONObject(), "Đã nhận phòng và gửi lệnh cấp điện.") }
+            "CHECKED_IN" -> {
+                actions += "Khách ra ngoài" to { bookingAction(id, "guest-out", JSONObject(), "Đã ghi nhận khách ra ngoài và gửi lệnh ngắt điện.") }
+                actions += "Khách về phòng" to { bookingAction(id, "guest-return", JSONObject(), "Đã ghi nhận khách về và gửi lệnh cấp điện.") }
+                actions += "Thanh toán & trả" to { settleBooking(id) }
+            }
+        }
+        addActionGrid(box, actions)
+        return box
+    }
+
+    private fun openBookingDetails(id: String) {
+        val token = accessToken ?: return
+        runTask({ api.booking(apiBase, token, selectedPropertyId, id) }) { item ->
+            val message = "Mã: ${item.optString("code")}\nKhách: ${item.optString("guest_name", "Chưa có tên")}\nPhòng: ${item.optString("room_number", "Chưa gán")}\nTrạng thái: ${bookingStatusLabel(item.optString("status"))}\nNhận: ${shortDate(item.optString("checkin_date"))}\nTrả: ${shortDate(item.optString("checkout_date"))}\nHình thức ở: ${stayTypeLabel(item.optString("stay_type"))}\nTổng tiền: ${money(item.optDouble("total_price"))}\nĐặt cọc: ${money(item.optDouble("deposit"))}\nGhi chú: ${item.optString("notes").takeIf { it.isNotBlank() && it != "null" } ?: "Không có"}"
+            AlertDialog.Builder(this).setTitle("Chi tiết đặt phòng").setMessage(message).setPositiveButton("Đóng", null).show()
+        }
+    }
+
+    private fun openCreateBooking(preselectedRoomId: String? = null) {
+        val token = accessToken ?: return
+        runTask({ api.rooms(apiBase, token, selectedPropertyId) }) { rooms ->
+            lastRooms = rooms
+            val available = mutableListOf<JSONObject>()
+            for (index in 0 until rooms.length()) if (rooms.getJSONObject(index).optString("status") == "VACANT") available.add(rooms.getJSONObject(index))
+            if (available.isEmpty()) return@runTask toast("Hiện không có phòng trống để đặt.")
+            val layout = vertical().apply { setPadding(dp(20), dp(8), dp(20), dp(4)) }
+            val guest = field("Họ tên khách *", "")
+            val phone = field("Số điện thoại", "")
+            val roomSpinner = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, available.map { "Phòng ${it.optString("number")} · ${it.optString("room_type_name")} · ${money(it.optDouble("room_type_price"))}" }) }
+            preselectedRoomId?.takeIf { it.isNotBlank() }?.let { wanted -> roomSpinner.setSelection(available.indexOfFirst { it.optString("id") == wanted }.coerceAtLeast(0)) }
+            val checkin = field("Ngày nhận YYYY-MM-DD *", LocalDate.now().format(DateTimeFormatter.ISO_DATE))
+            val checkout = field("Ngày trả YYYY-MM-DD *", LocalDate.now().plusDays(1).format(DateTimeFormatter.ISO_DATE))
+            val price = field("Tổng tiền", available[roomSpinner.selectedItemPosition].optString("room_type_price", "0"), false, true)
+            val staySpinner = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("Theo ngày", "Qua đêm", "Theo giờ")) }
+            roomSpinner.onItemSelectedListener = simpleSelection { price.setText(available[it].optString("room_type_price", "0")) }
+            listOf(guest, phone, roomSpinner, checkin, checkout, price, staySpinner).forEach { layout.addView(it, matchWrap(bottom = 6)) }
+            val dialog = AlertDialog.Builder(this).setTitle("Tạo đặt phòng").setView(ScrollView(this).apply { addView(layout) })
+                .setNegativeButton("Hủy", null).setPositiveButton("Lưu", null).create()
+            dialog.setOnShowListener {
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val fullName = guest.text.toString().trim()
+                    val checkinValue = checkin.text.toString().trim()
+                    val checkoutValue = checkout.text.toString().trim()
+                    val totalPrice = price.text.toString().replace(".", "").replace(",", "").toDoubleOrNull()
+                    if (fullName.isBlank() || !validDate(checkinValue) || !validDate(checkoutValue) || totalPrice == null || totalPrice < 0) return@setOnClickListener toast("Kiểm tra họ tên, ngày nhận/trả và tổng tiền.")
+                    if (checkoutValue <= checkinValue) return@setOnClickListener toast("Ngày trả phải sau ngày nhận.")
+                    val room = available[roomSpinner.selectedItemPosition]
+                    val stayType = listOf("DAILY", "OVERNIGHT", "HOURLY")[staySpinner.selectedItemPosition]
+                    runTask({
+                        val customer = api.createCustomer(apiBase, token, selectedPropertyId, fullName, phone.text.toString().trim())
+                        api.createBooking(apiBase, token, selectedPropertyId, JSONObject()
+                            .put("customerId", customer.getString("id")).put("roomId", room.getString("id"))
+                            .put("channel", "DIRECT").put("status", "PENDING")
+                            .put("checkinDate", checkinValue).put("checkoutDate", checkoutValue)
+                            .put("stayType", stayType).put("totalPrice", totalPrice).put("deposit", 0))
+                    }) { dialog.dismiss(); toast("Đã tạo đặt phòng."); loadBookings() }
+                }
+            }
+            dialog.show()
+        }
+    }
+
+    private fun bookingAction(id: String, action: String, body: JSONObject, successMessage: String) {
+        val token = accessToken ?: return
+        runTask({ api.bookingAction(apiBase, token, selectedPropertyId, id, action, body) }) { toast(successMessage); loadBookings() }
+    }
+
+    private fun markNoShow(id: String) {
+        val reason = field("Lý do khách không đến *", "")
+        AlertDialog.Builder(this).setTitle("Khách không đến").setView(reason).setNegativeButton("Hủy", null)
+            .setPositiveButton("Xác nhận") { _, _ ->
+                val value = reason.text.toString().trim()
+                if (value.length < 3) toast("Cần nhập lý do rõ ràng.")
+                else bookingAction(id, "arrival-confirmation", JSONObject().put("willArrive", false).put("reason", value), "Đã ghi nhận khách không đến.")
+            }.show()
+    }
+
+    private fun settleBooking(id: String) {
+        val token = accessToken ?: return
+        runTask({ api.settlementPreview(apiBase, token, selectedPropertyId, id) }) { preview ->
+            val invoice = preview.optJSONObject("invoice") ?: return@runTask toast("Không lập được phiếu xác nhận.")
+            val amount = preview.optDouble("amountDue")
+            AlertDialog.Builder(this).setTitle("Xác nhận thanh toán")
+                .setMessage("Phiếu: ${invoice.optString("code")}\nSố tiền cần thu: ${money(amount)}\nHình thức: Tiền mặt\n\nChỉ chốt sau khi khách đã xác nhận và đã thu hồi thẻ phòng.")
+                .setNegativeButton("Để sau", null).setPositiveButton("Đã thu tiền, trả phòng") { _, _ ->
+                    runTask({ api.settlementFinalize(apiBase, token, selectedPropertyId, id, invoice.getString("id")) }) { toast("Đã chốt doanh thu và trả phòng. Phòng chuyển sang chờ dọn."); loadBookings() }
+                }.show()
+        }
+    }
+
+    private fun loadAlerts() {
+        content.removeAllViews(); header("Thông báo & cảnh báo", false)
+        content.addView(label("Đang tải việc cần xử lý…", 13f, false, muted))
+        val token = accessToken ?: return
+        runTask({ api.workQueue(apiBase, token, selectedPropertyId) }) { queue -> renderAlerts(queue) }
+    }
+
+    private fun renderAlerts(queue: JSONObject) {
+        content.removeAllViews(); header("Thông báo & cảnh báo", false)
+        content.addView(actionButton("Báo hỏng mới", android.R.drawable.ic_input_add, true) { openMaintenanceForm() }, matchWrap(bottom = 10))
+        content.addView(actionButton("Làm mới", android.R.drawable.ic_popup_sync, false) { loadAlerts() }, matchWrap(bottom = 12))
+        val devices = queue.optJSONArray("device_alerts") ?: JSONArray()
+        val housekeeping = queue.optJSONArray("housekeeping") ?: JSONArray()
+        val maintenance = queue.optJSONArray("maintenance") ?: JSONArray()
+        content.addView(sectionTitle("Thiết bị mất kết nối hoặc báo lỗi (${devices.length()})"), matchWrap(bottom = 8))
+        if (devices.length() == 0) content.addView(emptyState("Tất cả thiết bị đang hoạt động bình thường."))
+        for (index in 0 until devices.length()) {
+            val device = devices.getJSONObject(index)
+            val box = alertItem(device.optString("name"), "Trạng thái: ${deviceStatusLabel(device.optString("status"))}", danger)
+            box.addView(linkButton("Xem chi tiết") { showObjectDetails("Chi tiết thiết bị", device) }, matchWrap(top = 6))
+            content.addView(box, matchWrap(bottom = 8))
+        }
+        content.addView(sectionTitle("Phòng chờ dọn (${housekeeping.length()})"), matchWrap(top = 10, bottom = 8))
+        if (housekeeping.length() == 0) content.addView(emptyState("Không có phòng đang chờ dọn."))
+        for (index in 0 until housekeeping.length()) {
+            val room = housekeeping.getJSONObject(index)
+            val box = alertItem("Phòng ${room.optString("number")} cần dọn", "Tầng ${room.optString("floor")} · ${room.optString("zone")}", warning)
+            addActionGrid(box, listOf("Xem phòng" to { showRoomDetails(room) }, "Đã dọn xong" to { completeRoomFromAlerts(room) }))
+            content.addView(box, matchWrap(bottom = 8))
+        }
+        content.addView(sectionTitle("Yêu cầu bảo trì (${maintenance.length()})"), matchWrap(top = 10, bottom = 8))
+        if (maintenance.length() == 0) content.addView(emptyState("Không có yêu cầu bảo trì đang mở."))
+        for (index in 0 until maintenance.length()) {
+            val item = maintenance.getJSONObject(index)
+            val box = alertItem(item.optString("category", "Yêu cầu sửa chữa"), item.optString("description"), if (item.optString("priority") == "URGENT") danger else warning)
+            val actions = mutableListOf<Pair<String, () -> Unit>>("Xem chi tiết" to { showObjectDetails("Phiếu bảo trì", item) })
+            if (item.optString("status") == "OPEN") actions += "Bắt đầu xử lý" to { updateMaintenance(item.optString("id"), "IN_PROGRESS") }
+            if (item.optString("status") == "IN_PROGRESS") actions += "Hoàn tất" to { updateMaintenance(item.optString("id"), "COMPLETED") }
+            addActionGrid(box, actions)
+            content.addView(box, matchWrap(bottom = 8))
+        }
+    }
+
+    private fun completeRoomFromAlerts(room: JSONObject) {
+        confirm("Xác nhận phòng ${room.optString("number")} đã dọn xong?") {
+            val token = accessToken ?: return@confirm
+            runTask({ api.completeHousekeeping(apiBase, token, selectedPropertyId, room.getString("id")) }) { toast("Đã hoàn tất dọn phòng."); loadAlerts() }
+        }
+    }
+
+    private fun updateMaintenance(id: String, status: String) {
+        val token = accessToken ?: return
+        runTask({ api.updateMaintenanceStatus(apiBase, token, selectedPropertyId, id, status) }) { toast(if (status == "COMPLETED") "Đã hoàn tất yêu cầu." else "Đã chuyển sang đang xử lý."); loadAlerts() }
+    }
+
+    private fun openMaintenanceForm(preselectedRoomId: String? = null) {
+        val token = accessToken ?: return
+        runTask({ api.rooms(apiBase, token, selectedPropertyId) }) { rooms ->
+            lastRooms = rooms
+            if (rooms.length() == 0) return@runTask toast("Chưa có phòng để lập yêu cầu.")
+            val roomList = (0 until rooms.length()).map { rooms.getJSONObject(it) }
+            val layout = vertical().apply { setPadding(dp(20), dp(8), dp(20), 0) }
+            val roomSpinner = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, roomList.map { "Phòng ${it.optString("number")} · ${it.optString("zone")}" }) }
+            preselectedRoomId?.let { wanted -> roomSpinner.setSelection(roomList.indexOfFirst { it.optString("id") == wanted }.coerceAtLeast(0)) }
+            val category = field("Loại lỗi *", "Điện/thiết bị")
+            val description = field("Mô tả chi tiết *", "").apply { minLines = 3; gravity = Gravity.TOP }
+            val priority = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("Bình thường", "Cao", "Khẩn cấp", "Thấp")) }
+            listOf(roomSpinner, category, description, priority).forEach { layout.addView(it, matchWrap(bottom = 6)) }
+            val dialog = AlertDialog.Builder(this).setTitle("Báo hỏng & yêu cầu sửa").setView(ScrollView(this).apply { addView(layout) })
+                .setNegativeButton("Hủy", null).setPositiveButton("Gửi yêu cầu", null).create()
+            dialog.setOnShowListener {
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val categoryValue = category.text.toString().trim()
+                    val descriptionValue = description.text.toString().trim()
+                    if (categoryValue.length < 2 || descriptionValue.length < 3) return@setOnClickListener toast("Hãy nhập loại lỗi và mô tả chi tiết.")
+                    val priorityValue = listOf("NORMAL", "HIGH", "URGENT", "LOW")[priority.selectedItemPosition]
+                    val room = roomList[roomSpinner.selectedItemPosition]
+                    val issue = JSONObject().put("category", categoryValue).put("description", descriptionValue).put("priority", priorityValue)
+                    val body = JSONObject().put("roomId", room.getString("id")).put("category", categoryValue)
+                        .put("description", descriptionValue).put("priority", priorityValue)
+                        .put("guestVisible", true).put("markRoomMaintenance", priorityValue == "URGENT")
+                        .put("issues", JSONArray().put(issue))
+                    runTask({ api.createMaintenance(apiBase, token, selectedPropertyId, body) }) {
+                        dialog.dismiss(); toast("Đã gửi yêu cầu sửa chữa.")
+                        if (currentPage == AppPage.ALERTS) loadAlerts()
+                    }
+                }
+            }
+            dialog.show()
+        }
+    }
+
+    private fun renderAccount() {
+        content.removeAllViews(); header("Tài khoản", false)
+        val profile = card()
+        profile.addView(label(currentUser.optString("full_name", "Người dùng"), 21f, true, ink))
+        profile.addView(label(roleLabel(currentUser.optString("role")), 14f, true, primary), matchWrap(top = 4))
+        profile.addView(label("Tên đăng nhập: ${currentUser.optString("username", "—")}", 13f, false, muted), matchWrap(top = 10))
+        profile.addView(label("Email: ${currentUser.optString("email", "—")}", 13f, false, muted), matchWrap(top = 4))
+        content.addView(profile, matchWrap(bottom = 12))
+
+        val propertyCard = card()
+        propertyCard.addView(sectionTitle("Cơ sở đang quản lý"))
+        propertyCard.addView(label(propertyName(), 16f, true, ink), matchWrap(top = 8, bottom = 8))
+        propertyCard.addView(actionButton("Đổi cơ sở", android.R.drawable.ic_menu_mapmode, false) { chooseProperty() })
+        content.addView(propertyCard, matchWrap(bottom = 12))
+
+        val connection = card()
+        connection.addView(sectionTitle("Kết nối máy chủ"))
+        val input = field("Địa chỉ API", apiBase)
+        connection.addView(input, matchWrap(top = 8, bottom = 8))
+        connection.addView(actionButton("Lưu địa chỉ", android.R.drawable.ic_menu_save, true) {
+            val value = input.text.toString().trim().trimEnd('/')
+            if (!value.startsWith("http://") && !value.startsWith("https://")) toast("Địa chỉ phải bắt đầu bằng http:// hoặc https://")
+            else { apiBase = value; getSharedPreferences("anio", MODE_PRIVATE).edit().putString("api_base", value).apply(); toast("Đã lưu địa chỉ API.") }
+        })
+        connection.addView(actionButton("Kiểm tra kết nối", android.R.drawable.ic_popup_sync, false) {
+            val token = accessToken ?: return@actionButton
+            runTask({ api.me(apiBase, token, selectedPropertyId) }) { toast("Kết nối thành công với ${it.optString("full_name", "máy chủ PMS")}.") }
+        }, matchWrap(top = 8))
+        content.addView(connection, matchWrap(bottom = 12))
+        content.addView(actionButton("Làm mới toàn bộ dữ liệu", android.R.drawable.ic_popup_sync, false) { loadBootstrap() }, matchWrap(bottom = 8))
+        content.addView(actionButton("Đăng xuất", android.R.drawable.ic_lock_power_off, false) {
+            accessToken = null; currentUser = JSONObject(); properties = JSONArray(); selectedPropertyId = null; showLogin()
+        })
+        content.addView(label("ANIO Chủ cơ sở · phiên bản 0.2.0", 11f, false, muted).apply { gravity = Gravity.CENTER }, matchWrap(top = 18))
+    }
+
+    private fun chooseProperty() {
+        if (properties.length() <= 1) return toast("Tài khoản hiện chỉ quản lý một cơ sở.")
+        val names = (0 until properties.length()).map { properties.getJSONObject(it).optString("name") }.toTypedArray()
+        AlertDialog.Builder(this).setTitle("Chọn cơ sở").setItems(names) { _, index -> selectedPropertyId = properties.getJSONObject(index).optString("id"); showPage(currentPage) }.setNegativeButton("Đóng", null).show()
+    }
+
+    private fun propertyName(): String {
+        for (index in 0 until properties.length()) {
+            val item = properties.optJSONObject(index) ?: continue
+            if (item.optString("id") == selectedPropertyId) return item.optString("name", "Cơ sở lưu trú") + " ⌄"
+        }
+        return "Cơ sở lưu trú ⌄"
+    }
+
+    private fun bottomNavigation(): View {
+        val bar = horizontal(Gravity.CENTER).apply { setPadding(dp(4), dp(5), dp(4), dp(4)); background = background(surface, 0f, Color.rgb(229, 233, 242)) }
+        val items = listOf(
+            Triple(AppPage.DASHBOARD, "Trang chủ", android.R.drawable.ic_menu_view),
+            Triple(AppPage.ROOMS, "Phòng", android.R.drawable.ic_menu_agenda),
+            Triple(AppPage.BOOKINGS, "Đặt phòng", android.R.drawable.ic_menu_my_calendar),
+            Triple(AppPage.ALERTS, "Thông báo", android.R.drawable.ic_dialog_alert),
+            Triple(AppPage.ACCOUNT, "Tài khoản", android.R.drawable.ic_menu_myplaces),
+        )
+        items.forEach { (page, title, icon) ->
+            val button = Button(this).apply {
+                text = title; textSize = 9.5f; isAllCaps = false; gravity = Gravity.CENTER
+                setTextColor(if (page == currentPage) primary else muted)
+                setCompoundDrawablesWithIntrinsicBounds(0, icon, 0, 0)
+                compoundDrawablePadding = dp(2); setBackgroundColor(Color.TRANSPARENT)
+                setPadding(0, 0, 0, 0); minWidth = 0; minimumWidth = 0
+                setOnClickListener { if (page != currentPage) showPage(page) }
+            }
+            bar.addView(button, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+        }
+        return bar
+    }
+
+    private fun kpiCard(title: String, value: String, detail: String, accent: Int): View = card().apply {
+        addView(label(title, 12f, false, muted)); addView(label(value, 21f, true, ink), matchWrap(top = 4)); addView(label(detail, 10.5f, false, accent), matchWrap(top = 3))
+    }
+
+    private fun quickAction(title: String, icon: Int, action: () -> Unit): View = actionButton(title, icon, false, action).apply {
+        minHeight = dp(76); gravity = Gravity.CENTER; setTextColor(ink); setTypeface(typeface, Typeface.BOLD); background = background(surface, 14f, Color.rgb(231, 235, 245))
+    }
+
+    private fun alertItem(title: String, detail: String, accent: Int): LinearLayout = card().apply {
+        val row = horizontal(Gravity.CENTER_VERTICAL)
+        row.addView(label("!", 18f, true, Color.WHITE).apply { gravity = Gravity.CENTER; background = background(accent, 24f) }, LinearLayout.LayoutParams(dp(42), dp(42)))
+        val texts = vertical().apply { addView(label(title, 14f, true, ink)); addView(label(detail, 12f, false, muted), matchWrap(top = 3)) }
+        row.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(12) }); addView(row)
+    }
+
+    private fun addTwoColumnCards(views: List<View>) {
+        views.chunked(2).forEach { pair ->
+            val row = horizontal().apply { weightSum = 2f }
+            pair.forEachIndexed { index, view -> row.addView(view, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (index == 0) marginEnd = dp(6) else marginStart = dp(6) }) }
+            if (pair.size == 1) row.addView(Space(this), LinearLayout.LayoutParams(0, 1, 1f))
+            content.addView(row, matchWrap(bottom = 10))
+        }
+    }
+
+    private fun addActionGrid(parent: LinearLayout, actions: List<Pair<String, () -> Unit>>) {
+        val holder = vertical()
+        actions.chunked(2).forEach { pair ->
+            val row = horizontal().apply { weightSum = 2f }
+            pair.forEachIndexed { index, item -> row.addView(actionButton(item.first, 0, false, item.second), LinearLayout.LayoutParams(0, dp(46), 1f).apply { if (index == 0) marginEnd = dp(4) else marginStart = dp(4) }) }
+            if (pair.size == 1) row.addView(Space(this), LinearLayout.LayoutParams(0, 1, 1f))
+            holder.addView(row, matchWrap(bottom = 6))
+        }
+        parent.addView(holder, matchWrap(top = 10))
+    }
+
+    private fun addLegend(parent: LinearLayout, title: String, value: Int, total: Int, color: Int) {
+        val pct = if (total == 0) 0 else value * 100 / total
+        val row = horizontal(Gravity.CENTER_VERTICAL)
+        row.addView(label("●", 14f, true, color), LinearLayout.LayoutParams(dp(22), ViewGroup.LayoutParams.WRAP_CONTENT))
+        row.addView(label(title, 12f, false, ink), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(label("$value  $pct%", 12f, true, muted)); parent.addView(row)
+    }
+
+    private fun firstQueueItem(queue: JSONObject): Pair<String, String>? {
+        val devices = queue.optJSONArray("device_alerts") ?: JSONArray()
+        if (devices.length() > 0) return devices.getJSONObject(0).optString("name", "Thiết bị mất kết nối") to "Chạm để xem và xử lý"
+        val housekeeping = queue.optJSONArray("housekeeping") ?: JSONArray()
+        if (housekeeping.length() > 0) return "Phòng ${housekeeping.getJSONObject(0).optString("number")} chờ dọn" to "Bộ phận buồng phòng cần xử lý"
+        val maintenance = queue.optJSONArray("maintenance") ?: JSONArray()
+        if (maintenance.length() > 0) return maintenance.getJSONObject(0).optString("category", "Yêu cầu bảo trì") to maintenance.getJSONObject(0).optString("description")
+        return null
+    }
+
+    private fun showObjectDetails(title: String, item: JSONObject) {
+        val lines = item.keys().asSequence().filterNot { it.endsWith("_id") || it in setOf("tenant_id", "property_id", "qr_token") }
+            .take(14).joinToString("\n") { key -> "${friendlyKey(key)}: ${item.opt(key)}" }
+        AlertDialog.Builder(this).setTitle(title).setMessage(lines.ifBlank { "Không có thông tin chi tiết." }).setPositiveButton("Đóng", null).show()
+    }
+
+    private fun friendlyKey(key: String): String = mapOf(
+        "name" to "Tên", "status" to "Trạng thái", "device_type" to "Loại thiết bị", "external_id" to "Mã thiết bị", "category" to "Hạng mục",
+        "description" to "Mô tả", "priority" to "Mức ưu tiên", "created_at" to "Thời gian tạo", "number" to "Số phòng", "floor" to "Tầng",
+        "zone" to "Khu", "power_on" to "Điện phòng",
+    )[key] ?: key.replace('_', ' ')
+
+    private fun roomStatusLabel(status: String) = mapOf("VACANT" to "Trống", "OCCUPIED" to "Đang ở", "DIRTY" to "Chờ dọn", "MAINTENANCE" to "Bảo trì")[status] ?: status
+    private fun roomStatusColor(status: String) = mapOf("VACANT" to success, "OCCUPIED" to primary, "DIRTY" to warning, "MAINTENANCE" to danger)[status] ?: muted
+    private fun bookingStatusLabel(status: String) = mapOf("PENDING" to "Chờ xác nhận", "CONFIRMED" to "Đã xác nhận", "CHECKED_IN" to "Đang ở", "CHECKED_OUT" to "Đã trả phòng", "CANCELLED" to "Đã hủy", "NO_SHOW" to "Không đến")[status] ?: status
+    private fun bookingStatusColor(status: String) = mapOf("PENDING" to warning, "CONFIRMED" to primary, "CHECKED_IN" to success, "CHECKED_OUT" to muted, "CANCELLED" to danger, "NO_SHOW" to danger)[status] ?: muted
+    private fun deviceStatusLabel(status: String) = mapOf("ONLINE" to "Đang kết nối", "OFFLINE" to "Mất kết nối", "ERROR" to "Báo lỗi")[status] ?: status
+    private fun stayTypeLabel(value: String) = mapOf("DAILY" to "Theo ngày", "OVERNIGHT" to "Qua đêm", "HOURLY" to "Theo giờ")[value] ?: value
+    private fun roleLabel(value: String) = mapOf("OWNER" to "Chủ cơ sở", "MANAGER" to "Quản lý", "RECEPTIONIST" to "Lễ tân", "HOUSEKEEPING" to "Buồng phòng", "TECHNICIAN" to "Kỹ thuật viên")[value] ?: value
+    private fun shortDate(value: String): String = value.take(10).takeIf { it.isNotBlank() } ?: "—"
+    private fun validDate(value: String): Boolean = runCatching { LocalDate.parse(value, DateTimeFormatter.ISO_DATE) }.isSuccess
+    private fun money(value: Double): String = NumberFormat.getNumberInstance(Locale("vi", "VN")).format(value) + "đ"
+
+    private fun vertical(): LinearLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+    private fun horizontal(gravityValue: Int = Gravity.TOP): LinearLayout = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = gravityValue }
+    private fun card(): LinearLayout = vertical().apply { setPadding(dp(16), dp(15), dp(16), dp(15)); background = background(surface, 15f, Color.rgb(231, 235, 245)) }
+    private fun label(value: String, size: Float, bold: Boolean, color: Int): TextView = TextView(this).apply { text = value; textSize = size; setTextColor(color); if (bold) setTypeface(typeface, Typeface.BOLD); setLineSpacing(0f, 1.08f) }
+    private fun sectionTitle(value: String): TextView = label(value, 16f, true, ink)
+    private fun field(hintValue: String, initial: String, password: Boolean = false, number: Boolean = false): EditText = EditText(this).apply {
+        hint = hintValue; setText(initial); textSize = 14f; setTextColor(ink); setHintTextColor(muted); setPadding(dp(13), dp(10), dp(13), dp(10)); background = background(Color.WHITE, 12f, Color.rgb(216, 222, 236))
+        inputType = when { password -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD; number -> InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL; else -> InputType.TYPE_CLASS_TEXT }
+    }
+    private fun actionButton(title: String, icon: Int = 0, filled: Boolean = false, action: () -> Unit): Button = Button(this).apply {
+        text = title; textSize = 12.5f; isAllCaps = false; minHeight = dp(46); setPadding(dp(10), 0, dp(10), 0)
+        setTextColor(if (filled) Color.WHITE else primary); background = background(if (filled) primary else Color.WHITE, 12f, if (filled) primary else Color.rgb(211, 219, 239))
+        if (icon != 0) { setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0); compoundDrawablePadding = dp(6) }
+        setOnClickListener { action() }
+    }
+    private fun linkButton(title: String, action: () -> Unit): Button = actionButton(title, 0, false, action).apply { setBackgroundColor(Color.TRANSPARENT); minHeight = dp(38); setPadding(dp(6), 0, dp(6), 0) }
+    private fun chip(title: String, color: Int): TextView = label(title, 10.5f, true, color).apply { setPadding(dp(9), dp(5), dp(9), dp(5)); background = background(withAlpha(color, 28), 14f) }
+    private fun emptyState(message: String): View = label(message, 13f, false, muted).apply { setPadding(dp(14), dp(18), dp(14), dp(18)); gravity = Gravity.CENTER; background = background(surface, 12f, Color.rgb(231, 235, 245)) }
+    private fun background(color: Int, radius: Float, stroke: Int? = null): GradientDrawable = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius.toInt()).toFloat(); if (stroke != null) setStroke(dp(1), stroke) }
+    private fun withAlpha(color: Int, alpha: Int) = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
+    private fun matchWrap(top: Int = 0, bottom: Int = 0): LinearLayout.LayoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(top); bottomMargin = dp(bottom) }
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+
+    private fun confirm(message: String, action: () -> Unit) {
+        AlertDialog.Builder(this).setTitle("Xác nhận").setMessage(message).setNegativeButton("Hủy", null).setPositiveButton("Đồng ý") { _, _ -> action() }.show()
+    }
+
+    private fun <T> runTask(block: () -> T, success: (T) -> Unit) {
+        executor.execute {
+            try { val result = block(); runOnUiThread { success(result) } }
+            catch (error: Exception) { runOnUiThread { toast(error.message ?: "Không thể kết nối máy chủ.") } }
+        }
+    }
+
+    private fun simpleWatcher(after: () -> Unit) = object : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, afterCount: Int) = Unit
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+        override fun afterTextChanged(s: Editable?) = after()
+    }
+
+    private fun simpleSelection(selected: (Int) -> Unit) = object : AdapterView.OnItemSelectedListener {
+        override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = selected(position)
+    }
+
+    override fun onDestroy() { executor.shutdownNow(); super.onDestroy() }
+}

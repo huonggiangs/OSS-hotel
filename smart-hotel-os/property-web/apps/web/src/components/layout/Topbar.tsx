@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAuth, roleLabel } from "@/lib/auth";
 import { usePmsLocale } from "@/lib/i18n";
 
@@ -16,8 +17,7 @@ const FONT_SCALES = [
   { v: 1.3, label: "Lớn" },
 ];
 
-// Topbar 80px — pixel-perfect theo khối topbar trong bản gốc: ô tìm kiếm, chọn
-// ngôn ngữ (tĩnh), menu cỡ chữ "Aa", icon thông báo (tĩnh), avatar mở modal thông tin.
+// Mọi điều khiển trên thanh đầu đều dẫn tới một chức năng cụ thể.
 export function Topbar({
   fontScale,
   onFontScaleChange,
@@ -33,15 +33,15 @@ export function Topbar({
 
   return (
     <div className="flex h-16 flex-shrink-0 items-center justify-between gap-3 border-b border-pms-border bg-white px-4 sm:h-20 sm:px-8">
-      <div className="hidden w-80 items-center gap-2.5 rounded-[10px] bg-pms-divider px-3.5 py-2.5 text-[13px] text-pms-muted lg:flex">
+      <Link href="/dashboard#guest-booking-search" title="Mở tìm kiếm khách và mã đặt phòng" className="hidden w-80 items-center gap-2.5 rounded-[10px] bg-pms-divider px-3.5 py-2.5 text-[13px] text-pms-muted no-underline lg:flex">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <circle cx="11" cy="11" r="7" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
         {t("Tìm kiếm khách, mã đặt phòng...")}
-      </div>
+      </Link>
       <div className="relative ml-auto flex min-w-0 items-center gap-2 sm:gap-5">
-        <div className="flex cursor-pointer items-center gap-1.5 text-pms-text">
+        <Link href="/basic#language-settings" title="Cài đặt ngôn ngữ" className="flex items-center gap-1.5 text-pms-text no-underline">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <circle cx="12" cy="12" r="9" />
             <path d="M3 12h18" />
@@ -51,21 +51,21 @@ export function Topbar({
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#777E90" strokeWidth={2.5}>
             <path d="M6 9l6 6 6-6" />
           </svg>
-        </div>
+        </Link>
         <div className="hidden h-6 w-px bg-pms-border sm:block" />
         <div className="relative">
-          <div className="flex cursor-pointer items-center gap-1 text-pms-text" onClick={() => setFontMenuOpen((v) => !v)}>
+          <button type="button" aria-expanded={fontMenuOpen} aria-label="Chọn cỡ chữ" className="flex items-center gap-1 border-0 bg-transparent p-0 text-pms-text" onClick={() => setFontMenuOpen((v) => !v)}>
             <span className="text-[13px] font-bold">Aa</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#777E90" strokeWidth={2.5}>
               <path d="M6 9l6 6 6-6" />
             </svg>
-          </div>
+          </button>
           {fontMenuOpen && (
             <div className="absolute right-0 top-8 z-50 w-[150px] rounded-[10px] bg-white p-2 shadow-popover">
               {FONT_SCALES.map((fo) => (
-                <div
+                <button type="button"
                   key={fo.label}
-                  className="cursor-pointer rounded-lg px-2.5 py-2.5 text-[13px]"
+                  className="block w-full rounded-lg border-0 px-2.5 py-2.5 text-left text-[13px]"
                   style={{
                     fontWeight: fontScale === fo.v ? 700 : 500,
                     color: fontScale === fo.v ? "#284AB1" : "#23262F",
@@ -77,19 +77,21 @@ export function Topbar({
                   }}
                 >
                   {t(fo.label)}
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
         <div className="hidden h-6 w-px bg-pms-border sm:block" />
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#777E90" strokeWidth={2}>
-          <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 01-3.46 0" />
-        </svg>
+        <Link href="/alerts" aria-label="Mở cảnh báo" title="Cảnh báo" className="flex text-pms-muted">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 01-3.46 0" />
+          </svg>
+        </Link>
         <div className="h-6 w-px bg-pms-border" />
         {user && (
-          <div className="flex cursor-pointer items-center gap-2.5" onClick={onOpenUserProfile}>
+          <button type="button" aria-label="Mở thông tin tài khoản" className="flex items-center gap-2.5 border-0 bg-transparent p-0 text-left" onClick={onOpenUserProfile}>
             <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-pms-primary text-[13px] font-semibold text-white">
               {initialsOf(user.full_name)}
             </div>
@@ -97,7 +99,7 @@ export function Topbar({
               <b>{user.full_name}</b>
               <div className="text-[12px] text-pms-muted">{t(roleLabel[user.role])}</div>
             </div>
-          </div>
+          </button>
         )}
       </div>
     </div>

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { ApiError, Errors } from "../utils/errors";
 import type { PropertyUserRole } from "../types/domain";
 import { isRequestIpAllowed } from "./ipAllowlist";
+import { propertiesRepo } from "../repositories/properties.repo";
 
 // AuthUser gắn vào req.user sau khi verify JWT — CHỨA propertyId/tenantId vì
 // property_users luôn thuộc về đúng 1 property (đúng nguyên tắc multi-tenant ở
@@ -61,8 +62,18 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   } catch {
     return next(Errors.unauthorized());
   }
-  req.user = payload;
   try {
+    // Ứng dụng chủ cơ sở có thể quản lý nhiều địa điểm bằng một tài khoản.
+    // Header chỉ được chấp nhận cho OWNER/MANAGER và luôn kiểm tra cơ sở thuộc
+    // cùng tenant trước khi thay đổi phạm vi truy vấn của request.
+    const requestedPropertyId = req.get("x-property-id")?.trim();
+    if (requestedPropertyId && requestedPropertyId !== payload.propertyId) {
+      if (payload.role !== "OWNER" && payload.role !== "MANAGER") return next(Errors.forbidden());
+      const property = await propertiesRepo.findByIdForTenant(requestedPropertyId, payload.tenantId);
+      if (!property) return next(Errors.forbidden());
+      payload = { ...payload, propertyId: requestedPropertyId };
+    }
+    req.user = payload;
     if (!(await isRequestIpAllowed(req, payload.propertyId))) {
       return next(new ApiError(403, "IP_NOT_ALLOWED", "IP hiện tại không nằm trong danh sách được phép."));
     }

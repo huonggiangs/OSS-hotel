@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal, ButtonGhost, ButtonPrimary } from "@/components/ui/Modal";
 import { contractTokensRoom, contractTokensGuest } from "@/lib/mock-data";
+import { useSettings } from "@/lib/useSettings";
 
 // Modal "Mẫu hợp đồng lưu trú" — editor mẫu hợp đồng có panel tham số chèn nhanh.
 // Pixel-perfect theo khối `showContractTemplate` (dòng 573-624). Vùng nội dung dùng
@@ -11,6 +12,12 @@ import { contractTokensRoom, contractTokensGuest } from "@/lib/mock-data";
 // đây là bổ sung hợp lý tối thiểu để nút "chèn tham số" thực sự hoạt động).
 export function ContractTemplateModal({ guestName, onClose }: { guestName: string; onClose: () => void }) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const settings = useSettings<{ language: string; contentHtml: string }>("contract-template", { language: "vi", contentHtml: "" });
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!settings.loading && settings.data.contentHtml && editorRef.current) editorRef.current.innerHTML = settings.data.contentHtml;
+  }, [settings.loading, settings.data.contentHtml]);
 
   function insertToken(token: string) {
     const el = editorRef.current;
@@ -21,10 +28,29 @@ export function ContractTemplateModal({ guestName, onClose }: { guestName: strin
     }
   }
 
+  function format(command: string, value?: string) {
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+  }
+
+  async function saveTemplate() {
+    const contentHtml = editorRef.current?.innerHTML.trim() ?? "";
+    if (!contentHtml) return setNotice("Mẫu hợp đồng không được để trống.");
+    await settings.save({ ...settings.data, contentHtml });
+    setNotice("Đã lưu mẫu hợp đồng vào cơ sở dữ liệu.");
+  }
+
+  async function copyTemplate() {
+    const text = editorRef.current?.innerText.trim() ?? "";
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    setNotice("Đã sao chép nội dung mẫu.");
+  }
+
   return (
     <Modal title="Mẫu hợp đồng lưu trú" onClose={onClose} width={1040} footer={<>
       <ButtonGhost onClick={onClose}>Hủy</ButtonGhost>
-      <ButtonPrimary onClick={onClose}>Lưu mẫu</ButtonPrimary>
+      <ButtonPrimary onClick={() => void saveTemplate()} disabled={settings.saving}>{settings.saving ? "Đang lưu..." : "Lưu mẫu"}</ButtonPrimary>
     </>}>
       <div className="flex min-h-0 flex-1">
         <div className="w-[230px] flex-shrink-0 overflow-y-auto border-r border-pms-divider p-4">
@@ -34,15 +60,15 @@ export function ContractTemplateModal({ guestName, onClose }: { guestName: strin
           </p>
           <div className="my-2.5 flex items-center justify-between text-[12px] font-bold">Hợp đồng &amp; phòng <span>⌄</span></div>
           {contractTokensRoom.map((tk) => (
-            <div key={tk} className="mb-1.5 cursor-pointer rounded-md bg-pms-primary-soft px-2 py-1.5 text-[12px] text-pms-primary" onClick={() => insertToken(tk)}>
+            <button type="button" key={tk} className="mb-1.5 block w-full rounded-md border-0 bg-pms-primary-soft px-2 py-1.5 text-left text-[12px] text-pms-primary" onClick={() => insertToken(tk)}>
               {tk}
-            </div>
+            </button>
           ))}
           <div className="my-2.5 flex items-center justify-between text-[12px] font-bold">Khách hàng <span>⌄</span></div>
           {contractTokensGuest.map((tk) => (
-            <div key={tk} className="mb-1.5 cursor-pointer rounded-md bg-pms-primary-soft px-2 py-1.5 text-[12px] text-pms-primary" onClick={() => insertToken(tk)}>
+            <button type="button" key={tk} className="mb-1.5 block w-full rounded-md border-0 bg-pms-primary-soft px-2 py-1.5 text-left text-[12px] text-pms-primary" onClick={() => insertToken(tk)}>
               {tk}
-            </div>
+            </button>
           ))}
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
@@ -51,21 +77,20 @@ export function ContractTemplateModal({ guestName, onClose }: { guestName: strin
             <div className="flex items-center gap-2.5">
               <div className="flex items-center gap-1.5 text-[12px] text-pms-muted">
                 Ngôn ngữ
-                <div className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-pms-border px-2.5 py-1.5 text-[12.5px] text-pms-text">
-                  Tiếng Việt <span>⌄</span>
-                </div>
+                <select aria-label="Ngôn ngữ mẫu" value={settings.data.language} onChange={(event) => settings.setData({ ...settings.data, language: event.target.value })} className="rounded-lg border border-pms-border bg-white px-2.5 py-1.5 text-[12.5px] text-pms-text"><option value="vi">Tiếng Việt</option><option value="en">English</option></select>
               </div>
-              <div className="cursor-pointer rounded-lg border border-pms-border px-3.5 py-2 text-[12.5px] font-semibold">Sao chép mẫu</div>
+              <button type="button" onClick={() => void copyTemplate()} className="rounded-lg border border-pms-border bg-white px-3.5 py-2 text-[12.5px] font-semibold">Sao chép mẫu</button>
             </div>
           </div>
           <div className="flex gap-1 border-b border-pms-divider px-5 py-2 text-[13px] text-pms-muted">
-            <span className="cursor-pointer px-2 py-1 font-bold">B</span>
-            <span className="cursor-pointer px-2 py-1 italic">I</span>
-            <span className="cursor-pointer px-2 py-1 underline">U</span>
-            <span className="cursor-pointer px-2 py-1">≡</span>
-            <span className="cursor-pointer px-2 py-1">🔗</span>
-            <span className="cursor-pointer px-2 py-1">▦</span>
+            <button type="button" aria-label="In đậm" title="In đậm" onClick={() => format("bold")} className="border-0 bg-transparent px-2 py-1 font-bold">B</button>
+            <button type="button" aria-label="In nghiêng" title="In nghiêng" onClick={() => format("italic")} className="border-0 bg-transparent px-2 py-1 italic">I</button>
+            <button type="button" aria-label="Gạch chân" title="Gạch chân" onClick={() => format("underline")} className="border-0 bg-transparent px-2 py-1 underline">U</button>
+            <button type="button" aria-label="Danh sách" title="Danh sách" onClick={() => format("insertUnorderedList")} className="border-0 bg-transparent px-2 py-1">≡</button>
+            <button type="button" aria-label="Chèn liên kết" title="Chèn liên kết" onClick={() => { const url = window.prompt("Nhập liên kết"); if (url) format("createLink", url); }} className="border-0 bg-transparent px-2 py-1">🔗</button>
+            <button type="button" aria-label="Chèn bảng" title="Chèn bảng 2 cột" onClick={() => format("insertHTML", "<table><tbody><tr><td>Nội dung</td><td>Nội dung</td></tr></tbody></table>")} className="border-0 bg-transparent px-2 py-1">▦</button>
           </div>
+          {(notice || settings.error) && <p className={`m-0 px-5 py-2 text-[11.5px] ${settings.error ? "text-pms-danger" : "text-pms-success"}`}>{settings.error ?? notice}</p>}
           <div
             ref={editorRef}
             contentEditable

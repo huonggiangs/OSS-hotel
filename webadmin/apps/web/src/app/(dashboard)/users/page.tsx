@@ -105,7 +105,7 @@ export default function UsersPage() {
           <h1 className="text-lg font-semibold text-gray-900">Người dùng & phân quyền</h1>
           <p className="mt-1 text-sm text-gray-500">Chỉ SUPER_ADMIN quản lý được tài khoản, vai trò và khoá/mở tài khoản HQ Console.</p>
         </div>
-        <button onClick={() => setShowCreate((v) => !v)} className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700">
+        <button type="button" onClick={() => setShowCreate((v) => !v)} className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700">
           {showCreate ? "Đóng" : "+ Thêm người dùng"}
         </button>
       </div>
@@ -162,8 +162,8 @@ export default function UsersPage() {
                 <td className="px-4 py-2 text-gray-600">{u.role}</td>
                 <td className="px-4 py-2"><StatusBadge status={u.status} /></td>
                 <td className="px-4 py-2 space-x-3">
-                  <button onClick={() => openEdit(u)} className="text-xs font-medium text-brand-600 hover:underline">Sửa vai trò/khoá</button>
-                  <button onClick={() => handleResetPassword(u)} className="text-xs font-medium text-brand-600 hover:underline">Đặt lại mật khẩu</button>
+                  <button type="button" onClick={() => openEdit(u)} className="text-xs font-medium text-brand-600 hover:underline">Sửa vai trò/khoá</button>
+                  <button type="button" onClick={() => handleResetPassword(u)} className="text-xs font-medium text-brand-600 hover:underline">Đặt lại mật khẩu</button>
                 </td>
               </tr>
             ))}

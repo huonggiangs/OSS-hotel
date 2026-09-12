@@ -113,7 +113,7 @@ export default function ReleasesPage() {
             Tổng hợp phiên bản của toàn bộ client app trong hệ sinh thái. Go-live quản lý version — chưa phải deploy pipeline thật, không gửi lệnh cập nhật xuống thiết bị/khách hàng.
           </p>
         </div>
-        <button onClick={() => setShowForm((v) => !v)} className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700">
+        <button type="button" onClick={() => setShowForm((v) => !v)} className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700">
           {showForm ? "Đóng" : "+ Phát hành phiên bản mới"}
         </button>
       </div>
@@ -188,7 +188,7 @@ export default function ReleasesPage() {
                 <td className="px-4 py-2"><StatusBadge status={r.is_active ? "ACTIVE" : "INACTIVE"} /></td>
                 <td className="px-4 py-2">
                   {!r.is_active && (
-                    <button disabled={busyId === r.id} onClick={() => handleRollback(r)} className="text-xs font-medium text-brand-600 hover:underline disabled:opacity-50">
+                    <button type="button" disabled={busyId === r.id} onClick={() => handleRollback(r)} className="text-xs font-medium text-brand-600 hover:underline disabled:opacity-50">
                       Kích hoạt lại (rollback)
                     </button>
                   )}

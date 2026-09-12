@@ -4,6 +4,7 @@ dist/
 .next/
 out/
 build/
+*.apk
 *.tsbuildinfo
 
 # Secrets / môi trường cục bộ — KHÔNG BAO GIỜ commit
@@ -24,3 +25,9 @@ npm-debug.log*
 # Runtime state and safety backups created by OSS operations scripts
 ops/.runtime/
 backups/
+
+# Local Android build toolchain and machine-specific SDK path
+.android-build/
+.kotlin/
+smart-hotel-os/mobile/android-owner/.gradle/
+smart-hotel-os/mobile/android-owner/local.properties

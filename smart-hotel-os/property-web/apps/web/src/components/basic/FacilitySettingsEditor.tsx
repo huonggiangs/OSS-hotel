@@ -314,7 +314,7 @@ export function FacilitySettingsEditor() {
       {(error || actionError) && <p className="m-0 text-[12px] text-pms-danger">{actionError ?? error}</p>}
       <section className="rounded-lg border border-pms-border p-3.5">
         <div className="mb-3 text-[13px] font-semibold">{t("Thông tin vận hành")}</div>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div id="language-settings" className="grid scroll-mt-24 gap-3 md:grid-cols-2">
           <Field label={t("Hình thức cơ sở lưu trú")}><select value={form.accommodationForm} onChange={(event) => setForm((current) => ({ ...current, accommodationForm: event.target.value }))} className="input"><option value="">Chọn hình thức</option>{ACCOMMODATION_FORMS.map((item) => <option key={item}>{item}</option>)}</select></Field>
           <Field label={t("Tín ngưỡng tôn giáo")}><select value={form.religion} onChange={(event) => setForm((current) => ({ ...current, religion: event.target.value }))} className="input">{RELIGIONS.map((item) => <option key={item}>{item}</option>)}</select></Field>
           <Field label={t("Ngôn ngữ mặc định")}><select value={form.language} onChange={(event) => setForm((current) => ({ ...current, language: event.target.value }))} className="input">{LANGUAGES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>

@@ -182,7 +182,7 @@ export function DashboardOverview() {
     <div>
       {error && <p className="mb-3.5 rounded-lg bg-pms-danger-bg px-3 py-2 text-[12.5px] text-pms-danger">{error}</p>}
 
-      <section className="mb-4 rounded-xl bg-white p-4 shadow-card sm:p-5">
+      <section id="guest-booking-search" className="mb-4 scroll-mt-24 rounded-xl bg-white p-4 shadow-card sm:p-5">
         <div className="mb-2"><h2 className="m-0 text-[15px] font-semibold">Tìm khách hoặc mã đặt phòng</h2><p className="m-0 mt-1 text-[11.5px] text-pms-muted">Tìm theo tên, số điện thoại, email hoặc mã đặt phòng.</p></div>
         <form onSubmit={searchGuestOrBooking} className="flex flex-col gap-2 sm:flex-row">
           <input value={lookupText} onChange={(event) => setLookupText(event.target.value)} placeholder="Ví dụ: Nguyễn Văn An hoặc HD-2026001" className="min-w-0 flex-1 rounded-lg border border-pms-border px-3 py-2.5 text-[13px] outline-none focus:border-pms-primary" aria-label="Tìm khách hoặc mã đặt phòng" />

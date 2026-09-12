@@ -3,7 +3,7 @@
 // webadmin: không dùng ORM code-gen).
 
 export type PropertyStatus = "ACTIVE" | "SUSPENDED";
-export type PropertyUserRole = "OWNER" | "MANAGER" | "RECEPTIONIST" | "HOUSEKEEPING";
+export type PropertyUserRole = "OWNER" | "MANAGER" | "RECEPTIONIST" | "HOUSEKEEPING" | "TECHNICIAN";
 export type PropertyUserStatus = "ACTIVE" | "DISABLED";
 export type RoomTypeStatus = "ACTIVE" | "INACTIVE";
 export type RoomStatus = "OCCUPIED" | "VACANT" | "DIRTY" | "MAINTENANCE";

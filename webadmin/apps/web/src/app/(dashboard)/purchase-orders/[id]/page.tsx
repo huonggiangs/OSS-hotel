@@ -151,7 +151,7 @@ export default function PurchaseOrderDetailPage() {
       {nextOptions.length > 0 && (
         <div className="mt-4 flex gap-2">
           {nextOptions.map((opt) => (
-            <button
+            <button type="button"
               key={opt.value}
               disabled={busy}
               onClick={() => handleChangeStatus(opt.value)}
@@ -191,7 +191,7 @@ export default function PurchaseOrderDetailPage() {
                 <td className="px-4 py-2 text-gray-600">{it.received_quantity}</td>
                 {po.status === "DRAFT" && (
                   <td className="px-4 py-2">
-                    <button onClick={() => handleRemoveItem(it.id)} className="text-xs font-medium text-red-600 hover:underline">Xoá</button>
+                    <button type="button" onClick={() => handleRemoveItem(it.id)} className="text-xs font-medium text-red-600 hover:underline">Xoá</button>
                   </td>
                 )}
               </tr>
