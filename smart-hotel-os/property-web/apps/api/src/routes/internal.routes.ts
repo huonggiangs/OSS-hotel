@@ -177,6 +177,24 @@ internalRouter.get(
   })
 );
 
+// HQ chỉ đọc metadata tài khoản để bàn giao/hỗ trợ; tuyệt đối không trả
+// password_hash hoặc dữ liệu xác thực thiết bị.
+internalRouter.get(
+  "/pms-users",
+  requireInternalServiceKey,
+  asyncHandler(async (_req, res) => {
+    const { rows } = await pool.query(
+      `SELECT pu.id, pu.property_id, pu.tenant_id, pu.username, pu.email,
+              pu.full_name, pu.role::text, pu.status::text, pu.created_at,
+              p.name AS property_name, p.login_code AS property_code
+       FROM property_users pu
+       JOIN properties p ON p.id = pu.property_id
+       ORDER BY p.name, pu.created_at`
+    );
+    res.json({ items: rows, total: rows.length });
+  })
+);
+
 internalRouter.post(
   "/mobile-connections/:id/revoke",
   requireInternalServiceKey,

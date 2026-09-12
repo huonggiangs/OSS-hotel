@@ -7,7 +7,7 @@ import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import { writeAuditLog } from "../middleware/audit";
 import { customersRepo } from "../repositories/customers.repo";
-import { provisionProperty } from "../lib/propertyWebClient";
+import { fetchPropertyWebUsers, provisionProperty } from "../lib/propertyWebClient";
 import { sendOnboardingEmail } from "../lib/onboardingMail";
 
 export const customersRouter = Router();
@@ -28,6 +28,8 @@ const upsertSchema = z.object({
   shoTenantId: z.string().optional(),
   kioskCustomerId: z.string().optional(),
   billingStatus: z.enum(["ACTIVE", "OVERDUE", "SUSPENDED"]).default("ACTIVE"),
+  operationalStatus: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+  saasPlan: z.enum(["TRIAL", "BASIC", "PRO", "PREMIUM", "ENTERPRISE", "CUSTOM"]).default("TRIAL"),
 });
 
 const provisionSchema = z.object({
@@ -63,7 +65,21 @@ customersRouter.get(
       search: req.query.search as string | undefined,
       product: req.query.product as string | undefined,
     });
-    res.json({ items, total: items.length });
+    const pmsUsers = await fetchPropertyWebUsers();
+    const enriched = items.map((customer) => ({
+      ...customer,
+      pms_users: pmsUsers.filter((user) =>
+        (customer.pms_property_id && user.property_id === customer.pms_property_id) ||
+        (customer.sho_tenant_id && user.tenant_id === customer.sho_tenant_id)
+      ),
+    }));
+    const assignedUserIds = new Set(enriched.flatMap((customer) => customer.pms_users.map((user) => user.id)));
+    res.json({
+      items: enriched,
+      total: enriched.length,
+      unassigned_pms_users: pmsUsers.filter((user) => !assignedUserIds.has(user.id)),
+      pms_user_total: pmsUsers.length,
+    });
   })
 );
 
@@ -168,6 +184,18 @@ customersRouter.patch(
     const customer = await customersRepo.update(req.params.id, parsed.data);
     await writeAuditLog({ req, action: "UPDATE_CUSTOMER", entityType: "customer", entityId: req.params.id, beforeData: existing, afterData: customer });
     res.json(customer);
+  })
+);
+
+customersRouter.delete(
+  "/:id",
+  requireRole("SALES_MANAGER", "SUPER_ADMIN"),
+  asyncHandler(async (req, res) => {
+    const existing = await customersRepo.findById(req.params.id);
+    if (!existing) throw Errors.notFound("khách hàng");
+    const deleted = await customersRepo.softDelete(req.params.id);
+    await writeAuditLog({ req, action: "DELETE_CUSTOMER", entityType: "customer", entityId: req.params.id, beforeData: existing, afterData: deleted });
+    res.status(204).send();
   })
 );
 

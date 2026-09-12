@@ -9,6 +9,8 @@ import { hardwareAssetsRepo } from "../repositories/hardwareAssets.repo";
 import { assetAlertsRepo } from "../repositories/assetAlerts.repo";
 import { syncConnectionStatusFromIot } from "../lib/iotSync";
 import { fetchPropertyWebBranches } from "../lib/propertyWebClient";
+import { fetchMobileConnections } from "../lib/propertyWebClient";
+import { registerIotDevice } from "../lib/iotClient";
 
 export const hardwareAssetsRouter = Router();
 hardwareAssetsRouter.use(requireAuth);
@@ -54,7 +56,16 @@ const baseFields = {
   description: z.string().max(2000).optional().nullable(),
   deactivatedAt: z.string().datetime().optional().nullable(),
   deactivationReason: z.string().max(1000).optional().nullable(),
+  connectionProtocol: z.enum(["HTTP", "MQTT", "TCP", "FIREBASE"]).optional(),
 };
+
+function toIotDeviceType(assetType: string): string {
+  const map: Record<string, string> = {
+    POWER_SWITCH: "SWITCH", IOT_CONTROLLER: "RELAY", DOOR_LOCK: "DOOR_LOCK",
+    ELECTRIC_METER: "ELECTRIC_METER", IP_CAMERA: "CAMERA", QR_SCANNER: "QR_SCANNER",
+  };
+  return map[assetType] ?? "OTHER";
+}
 
 const createSchema = z.object({
   ...baseFields,
@@ -74,14 +85,14 @@ const updateSchema = z.object({
 hardwareAssetsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const items = await hardwareAssetsRepo.list({
+    const [items, mobile] = await Promise.all([hardwareAssetsRepo.list({
       status: req.query.status as string | undefined,
       assetType: req.query.assetType as string | undefined,
       search: req.query.search as string | undefined,
       propertyId: req.query.propertyId as string | undefined,
       connectionStatus: req.query.connectionStatus as string | undefined,
-    });
-    res.json({ items, total: items.length });
+    }), fetchMobileConnections()]);
+    res.json({ items, total: items.length, mobile_devices: mobile.items, mobile_device_total: mobile.total });
   })
 );
 
@@ -119,6 +130,59 @@ hardwareAssetsRouter.post(
     const result = await syncConnectionStatusFromIot();
     await writeAuditLog({ req, action: "SYNC_HARDWARE_CONNECTION_STATUS", entityType: "hardware_asset", afterData: result });
     res.json(result);
+  })
+);
+
+const gatewayRegistrationSchema = z.object({
+  connectionProtocol: z.enum(["HTTP", "MQTT", "TCP", "FIREBASE"]),
+  roomId: z.string().trim().min(1).default("UNASSIGNED"),
+  protocolConfig: z.record(z.unknown()).optional(),
+});
+
+// Kỹ thuật viên đăng ký hoặc cấp lại khóa cho thiết bị. Khóa chỉ hiển thị
+// trong response này; HQ và IoT DB không lưu khóa thô.
+hardwareAssetsRouter.post(
+  "/:id/register-gateway",
+  requireRole("SUPPLY_CHAIN", "SUPER_ADMIN", "OPS_SUPPORT"),
+  asyncHandler(async (req, res) => {
+    const parsed = gatewayRegistrationSchema.safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    const asset = await hardwareAssetsRepo.findById(req.params.id);
+    if (!asset) throw Errors.notFound("thiết bị");
+    if (!asset.property_id) throw Errors.conflict("Thiết bị chưa được gán vào cơ sở.");
+    const branches = await fetchPropertyWebBranches();
+    const branch = branches?.find((item) => item.id === asset.property_id);
+    const tenantId = branch?.tenant_id ?? asset.customer_id ?? asset.property_id;
+    const result = await registerIotDevice({
+      id: asset.device_id_external || `hq-${asset.id}`,
+      tenantId,
+      propertyId: asset.property_id,
+      roomId: parsed.data.roomId,
+      deviceType: toIotDeviceType(asset.asset_type),
+      name: `${asset.asset_code} · ${asset.brand ?? asset.asset_type}`,
+      assetCode: asset.asset_code,
+      connectionProtocol: parsed.data.connectionProtocol,
+      brand: asset.brand ?? undefined,
+      model: asset.model ?? undefined,
+      protocolConfig: parsed.data.protocolConfig,
+    });
+    const updated = await hardwareAssetsRepo.update(asset.id, {
+      deviceIdExternal: result.device.id,
+      connectionProtocol: parsed.data.connectionProtocol,
+      gatewayConfiguredAt: new Date().toISOString(),
+      connectedServer: "iot-service",
+    });
+    await writeAuditLog({ req, action: "REGISTER_DEVICE_GATEWAY", entityType: "hardware_asset", entityId: asset.id,
+      beforeData: asset, afterData: { connection_protocol: parsed.data.connectionProtocol, device_id_external: result.device.id } });
+    res.status(201).json({
+      asset: updated,
+      device_key: result.device_key,
+      http_base_path: `/api/backend/api/v1/device-gateway/${asset.asset_code}`,
+      mqtt_up_topic: `hotel/${asset.asset_code}/up`,
+      mqtt_down_topic: `hotel/${asset.asset_code}/down`,
+      tcp_port: 7100,
+      note: "Lưu khóa ngay vào thiết bị; khóa thô sẽ không hiển thị lại.",
+    });
   })
 );
 

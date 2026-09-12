@@ -58,9 +58,7 @@ function formatDate(value: string | null) {
 export default function MobileConnectionsPage() {
   const [items, setItems] = useState<MobileConnection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [workingId, setWorkingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -94,28 +92,10 @@ export default function MobileConnectionsPage() {
     setSearch(searchInput.trim());
   }
 
-  async function revoke(item: MobileConnection) {
-    const message = `Thu hồi phiên đăng nhập trên ${item.device_name || item.device_id}? Thiết bị sẽ phải đăng nhập lại bằng mật khẩu.`;
-    if (!window.confirm(message)) return;
-
-    setWorkingId(item.id);
-    setError(null);
-    setNotice(null);
-    try {
-      await api.post(`/api/v1/mobile-connections/${item.id}/revoke`, {});
-      setNotice("Đã thu hồi. Thiết bị không thể tiếp tục gọi API và phải đăng nhập lại bằng mật khẩu.");
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Không cập nhật được kết nối ứng dụng.");
-    } finally {
-      setWorkingId(null);
-    }
-  }
-
   const approved = items.filter((item) => item.status === "APPROVED").length;
-  const revoked = items.filter((item) => item.status === "REVOKED" || item.status === "REJECTED").length;
   const android = items.filter((item) => item.platform === "ANDROID").length;
   const ios = items.filter((item) => item.platform === "IOS").length;
+  const recentlySeen = items.filter((item) => item.last_seen_at && Date.now() - new Date(item.last_seen_at).getTime() < 15 * 60 * 1000).length;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -137,9 +117,10 @@ export default function MobileConnectionsPage() {
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Summary label="Tổng thiết bị đã ghi nhận" value={items.length} tone="blue" />
         <Summary label="Đang kết nối" value={approved} tone="green" />
-        <Summary label="Đã thu hồi / dữ liệu cũ" value={revoked} tone="gray" />
+        <Summary label="Có tín hiệu trong 15 phút" value={recentlySeen} tone="green" />
         <Summary label="Android / iOS" value={`${android} / ${ios}`} tone="blue" />
       </div>
 
@@ -148,7 +129,7 @@ export default function MobileConnectionsPage() {
         <ol className="mt-2 grid gap-2 sm:grid-cols-3">
           <li><b>1.</b> Nhập mã cơ sở, tên đăng nhập và mật khẩu trong lần đầu.</li>
           <li><b>2.</b> Hệ thống ghi nhận mã thiết bị và tự đăng nhập ở các lần sau.</li>
-          <li><b>3.</b> Nếu mất máy hoặc nghi ngờ truy cập, chọn Thu hồi phiên tại đây.</li>
+          <li><b>3.</b> HQ dùng trang này để thống kê thiết bị và thời điểm hoạt động gần nhất.</li>
         </ol>
       </section>
 
@@ -175,7 +156,6 @@ export default function MobileConnectionsPage() {
       </form>
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-      {notice && <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{notice}</div>}
 
       {loading ? (
         <div className="rounded-xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">Đang tải danh sách...</div>
@@ -211,18 +191,6 @@ export default function MobileConnectionsPage() {
               <p className="mt-3 break-all text-xs text-gray-400">Mã thiết bị: {item.device_id}</p>
               {item.approval_note && <p className="mt-2 text-sm text-gray-600">Ghi chú: {item.approval_note}</p>}
 
-              <div className="mt-4 flex flex-wrap justify-end gap-2">
-                {item.status === "APPROVED" && (
-                  <button
-                    type="button"
-                    onClick={() => revoke(item)}
-                    disabled={workingId === item.id}
-                    className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-                  >
-                    {workingId === item.id ? "Đang xử lý..." : "Thu hồi quyền"}
-                  </button>
-                )}
-              </div>
             </article>
           ))}
         </div>

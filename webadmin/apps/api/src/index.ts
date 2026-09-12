@@ -18,6 +18,7 @@ import { purchaseOrdersRouter } from "./routes/purchase-orders.routes";
 import { internalRouter } from "./routes/internal.routes";
 import { goLiveProgressRouter } from "./routes/goLiveProgress.routes";
 import { mobileConnectionsRouter } from "./routes/mobile-connections.routes";
+import { deviceGatewayProxyRouter } from "./routes/device-gateway.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { pool, DB_MODE, embeddedDb } from "./lib/db";
@@ -40,6 +41,7 @@ app.get("/health", (_req, res) => res.json({ status: "ok", db_mode: DB_MODE }));
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/internal", internalRouter);
+app.use("/api/v1/device-gateway", deviceGatewayProxyRouter);
 app.get("/api/v1/me", requireAuth, (req, res) => res.json(req.user));
 app.use("/api/v1/partners", partnersRouter);
 app.use("/api/v1/suppliers", suppliersRouter);

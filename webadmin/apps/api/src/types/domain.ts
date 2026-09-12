@@ -96,6 +96,9 @@ export interface CustomerUnified {
   billing_status: BillingStatus;
   pms_property_id: string | null;
   property_login_code: string | null;
+  operational_status: "ACTIVE" | "INACTIVE";
+  saas_plan: "TRIAL" | "BASIC" | "PRO" | "PREMIUM" | "ENTERPRISE" | "CUSTOM";
+  deleted_at: Date | null;
   onboarding_status: CustomerOnboardingStatus;
   onboarding_email_sent_at: Date | null;
   onboarding_last_error: string | null;
@@ -144,7 +147,9 @@ export interface HardwareAsset {
   installation_location: string | null;
   description: string | null;
   deactivated_at: Date | null;
-  deactivation_reason: string | null;
+    deactivation_reason: string | null;
+    connection_protocol: "HTTP" | "MQTT" | "TCP" | "FIREBASE";
+    gateway_configured_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }

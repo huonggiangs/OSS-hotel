@@ -146,8 +146,17 @@ services:
       DATABASE_URL: "postgresql://iot_service:iot_service@postgres:5432/iot_service"
       PORT: "4103"
       SERVICE_API_KEY: "${SERVICE_API_KEY:?SERVICE_API_KEY phải được đặt trong services/.env}"
+      TCP_DEVICE_PORT: "7100"
+      MQTT_URL: "${MQTT_URL:-}"
+      MQTT_USERNAME: "${MQTT_USERNAME:-}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-}"
+      FIREBASE_BRIDGE_URL: "${FIREBASE_BRIDGE_URL:-}"
+      FIREBASE_BRIDGE_TOKEN: "${FIREBASE_BRIDGE_TOKEN:-}"
     ports:
       - "127.0.0.1:4103:4103"
+      # Thiết bị TCP trong LAN truy cập cổng này; mọi phiên bắt buộc xác thực
+      # bằng asset_code + device_key riêng được cấp tại HQ.
+      - "7100:7100"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4103/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 15s

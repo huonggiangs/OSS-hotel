@@ -4,6 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { Errors } from "../utils/errors";
 import { devicesRepo } from "../repositories/devices.repo";
 import { heartbeatsRepo } from "../repositories/heartbeats.repo";
+import { generateDeviceKey, hashDeviceKey } from "../lib/deviceCredentials";
 
 export const devicesRouter = Router();
 
@@ -27,12 +28,33 @@ const createSchema = z.object({
   tenantId: z.string().min(1),
   propertyId: z.string().min(1),
   roomId: z.string().min(1),
-  deviceType: z.enum(["SWITCH", "AIRCON"]),
+  deviceType: z.enum(["SWITCH", "AIRCON", "DOOR_LOCK", "ELECTRIC_METER", "RELAY", "CAMERA", "SENSOR", "SMART_TV", "SPEAKER", "QR_SCANNER", "OTHER"]),
   name: z.string().min(1),
   // Cho phép ghép nối asset_code ngay lúc tạo (tuỳ chọn) — thay vì luôn phải
   // gọi thêm 1 request /pair riêng.
   assetCode: z.string().optional(),
+  connectionProtocol: z.enum(["HTTP", "MQTT", "TCP", "FIREBASE"]).default("HTTP"),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  protocolConfig: z.record(z.unknown()).optional(),
 });
+
+// Đăng ký/cấp lại khóa cho thiết bị. Khóa thô chỉ trả đúng một lần; DB chỉ
+// giữ bản băm. Endpoint này được bảo vệ bằng X-Service-Api-Key ở index.ts.
+devicesRouter.post(
+  "/register",
+  asyncHandler(async (req, res) => {
+    const parsed = createSchema.safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    if (!parsed.data.assetCode) throw Errors.validation({ assetCode: "Bắt buộc có assetCode để thiết bị xác thực." });
+    const deviceKey = generateDeviceKey();
+    const device = await devicesRepo.create({
+      ...parsed.data,
+      credentialHash: await hashDeviceKey(deviceKey),
+    });
+    res.status(201).json({ device, device_key: deviceKey });
+  })
+);
 
 devicesRouter.post(
   "/",

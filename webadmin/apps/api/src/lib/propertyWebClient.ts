@@ -25,6 +25,20 @@ export interface PropertyWebBranch {
   room_count?: number;
 }
 
+export interface PropertyWebUser {
+  id: string;
+  property_id: string;
+  tenant_id: string;
+  username: string;
+  email: string;
+  full_name: string;
+  role: string;
+  status: string;
+  property_name: string;
+  property_code: string;
+  created_at: string;
+}
+
 /**
  * Gọi GET /api/v1/branches của property-web. Trả về `null` (KHÔNG throw) nếu
  * property-web không chạy/không có mạng — để UI/route gọi hàm này luôn fallback
@@ -56,6 +70,17 @@ export async function fetchPropertyWebBranches(): Promise<PropertyWebBranch[] | 
     // eslint-disable-next-line no-console
     console.warn("[propertyWebClient] Không gọi được property-web (có thể chưa chạy/không có mạng):", (err as Error).message);
     return null;
+  }
+}
+
+export async function fetchPropertyWebUsers(): Promise<PropertyWebUser[]> {
+  try {
+    const response = await propertyWebJson<{ items: PropertyWebUser[] }>("/api/v1/internal/pms-users");
+    return response.items;
+  } catch (error) {
+    // Danh sách HQ vẫn hoạt động khi PMS tạm thời mất kết nối.
+    console.warn("[propertyWebClient] Không đồng bộ được tài khoản PMS:", (error as Error).message);
+    return [];
   }
 }
 

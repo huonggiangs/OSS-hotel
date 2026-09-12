@@ -10,6 +10,8 @@ import { requireServiceAuth } from "./middleware/serviceAuth";
 import { pool } from "./lib/db";
 import { commandsRepo } from "./repositories/commands.repo";
 import { devicesRepo } from "./repositories/devices.repo";
+import { deviceGatewayRouter } from "./routes/deviceGateway.routes";
+import { transportHub } from "./lib/transportHub";
 
 const app = express();
 
@@ -18,6 +20,11 @@ app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? false }));
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "iot-service" }));
+
+// Public cho thiết bị, nhưng từng request bắt buộc có X-Device-Key riêng.
+// Không đặt sau requireServiceAuth vì firmware của bên thứ ba không được biết
+// khóa nội bộ giữa các service.
+app.use("/device/v1", deviceGatewayRouter);
 
 app.use("/api/v1", requireServiceAuth);
 app.use("/api/v1/devices", devicesRouter);
@@ -34,6 +41,7 @@ const server = app.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`iot-service đang chạy tại http://localhost:${PORT}`);
 });
+transportHub.start();
 
 // --- Timeout sweep ---
 // Mô phỏng một background job đơn giản trong cùng process: quét định kỳ mọi
@@ -78,6 +86,7 @@ process.on("SIGTERM", async () => {
   clearInterval(sweepTimer);
   clearInterval(offlineSweepTimer);
   server.close();
+  transportHub.close();
   await pool.end();
   process.exit(0);
 });

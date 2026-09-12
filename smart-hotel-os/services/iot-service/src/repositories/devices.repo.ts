@@ -1,5 +1,6 @@
 import { pool } from "../lib/db";
-import type { Device, PowerState } from "../types/domain";
+import { randomUUID } from "node:crypto";
+import type { ConnectionProtocol, Device, DeviceType, PowerState } from "../types/domain";
 
 export const devicesRepo = {
   async findById(id: string): Promise<Device | null> {
@@ -28,15 +29,32 @@ export const devicesRepo = {
     tenantId: string;
     propertyId: string;
     roomId: string;
-    deviceType: "SWITCH" | "AIRCON";
+    deviceType: DeviceType;
     name: string;
+    assetCode?: string;
+    connectionProtocol?: ConnectionProtocol;
+    credentialHash?: string;
+    brand?: string;
+    model?: string;
+    protocolConfig?: Record<string, unknown>;
   }): Promise<Device> {
     const { rows } = await pool.query<Device>(
-      `INSERT INTO devices (id, tenant_id, property_id, room_id, device_type, name, status, power_state)
-       VALUES ($1,$2,$3,$4,$5,$6,'OFFLINE','OFF')
-       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, updated_at = now()
+      `INSERT INTO devices
+        (id, tenant_id, property_id, room_id, device_type, name, status, power_state, asset_code,
+         connection_protocol, credential_hash, brand, model, protocol_config)
+       VALUES ($1,$2,$3,$4,$5,$6,'OFFLINE','OFF',$7,$8,$9,$10,$11,$12)
+       ON CONFLICT (id) DO UPDATE SET
+         tenant_id = EXCLUDED.tenant_id, property_id = EXCLUDED.property_id, room_id = EXCLUDED.room_id,
+         device_type = EXCLUDED.device_type, name = EXCLUDED.name,
+         asset_code = COALESCE(EXCLUDED.asset_code, devices.asset_code),
+         connection_protocol = EXCLUDED.connection_protocol,
+         credential_hash = COALESCE(EXCLUDED.credential_hash, devices.credential_hash),
+         brand = EXCLUDED.brand, model = EXCLUDED.model, protocol_config = EXCLUDED.protocol_config,
+         updated_at = now()
        RETURNING *`,
-      [input.id, input.tenantId, input.propertyId, input.roomId, input.deviceType, input.name]
+      [input.id, input.tenantId, input.propertyId, input.roomId, input.deviceType, input.name,
+       input.assetCode ?? null, input.connectionProtocol ?? "HTTP", input.credentialHash ?? null,
+       input.brand ?? null, input.model ?? null, JSON.stringify(input.protocolConfig ?? {})]
     );
     return rows[0];
   },
@@ -55,6 +73,23 @@ export const devicesRepo = {
 
   async findByAssetCode(assetCode: string): Promise<Device | null> {
     const { rows } = await pool.query<Device>(`SELECT * FROM devices WHERE asset_code = $1`, [assetCode]);
+    return rows[0] ?? null;
+  },
+
+  async recordEvent(id: string, eventType: string, transport: string, payload: unknown): Promise<void> {
+    await pool.query(
+      `INSERT INTO device_events (id, device_id, event_type, transport, payload) VALUES ($1,$2,$3,$4,$5)`,
+      [randomUUID(), id, eventType, transport, JSON.stringify(payload ?? {})]
+    );
+  },
+
+  async recordTelemetry(id: string, transport: string, payload: unknown): Promise<Device | null> {
+    const { rows } = await pool.query<Device>(
+      `UPDATE devices SET status='ONLINE', last_heartbeat_at=now(), last_payload=$2,
+       last_transport=$3, updated_at=now() WHERE id=$1 RETURNING *`,
+      [id, JSON.stringify(payload ?? {}), transport]
+    );
+    await this.recordEvent(id, "TELEMETRY", transport, payload);
     return rows[0] ?? null;
   },
 

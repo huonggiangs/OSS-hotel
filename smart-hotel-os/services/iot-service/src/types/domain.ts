@@ -1,4 +1,7 @@
-export type DeviceType = "SWITCH" | "AIRCON";
+export type DeviceType =
+  | "SWITCH" | "AIRCON" | "DOOR_LOCK" | "ELECTRIC_METER" | "RELAY"
+  | "CAMERA" | "SENSOR" | "SMART_TV" | "SPEAKER" | "QR_SCANNER" | "OTHER";
+export type ConnectionProtocol = "HTTP" | "MQTT" | "TCP" | "FIREBASE";
 export type DeviceStatus = "ONLINE" | "OFFLINE" | "ERROR" | "MAINTENANCE_MODE";
 export type PowerState = "ON" | "OFF";
 export type CommandType =
@@ -7,7 +10,8 @@ export type CommandType =
   | "AC_SET_TEMPERATURE"
   | "AC_SET_MODE"
   | "DEVICE_STATUS_CHECK"
-  | "DEVICE_RESTART";
+  | "DEVICE_RESTART"
+  | "LOCK" | "UNLOCK" | "SET_VALUE" | "PLAY_MESSAGE" | "CUSTOM";
 export type CommandStatus = "PENDING" | "ACKED" | "TIMEOUT" | "FAILED";
 
 export interface Device {
@@ -23,6 +27,13 @@ export interface Device {
   // ---- Migration 002: mã thiết bị chung (liên kết logic sang webadmin.hardware_assets) ----
   asset_code: string | null;
   disconnect_count: number;
+  connection_protocol: ConnectionProtocol;
+  credential_hash: string | null;
+  brand: string | null;
+  model: string | null;
+  protocol_config: Record<string, unknown>;
+  last_payload: unknown;
+  last_transport: string | null;
   created_at: string;
   updated_at: string;
 }

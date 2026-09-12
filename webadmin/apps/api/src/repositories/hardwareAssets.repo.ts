@@ -27,6 +27,8 @@ export interface HardwareAssetInput {
   description?: string | null;
   deactivatedAt?: string | null;
   deactivationReason?: string | null;
+  connectionProtocol?: "HTTP" | "MQTT" | "TCP" | "FIREBASE";
+  gatewayConfiguredAt?: string | null;
 }
 
 export const hardwareAssetsRepo = {
@@ -177,6 +179,8 @@ export const hardwareAssetsRepo = {
       description: input.description,
       deactivated_at: input.deactivatedAt,
       deactivation_reason: input.deactivationReason,
+      connection_protocol: input.connectionProtocol,
+      gateway_configured_at: input.gatewayConfiguredAt,
     };
     for (const [col, val] of Object.entries(map)) {
       if (val !== undefined) {

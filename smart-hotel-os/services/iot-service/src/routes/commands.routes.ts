@@ -5,6 +5,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { Errors } from "../utils/errors";
 import { devicesRepo } from "../repositories/devices.repo";
 import { commandsRepo } from "../repositories/commands.repo";
+import { transportHub } from "../lib/transportHub";
 
 export const commandsRouter = Router();
 
@@ -19,6 +20,11 @@ const createCommandSchema = z.object({
     "AC_SET_MODE",
     "DEVICE_STATUS_CHECK",
     "DEVICE_RESTART",
+    "LOCK",
+    "UNLOCK",
+    "SET_VALUE",
+    "PLAY_MESSAGE",
+    "CUSTOM",
   ]),
   payload: z.record(z.unknown()).default({}),
   // Caller tự cấp idempotencyKey nếu muốn retry an toàn (vd. rule engine gọi
@@ -65,9 +71,17 @@ commandsRouter.post(
       expiresAt,
     });
 
+    // MQTT/TCP/Firebase được đẩy ngay nếu adapter đang trực tuyến. Thiết bị
+    // HTTP vẫn lấy lệnh bằng polling; DB luôn là nguồn sự thật nên không mất
+    // lệnh khi broker/socket tạm ngắt.
+    const pushedToTransport = await transportHub.publishCommand(device, command).catch((error) => {
+      console.error("[device-command] Không đẩy được lệnh:", (error as Error).message);
+      return false;
+    });
+
     // Trả 202 Accepted: lệnh đã được ghi nhận, đang chờ thiết bị ack — đây là
     // luồng ASYNC, KHÔNG chờ thiết bị xử lý xong mới trả response.
-    res.status(202).json({ command });
+    res.status(202).json({ command, delivery: pushedToTransport ? "PUSHED" : "QUEUED" });
   })
 );
 

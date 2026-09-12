@@ -19,6 +19,8 @@ interface HardwareAsset {
   property_id: string | null;
   property_name: string | null;
   warranty_until: string | null;
+  connection_protocol: "HTTP" | "MQTT" | "TCP" | "FIREBASE";
+  gateway_configured_at: string | null;
 }
 
 interface AssetAlert {
@@ -36,6 +38,12 @@ interface AssetAlert {
 interface PropertyOption {
   id: string;
   name: string;
+}
+
+interface MobileDevice {
+  id: string; username: string; full_name: string; role: string; property_name: string;
+  platform: "ANDROID" | "IOS"; device_name: string | null; device_id: string;
+  app_version: string | null; status: string; last_seen_at: string | null;
 }
 
 const ASSET_TYPES = [
@@ -58,6 +66,7 @@ const CONNECTION_STATUSES = ["ONLINE", "OFFLINE", "UNKNOWN"];
 
 export default function HardwareAssetsPage() {
   const [items, setItems] = useState<HardwareAsset[]>([]);
+  const [mobileDevices, setMobileDevices] = useState<MobileDevice[]>([]);
   const [alerts, setAlerts] = useState<AssetAlert[]>([]);
   const [propertyOptions, setPropertyOptions] = useState<PropertyOption[]>([]);
   const [propertySource, setPropertySource] = useState<"property-web" | "fallback">("fallback");
@@ -86,6 +95,11 @@ export default function HardwareAssetsPage() {
   const [subscriptionFee, setSubscriptionFee] = useState("");
   const [subscriptionCycle, setSubscriptionCycle] = useState("MONTHLY");
   const [parentAssetId, setParentAssetId] = useState("");
+  const [connectionProtocol, setConnectionProtocol] = useState<"HTTP" | "MQTT" | "TCP" | "FIREBASE">("HTTP");
+  const [roomId, setRoomId] = useState("UNASSIGNED");
+  const [connectionInfo, setConnectionInfo] = useState<null | {
+    assetCode: string; deviceKey: string; httpBasePath: string; mqttUp: string; mqttDown: string; tcpPort: number;
+  }>(null);
 
   async function load() {
     setLoading(true);
@@ -94,8 +108,9 @@ export default function HardwareAssetsPage() {
       if (filterProperty) params.set("propertyId", filterProperty);
       if (filterConnection) params.set("connectionStatus", filterConnection);
       const qs = params.toString();
-      const res = await api.get<{ items: HardwareAsset[] }>(`/api/v1/hardware-assets${qs ? `?${qs}` : ""}`);
+      const res = await api.get<{ items: HardwareAsset[]; mobile_devices: MobileDevice[] }>(`/api/v1/hardware-assets${qs ? `?${qs}` : ""}`);
       setItems(res.items);
+      setMobileDevices(res.mobile_devices ?? []);
       const alertsRes = await api.get<{ items: AssetAlert[] }>("/api/v1/hardware-assets/alerts");
       setAlerts(alertsRes.items);
     } catch (err) {
@@ -134,7 +149,7 @@ export default function HardwareAssetsPage() {
         setError("Bắt buộc gán thiết bị vào 1 cơ sở (chọn hoặc nhập tên cơ sở).");
         return;
       }
-      await api.post("/api/v1/hardware-assets", {
+      const created = await api.post<HardwareAsset>("/api/v1/hardware-assets", {
         assetType,
         brand: brand || undefined,
         model: model || undefined,
@@ -149,7 +164,14 @@ export default function HardwareAssetsPage() {
         parentAssetId: parentAssetId || undefined,
         installationLocation: installationLocation || undefined,
         description: description || undefined,
+        connectionProtocol,
       });
+      const registration = await api.post<{
+        device_key: string; http_base_path: string; mqtt_up_topic: string; mqtt_down_topic: string; tcp_port: number;
+      }>(`/api/v1/hardware-assets/${created.id}/register-gateway`, { connectionProtocol, roomId: roomId || "UNASSIGNED" });
+      setConnectionInfo({ assetCode: created.asset_code, deviceKey: registration.device_key,
+        httpBasePath: registration.http_base_path, mqttUp: registration.mqtt_up_topic,
+        mqttDown: registration.mqtt_down_topic, tcpPort: registration.tcp_port });
       setShowForm(false);
       setBrand("");
       setModel("");
@@ -162,9 +184,29 @@ export default function HardwareAssetsPage() {
       setActivatedAt("");
       setSubscriptionFee("");
       setParentAssetId("");
+      setRoomId("UNASSIGNED");
       await load();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Tạo thiết bị thất bại.");
+    }
+  }
+
+  async function handleRegister(asset: HardwareAsset) {
+    const selected = window.prompt("Giao thức: HTTP, MQTT, TCP hoặc FIREBASE", asset.connection_protocol || "HTTP")?.toUpperCase();
+    if (!selected || !["HTTP", "MQTT", "TCP", "FIREBASE"].includes(selected)) return;
+    const selectedRoom = window.prompt("Mã phòng/khu vực lắp đặt", "UNASSIGNED");
+    if (!selectedRoom) return;
+    try {
+      const registration = await api.post<{
+        device_key: string; http_base_path: string; mqtt_up_topic: string; mqtt_down_topic: string; tcp_port: number;
+      }>(`/api/v1/hardware-assets/${asset.id}/register-gateway`, { connectionProtocol: selected, roomId: selectedRoom });
+      setConnectionInfo({ assetCode: asset.asset_code, deviceKey: registration.device_key,
+        httpBasePath: registration.http_base_path, mqttUp: registration.mqtt_up_topic,
+        mqttDown: registration.mqtt_down_topic, tcpPort: registration.tcp_port });
+      setSyncMessage(`Đã cấp cấu hình ${selected} mới cho ${asset.asset_code}. Hãy lưu khóa vào thiết bị ngay.`);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Không thể đăng ký cổng kết nối thiết bị.");
     }
   }
 
@@ -219,6 +261,13 @@ export default function HardwareAssetsPage() {
 
       {syncMessage && <p className="mt-3 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">{syncMessage}</p>}
       {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {connectionInfo && <section className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-950">
+        <div className="flex flex-wrap items-center justify-between gap-2"><b>Cấu hình một lần cho {connectionInfo.assetCode}</b><button type="button" onClick={() => setConnectionInfo(null)} className="rounded border border-green-300 px-2 py-1">Đã lưu khóa</button></div>
+        <p className="mt-2 break-all"><b>Khóa thiết bị:</b> <code>{connectionInfo.deviceKey}</code></p>
+        <p className="mt-1 break-all"><b>HTTP qua cổng 3000:</b> <code>{connectionInfo.httpBasePath}</code></p>
+        <p className="mt-1 break-all"><b>MQTT:</b> <code>{connectionInfo.mqttUp}</code> / <code>{connectionInfo.mqttDown}</code></p>
+        <p className="mt-1"><b>TCP:</b> cổng <code>{connectionInfo.tcpPort}</code></p>
+      </section>}
 
       {/* Khối tổng hợp cảnh báo */}
       {alerts.length > 0 && (
@@ -323,6 +372,16 @@ export default function HardwareAssetsPage() {
             <input value={connectivityProvider} onChange={(e) => setConnectivityProvider(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700">Giao thức kết nối hai chiều</label>
+            <select value={connectionProtocol} onChange={(e) => setConnectionProtocol(e.target.value as typeof connectionProtocol)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <option value="HTTP">HTTP qua cổng 3000</option><option value="MQTT">MQTT</option><option value="TCP">TCP Socket</option><option value="FIREBASE">Firebase bridge</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Mã phòng / khu vực</label>
+            <input required value={roomId} onChange={(e) => setRoomId(e.target.value)} placeholder="Ví dụ: 201" className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700">Phí thuê bao (đ)</label>
             <input type="number" min={0} value={subscriptionFee} onChange={(e) => setSubscriptionFee(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
           </div>
@@ -350,7 +409,12 @@ export default function HardwareAssetsPage() {
         </form>
       )}
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <section className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold text-blue-950">Điện thoại và máy tính bảng đang kết nối ứng dụng</h2><p className="mt-1 text-xs text-blue-700">Đồng bộ trực tiếp từ phiên đăng nhập PMS; không cần khai báo lại như tài sản phần cứng.</p></div><b className="rounded-full bg-white px-3 py-1 text-blue-700">{mobileDevices.length} thiết bị</b></div>
+        {mobileDevices.length === 0 ? <p className="mt-3 text-sm text-blue-700">Chưa có thiết bị ứng dụng nào đăng nhập.</p> : <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">{mobileDevices.map((device) => <div key={device.id} className="min-w-0 rounded-lg bg-white p-3 text-sm shadow-sm"><div className="flex justify-between gap-2"><b className="truncate">{device.device_name || device.device_id}</b><span className={device.status === "APPROVED" ? "text-green-700" : "text-gray-500"}>{device.status === "APPROVED" ? "Đang cho phép" : "Không hoạt động"}</span></div><p className="truncate text-gray-600">{device.full_name} · @{device.username}</p><p className="truncate text-xs text-gray-400">{device.property_name} · {device.platform} · v{device.app_version || "—"}</p></div>)}</div>}
+      </section>
+
+      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -361,11 +425,13 @@ export default function HardwareAssetsPage() {
               <th className="px-4 py-2 text-left font-medium text-gray-500">Kết nối</th>
               <th className="px-4 py-2 text-left font-medium text-gray-500">Mất kết nối</th>
               <th className="px-4 py-2 text-left font-medium text-gray-500">Trạng thái</th>
+              <th className="px-4 py-2 text-left font-medium text-gray-500">Giao tiếp</th>
+              <th className="px-4 py-2 text-left font-medium text-gray-500">Hành động</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {loading && <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-400">Đang tải...</td></tr>}
-            {!loading && items.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-400">Chưa có thiết bị nào.</td></tr>}
+            {loading && <tr><td colSpan={9} className="px-4 py-6 text-center text-gray-400">Đang tải...</td></tr>}
+            {!loading && items.length === 0 && <tr><td colSpan={9} className="px-4 py-6 text-center text-gray-400">Chưa có thiết bị nào.</td></tr>}
             {items.map((a) => (
               <tr key={a.id}>
                 <td className="px-4 py-2">
@@ -378,6 +444,8 @@ export default function HardwareAssetsPage() {
                 <td className="px-4 py-2"><ConnectionDot status={a.connection_status} /></td>
                 <td className="px-4 py-2 text-gray-600">{a.disconnect_count}</td>
                 <td className="px-4 py-2"><StatusBadge status={a.status} /></td>
+                <td className="px-4 py-2 text-gray-600">{a.connection_protocol || "HTTP"}</td>
+                <td className="px-4 py-2"><button type="button" onClick={() => handleRegister(a)} className="whitespace-nowrap rounded-md border border-brand-300 px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50">Cấu hình kết nối</button></td>
               </tr>
             ))}
           </tbody>

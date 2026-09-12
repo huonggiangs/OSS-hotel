@@ -15,6 +15,8 @@ export interface CustomerInput {
   billingStatus?: "ACTIVE" | "OVERDUE" | "SUSPENDED";
   pmsPropertyId?: string | null;
   propertyLoginCode?: string | null;
+  operationalStatus?: "ACTIVE" | "INACTIVE";
+  saasPlan?: "TRIAL" | "BASIC" | "PRO" | "PREMIUM" | "ENTERPRISE" | "CUSTOM";
   onboardingStatus?: "NOT_STARTED" | "PROVISIONING" | "READY" | "EMAIL_SENT" | "EMAIL_NOT_CONFIGURED" | "EMAIL_FAILED";
   onboardingEmailSentAt?: string | null;
   onboardingLastError?: string | null;
@@ -31,7 +33,8 @@ export const customersRepo = {
     if (opts.product === "KIOSK") clauses.push(`uses_kiosk = true`);
     if (opts.product === "SMART_HOTEL_OS") clauses.push(`uses_smart_hotel_os = true`);
     if (opts.product === "BOTH") clauses.push(`uses_kiosk = true AND uses_smart_hotel_os = true`);
-    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+    clauses.push(`deleted_at IS NULL`);
+    const where = `WHERE ${clauses.join(" AND ")}`;
     const { rows } = await pool.query<CustomerUnified>(
       `SELECT * FROM customers_unified ${where} ORDER BY created_at DESC`,
       params
@@ -40,7 +43,7 @@ export const customersRepo = {
   },
 
   async findById(id: string): Promise<CustomerUnified | null> {
-    const { rows } = await pool.query<CustomerUnified>(`SELECT * FROM customers_unified WHERE id = $1`, [id]);
+    const { rows } = await pool.query<CustomerUnified>(`SELECT * FROM customers_unified WHERE id = $1 AND deleted_at IS NULL`, [id]);
     return rows[0] ?? null;
   },
 
@@ -53,8 +56,9 @@ export const customersRepo = {
     const { rows } = await pool.query<CustomerUnified>(
       `INSERT INTO customers_unified
         (id, name, address, contact_name, contact_email, contact_phone, partner_id, uses_kiosk, uses_smart_hotel_os, sho_tenant_id, kiosk_customer_id, billing_status,
-         pms_property_id, property_login_code, onboarding_status, onboarding_email_sent_at, onboarding_last_error)
-       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+         pms_property_id, property_login_code, onboarding_status, onboarding_email_sent_at, onboarding_last_error,
+         operational_status, saas_plan)
+       VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING *`,
       [
         input.name,
@@ -73,6 +77,8 @@ export const customersRepo = {
         input.onboardingStatus ?? "NOT_STARTED",
         input.onboardingEmailSentAt ?? null,
         input.onboardingLastError ?? null,
+        input.operationalStatus ?? "ACTIVE",
+        input.saasPlan ?? "TRIAL",
       ]
     );
     return rows[0];
@@ -95,10 +101,15 @@ export const customersRepo = {
       billing_status: input.billingStatus,
       pms_property_id: input.pmsPropertyId,
       property_login_code: input.propertyLoginCode,
+      operational_status: input.operationalStatus,
+      saas_plan: input.saasPlan,
       onboarding_status: input.onboardingStatus,
       onboarding_email_sent_at: input.onboardingEmailSentAt,
       onboarding_last_error: input.onboardingLastError,
     };
+    if (input.contactPhone !== undefined && input.propertyLoginCode === undefined) {
+      map.property_login_code = input.contactPhone?.replace(/\D/g, "").slice(-6) ?? null;
+    }
     for (const [col, val] of Object.entries(map)) {
       if (val !== undefined) {
         params.push(val);
@@ -110,6 +121,16 @@ export const customersRepo = {
     const { rows } = await pool.query<CustomerUnified>(
       `UPDATE customers_unified SET ${fields.join(", ")}, updated_at = now() WHERE id = $${params.length} RETURNING *`,
       params
+    );
+    return rows[0] ?? null;
+  },
+
+  async softDelete(id: string): Promise<CustomerUnified | null> {
+    const { rows } = await pool.query<CustomerUnified>(
+      `UPDATE customers_unified
+       SET deleted_at = now(), operational_status = 'INACTIVE', updated_at = now()
+       WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
+      [id]
     );
     return rows[0] ?? null;
   },
