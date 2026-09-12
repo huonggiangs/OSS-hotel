@@ -13,13 +13,9 @@ enum class AnioIcon {
     BARS, COINS, TASKS, USER_ADD, WRENCH,
 }
 
-/** Lightweight line icons so the UI is identical on every Android device. */
-class AnioIconView(
-    context: Context,
-    private val icon: AnioIcon,
-    color: Int,
-) : View(context) {
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+/** Bộ icon vector 24 × 24, đồng nhất nét và không phụ thuộc bộ icon của hãng máy. */
+class AnioIconView(context: Context, private val icon: AnioIcon, color: Int) : View(context) {
+    private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
@@ -29,86 +25,82 @@ class AnioIconView(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val side = min(width, height).toFloat()
-        val scale = side / 32f
-        val cx = width / 2f
-        val cy = height / 2f
-        fun x(value: Float) = cx + (value - 16f) * scale
-        fun y(value: Float) = cy + (value - 16f) * scale
-        paint.strokeWidth = 2.25f * scale
+        val scale = side / 24f
+        val left = (width - side) / 2f
+        val top = (height - side) / 2f
+        fun x(value: Float) = left + value * scale
+        fun y(value: Float) = top + value * scale
+        fun rect(l: Float, t: Float, r: Float, b: Float) = RectF(x(l), y(t), x(r), y(b))
+        line.strokeWidth = 1.8f * scale
 
         when (icon) {
             AnioIcon.HOME -> {
-                val roof = Path().apply { moveTo(x(5f), y(15f)); lineTo(x(16f), y(6f)); lineTo(x(27f), y(15f)) }
-                canvas.drawPath(roof, paint)
-                val house = Path().apply { moveTo(x(8f), y(13f)); lineTo(x(8f), y(27f)); lineTo(x(24f), y(27f)); lineTo(x(24f), y(13f)) }
-                canvas.drawPath(house, paint)
-                canvas.drawRect(x(14f), y(20f), x(18f), y(27f), paint)
+                canvas.drawPath(Path().apply { moveTo(x(3f), y(11f)); lineTo(x(12f), y(3.8f)); lineTo(x(21f), y(11f)) }, line)
+                canvas.drawPath(Path().apply { moveTo(x(5.2f), y(9.5f)); lineTo(x(5.2f), y(20.2f)); lineTo(x(18.8f), y(20.2f)); lineTo(x(18.8f), y(9.5f)) }, line)
+                canvas.drawRoundRect(rect(10f, 14f, 14f, 20.2f), scale, scale, line)
             }
             AnioIcon.BED -> {
-                canvas.drawLine(x(6f), y(7f), x(6f), y(27f), paint)
-                canvas.drawLine(x(26f), y(16f), x(26f), y(27f), paint)
-                canvas.drawLine(x(6f), y(23f), x(26f), y(23f), paint)
-                canvas.drawRect(x(8f), y(11f), x(14f), y(17f), paint)
-                val mattress = Path().apply { moveTo(x(14f), y(14f)); lineTo(x(22f), y(14f)); quadTo(x(26f), y(14f), x(26f), y(18f)); lineTo(x(26f), y(21f)); lineTo(x(6f), y(21f)) }
-                canvas.drawPath(mattress, paint)
+                canvas.drawLine(x(3.5f), y(4f), x(3.5f), y(21f), line)
+                canvas.drawLine(x(20.5f), y(12f), x(20.5f), y(21f), line)
+                canvas.drawRoundRect(rect(5.5f, 8f, 10.5f, 12.5f), 1.2f * scale, 1.2f * scale, line)
+                canvas.drawPath(Path().apply { moveTo(x(10.5f), y(10f)); lineTo(x(17.2f), y(10f)); quadTo(x(20.5f), y(10f), x(20.5f), y(13.2f)); lineTo(x(20.5f), y(17f)); lineTo(x(3.5f), y(17f)) }, line)
+                canvas.drawLine(x(3.5f), y(19.5f), x(20.5f), y(19.5f), line)
             }
             AnioIcon.CALENDAR -> {
-                canvas.drawRoundRect(RectF(x(5f), y(8f), x(27f), y(27f)), 3f * scale, 3f * scale, paint)
-                canvas.drawLine(x(5f), y(14f), x(27f), y(14f), paint)
-                canvas.drawLine(x(11f), y(5f), x(11f), y(11f), paint)
-                canvas.drawLine(x(21f), y(5f), x(21f), y(11f), paint)
+                canvas.drawRoundRect(rect(3.5f, 5.5f, 20.5f, 21f), 2.2f * scale, 2.2f * scale, line)
+                canvas.drawLine(x(3.5f), y(10f), x(20.5f), y(10f), line)
+                canvas.drawLine(x(8f), y(3f), x(8f), y(7.8f), line)
+                canvas.drawLine(x(16f), y(3f), x(16f), y(7.8f), line)
             }
             AnioIcon.BELL -> {
-                val bell = Path().apply {
-                    moveTo(x(7f), y(23f)); quadTo(x(10f), y(20f), x(10f), y(14f))
-                    quadTo(x(10f), y(7f), x(16f), y(7f)); quadTo(x(22f), y(7f), x(22f), y(14f))
-                    quadTo(x(22f), y(20f), x(25f), y(23f)); close()
-                }
-                canvas.drawPath(bell, paint)
-                canvas.drawArc(RectF(x(13f), y(23f), x(19f), y(28f)), 0f, 180f, false, paint)
+                canvas.drawPath(Path().apply {
+                    moveTo(x(4f), y(18f)); quadTo(x(7f), y(15.5f), x(7f), y(10.5f))
+                    quadTo(x(7f), y(4.8f), x(12f), y(4.8f)); quadTo(x(17f), y(4.8f), x(17f), y(10.5f))
+                    quadTo(x(17f), y(15.5f), x(20f), y(18f)); close()
+                }, line)
+                canvas.drawPath(Path().apply { moveTo(x(9.5f), y(20f)); quadTo(x(12f), y(22.3f), x(14.5f), y(20f)) }, line)
             }
             AnioIcon.USER -> {
-                canvas.drawCircle(x(16f), y(10f), 5f * scale, paint)
-                canvas.drawArc(RectF(x(7f), y(17f), x(25f), y(29f)), 185f, 170f, false, paint)
+                canvas.drawCircle(x(12f), y(7.5f), 4f * scale, line)
+                canvas.drawPath(Path().apply { moveTo(x(4.5f), y(21f)); quadTo(x(5.2f), y(14.5f), x(12f), y(14.5f)); quadTo(x(18.8f), y(14.5f), x(19.5f), y(21f)) }, line)
             }
             AnioIcon.SEARCH -> {
-                canvas.drawCircle(x(13f), y(13f), 7f * scale, paint)
-                canvas.drawLine(x(18f), y(18f), x(27f), y(27f), paint)
+                canvas.drawCircle(x(10.5f), y(10.5f), 6.3f * scale, line)
+                canvas.drawLine(x(15.1f), y(15.1f), x(21f), y(21f), line)
             }
             AnioIcon.BARS -> {
-                canvas.drawLine(x(8f), y(25f), x(8f), y(19f), paint)
-                canvas.drawLine(x(16f), y(25f), x(16f), y(13f), paint)
-                canvas.drawLine(x(24f), y(25f), x(24f), y(7f), paint)
+                canvas.drawLine(x(5f), y(20f), x(5f), y(15.5f), line)
+                canvas.drawLine(x(12f), y(20f), x(12f), y(10f), line)
+                canvas.drawLine(x(19f), y(20f), x(19f), y(4.5f), line)
             }
             AnioIcon.COINS -> {
-                repeat(3) { index ->
-                    val top = 7f + index * 5f
-                    canvas.drawOval(RectF(x(7f), y(top), x(20f), y(top + 5f)), paint)
-                }
-                canvas.drawOval(RectF(x(17f), y(10f), x(27f), y(14f)), paint)
-                canvas.drawLine(x(27f), y(12f), x(27f), y(22f), paint)
-                canvas.drawArc(RectF(x(17f), y(18f), x(27f), y(23f)), 0f, 180f, false, paint)
+                canvas.drawOval(rect(3.5f, 5f, 13.5f, 8.5f), line)
+                canvas.drawPath(Path().apply { moveTo(x(3.5f), y(6.8f)); lineTo(x(3.5f), y(14.5f)); quadTo(x(8.5f), y(18f), x(13.5f), y(14.5f)); lineTo(x(13.5f), y(6.8f)) }, line)
+                canvas.drawPath(Path().apply { moveTo(x(3.5f), y(10.5f)); quadTo(x(8.5f), y(14f), x(13.5f), y(10.5f)) }, line)
+                canvas.drawOval(rect(11f, 9f, 20.5f, 12.3f), line)
+                canvas.drawPath(Path().apply { moveTo(x(11f), y(10.7f)); lineTo(x(11f), y(17.5f)); quadTo(x(15.8f), y(20.8f), x(20.5f), y(17.5f)); lineTo(x(20.5f), y(10.7f)) }, line)
+                canvas.drawPath(Path().apply { moveTo(x(11f), y(14.2f)); quadTo(x(15.8f), y(17.5f), x(20.5f), y(14.2f)) }, line)
             }
             AnioIcon.TASKS -> {
-                canvas.drawRoundRect(RectF(x(7f), y(8f), x(25f), y(28f)), 2f * scale, 2f * scale, paint)
-                canvas.drawRoundRect(RectF(x(12f), y(5f), x(20f), y(10f)), 2f * scale, 2f * scale, paint)
-                canvas.drawLine(x(11f), y(16f), x(14f), y(19f), paint); canvas.drawLine(x(14f), y(19f), x(19f), y(14f), paint)
-                canvas.drawLine(x(11f), y(23f), x(21f), y(23f), paint)
+                canvas.drawRoundRect(rect(5f, 5.5f, 19f, 21f), 1.8f * scale, 1.8f * scale, line)
+                canvas.drawRoundRect(rect(9f, 3f, 15f, 7f), 1.3f * scale, 1.3f * scale, line)
+                canvas.drawPath(Path().apply { moveTo(x(8f), y(12f)); lineTo(x(10.3f), y(14.3f)); lineTo(x(15.8f), y(9.5f)) }, line)
+                canvas.drawLine(x(8f), y(17.5f), x(16f), y(17.5f), line)
             }
             AnioIcon.USER_ADD -> {
-                canvas.drawCircle(x(13f), y(9f), 5f * scale, paint)
-                canvas.drawArc(RectF(x(5f), y(17f), x(21f), y(29f)), 185f, 170f, false, paint)
-                canvas.drawLine(x(24f), y(17f), x(24f), y(27f), paint)
-                canvas.drawLine(x(19f), y(22f), x(29f), y(22f), paint)
+                canvas.drawCircle(x(9.5f), y(7f), 3.8f * scale, line)
+                canvas.drawPath(Path().apply { moveTo(x(3.5f), y(19.5f)); quadTo(x(4.2f), y(13.5f), x(9.5f), y(13.5f)); quadTo(x(12.8f), y(13.5f), x(14.2f), y(15.8f)) }, line)
+                canvas.drawLine(x(18f), y(13.5f), x(18f), y(21f), line)
+                canvas.drawLine(x(14.2f), y(17.2f), x(21.8f), y(17.2f), line)
             }
             AnioIcon.WRENCH -> {
-                val wrench = Path().apply {
-                    moveTo(x(20f), y(7f)); quadTo(x(26f), y(5f), x(28f), y(8f)); lineTo(x(23f), y(13f))
-                    quadTo(x(21f), y(15f), x(18f), y(13f)); lineTo(x(8f), y(25f))
-                    quadTo(x(6f), y(27f), x(4f), y(25f)); quadTo(x(3f), y(23f), x(5f), y(21f))
-                    lineTo(x(16f), y(11f)); quadTo(x(15f), y(7f), x(20f), y(7f))
-                }
-                canvas.drawPath(wrench, paint)
+                canvas.drawPath(Path().apply {
+                    moveTo(x(14.8f), y(4.2f)); quadTo(x(19.5f), y(2.8f), x(21.2f), y(5.5f)); lineTo(x(17.3f), y(9.4f))
+                    quadTo(x(15.8f), y(10.9f), x(13.4f), y(9.8f)); lineTo(x(6.5f), y(18.5f))
+                    quadTo(x(5f), y(20.4f), x(3.4f), y(18.8f)); quadTo(x(2.1f), y(17.3f), x(3.8f), y(15.8f))
+                    lineTo(x(12.1f), y(8.5f)); quadTo(x(11.3f), y(5.5f), x(14.8f), y(4.2f))
+                }, line)
+                canvas.drawCircle(x(5.2f), y(17.5f), 0.7f * scale, line)
             }
         }
     }

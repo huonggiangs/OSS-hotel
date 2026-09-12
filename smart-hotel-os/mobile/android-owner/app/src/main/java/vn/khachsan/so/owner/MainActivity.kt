@@ -13,7 +13,9 @@ import android.os.Looper
 import android.provider.Settings
 import android.text.Editable
 import android.text.InputType
+import android.text.TextUtils
 import android.text.TextWatcher
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -207,7 +209,7 @@ class MainActivity : Activity() {
         content = vertical().apply { setPadding(dp(16), dp(30), dp(16), dp(24)) }
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        root.addView(bottomNavigation(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(76)))
+        root.addView(bottomNavigation(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(if (compactLayout()) 82 else 76)))
         setContentView(root)
         when (page) {
             AppPage.DASHBOARD -> loadDashboard()
@@ -765,8 +767,9 @@ class MainActivity : Activity() {
     }
 
     private fun bottomNavigation(): View {
+        val compact = compactLayout()
         val bar = horizontal(Gravity.CENTER).apply {
-            setPadding(dp(4), dp(6), dp(4), dp(4)); background = background(surface, 0f, Color.rgb(233, 237, 246))
+            setPadding(dp(4), dp(5), dp(4), dp(3)); background = background(surface, 0f, Color.rgb(233, 237, 246))
             elevation = dp(8).toFloat()
         }
         val items = listOf(
@@ -784,49 +787,57 @@ class MainActivity : Activity() {
                 setOnClickListener { if (!active) showPage(page) }
             }
             val iconHolder = FrameLayout(this)
-            iconHolder.addView(AnioIconView(this, icon, if (active) primary else muted), FrameLayout.LayoutParams(dp(32), dp(32), Gravity.CENTER))
+            val navIconSize = dp(if (compact) 29 else 32)
+            iconHolder.addView(AnioIconView(this, icon, if (active) primary else muted), FrameLayout.LayoutParams(navIconSize, navIconSize, Gravity.CENTER))
             if (page == AppPage.ALERTS && alertBadgeCount > 0) {
                 val badge = label(if (alertBadgeCount > 9) "9+" else alertBadgeCount.toString(), 8.5f, true, Color.WHITE).apply {
                     gravity = Gravity.CENTER; background = background(danger, 10f)
                 }
                 iconHolder.addView(badge, FrameLayout.LayoutParams(dp(19), dp(19), Gravity.TOP or Gravity.END))
             }
-            item.addView(iconHolder, LinearLayout.LayoutParams(dp(42), dp(38)))
-            item.addView(label(title, 10.5f, active, if (active) primary else muted).apply { gravity = Gravity.CENTER })
+            item.addView(iconHolder, LinearLayout.LayoutParams(dp(40), dp(36)))
+            item.addView(autoText(label(title, 10.5f, active, if (active) primary else muted).apply { gravity = Gravity.CENTER }, 8f, 10.5f, 1))
             bar.addView(item, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
         }
         return bar
     }
 
     private fun kpiCard(title: String, value: String, detail: String, icon: AnioIcon, accent: Int, iconBackground: Int): View = card().apply {
-        setPadding(dp(12), dp(13), dp(10), dp(13))
+        val compact = compactLayout()
+        setPadding(dp(if (compact) 9 else 12), dp(10), dp(if (compact) 8 else 10), dp(10))
         val row = horizontal(Gravity.CENTER_VERTICAL)
         val iconBox = FrameLayout(this@MainActivity).apply { background = background(iconBackground, 13f) }
-        iconBox.addView(AnioIconView(this@MainActivity, icon, accent), FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER))
-        row.addView(iconBox, LinearLayout.LayoutParams(dp(50), dp(50)))
+        val iconBoxSize = dp(if (compact) 44 else 50)
+        val glyphSize = dp(if (compact) 29 else 32)
+        iconBox.addView(AnioIconView(this@MainActivity, icon, accent), FrameLayout.LayoutParams(glyphSize, glyphSize, Gravity.CENTER))
+        row.addView(iconBox, LinearLayout.LayoutParams(iconBoxSize, iconBoxSize))
         val text = vertical().apply {
-            addView(label(title, 11.5f, false, Color.rgb(53, 72, 119)))
-            addView(label(value, if (value.length > 12) 17f else 21f, true, ink), matchWrap(top = 1))
-            addView(label(detail, 10.5f, false, if (accent == warning) danger else muted), matchWrap(top = 1))
+            addView(autoText(label(title, 11.5f, false, Color.rgb(53, 72, 119)), 9f, 11.5f, 2))
+            addView(autoText(label(value, if (value.length > 12) 17f else 21f, true, ink), 14f, if (value.length > 12) 17f else 21f, 1), matchWrap(top = 1))
+            addView(autoText(label(detail, 10.5f, false, if (accent == warning) danger else muted), 8.5f, 10.5f, 2), matchWrap(top = 1))
         }
-        row.addView(text, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(11) })
+        row.addView(text, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(if (compact) 8 else 11) })
         addView(row)
     }
 
     private fun quickAction(title: String, icon: AnioIcon, action: () -> Unit): View = vertical().apply {
-        gravity = Gravity.CENTER; setPadding(dp(4), dp(10), dp(4), dp(8)); background = background(surface, 14f)
+        val compact = compactLayout()
+        gravity = Gravity.CENTER; setPadding(dp(3), dp(8), dp(3), dp(7)); background = background(surface, 14f)
         elevation = dp(1).toFloat(); isClickable = true; isFocusable = true; contentDescription = title.replace("\n", " ")
         setOnClickListener { action() }
         val iconBox = FrameLayout(this@MainActivity).apply { background = background(primary, 13f) }
-        iconBox.addView(AnioIconView(this@MainActivity, icon, Color.WHITE), FrameLayout.LayoutParams(dp(36), dp(36), Gravity.CENTER))
-        addView(iconBox, LinearLayout.LayoutParams(dp(56), dp(56)))
-        addView(label(title, 11f, true, ink).apply { gravity = Gravity.CENTER }, matchWrap(top = 7))
+        val boxSize = dp(if (compact) 50 else 56)
+        val glyphSize = dp(if (compact) 32 else 36)
+        iconBox.addView(AnioIconView(this@MainActivity, icon, Color.WHITE), FrameLayout.LayoutParams(glyphSize, glyphSize, Gravity.CENTER))
+        addView(iconBox, LinearLayout.LayoutParams(boxSize, boxSize))
+        addView(autoText(label(title, 11f, true, ink).apply { gravity = Gravity.CENTER }, 8.5f, 11f, 2), matchWrap(top = 6))
     }
 
     private fun addQuickActionRow(actions: List<View>) {
-        val row = horizontal().apply { weightSum = 4f }
+        val compact = compactLayout()
+        val row = horizontal().apply { weightSum = actions.size.toFloat() }
         actions.forEachIndexed { index, action ->
-            row.addView(action, LinearLayout.LayoutParams(0, dp(112), 1f).apply {
+            row.addView(action, LinearLayout.LayoutParams(0, dp(if (compact) 104 else 112), 1f).apply {
                 leftMargin = if (index == 0) 0 else dp(3)
                 rightMargin = if (index == actions.lastIndex) 0 else dp(3)
             })
@@ -842,9 +853,10 @@ class MainActivity : Activity() {
     }
 
     private fun addTwoColumnCards(views: List<View>) {
+        val cardHeight = dp(if (compactLayout()) 104 else 88)
         views.chunked(2).forEach { pair ->
             val row = horizontal().apply { weightSum = 2f }
-            pair.forEachIndexed { index, view -> row.addView(view, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (index == 0) marginEnd = dp(6) else marginStart = dp(6) }) }
+            pair.forEachIndexed { index, view -> row.addView(view, LinearLayout.LayoutParams(0, cardHeight, 1f).apply { if (index == 0) marginEnd = dp(6) else marginStart = dp(6) }) }
             if (pair.size == 1) row.addView(Space(this), LinearLayout.LayoutParams(0, 1, 1f))
             content.addView(row, matchWrap(bottom = 10))
         }
@@ -854,7 +866,7 @@ class MainActivity : Activity() {
         val holder = vertical()
         actions.chunked(2).forEach { pair ->
             val row = horizontal().apply { weightSum = 2f }
-            pair.forEachIndexed { index, item -> row.addView(actionButton(item.first, 0, false, item.second), LinearLayout.LayoutParams(0, dp(46), 1f).apply { if (index == 0) marginEnd = dp(4) else marginStart = dp(4) }) }
+            pair.forEachIndexed { index, item -> row.addView(actionButton(item.first, 0, false, item.second), LinearLayout.LayoutParams(0, dp(if (compactLayout()) 52 else 46), 1f).apply { if (index == 0) marginEnd = dp(4) else marginStart = dp(4) }) }
             if (pair.size == 1) row.addView(Space(this), LinearLayout.LayoutParams(0, 1, 1f))
             holder.addView(row, matchWrap(bottom = 6))
         }
@@ -925,7 +937,13 @@ class MainActivity : Activity() {
         setPadding(dp(16), dp(15), dp(16), dp(15)); background = background(surface, 16f)
         elevation = dp(1).toFloat()
     }
-    private fun label(value: String, size: Float, bold: Boolean, color: Int): TextView = TextView(this).apply { text = value; textSize = size; setTextColor(color); if (bold) setTypeface(typeface, Typeface.BOLD); setLineSpacing(0f, 1.08f) }
+    private fun label(value: String, size: Float, bold: Boolean, color: Int): TextView = TextView(this).apply { text = value; textSize = size; setTextColor(color); includeFontPadding = false; if (bold) setTypeface(typeface, Typeface.BOLD); setLineSpacing(0f, 1.08f) }
+    private fun autoText(view: TextView, minSp: Float, maxSp: Float, lines: Int): TextView = view.apply {
+        maxLines = lines
+        ellipsize = TextUtils.TruncateAt.END
+        setAutoSizeTextTypeUniformWithConfiguration(minSp.toInt(), maxSp.toInt().coerceAtLeast(minSp.toInt() + 1), 1, TypedValue.COMPLEX_UNIT_SP)
+    }
+    private fun compactLayout(): Boolean = resources.configuration.screenWidthDp < 400 || resources.configuration.fontScale > 1.08f
     private fun sectionTitle(value: String): TextView = label(value, 18f, true, ink)
     private fun field(hintValue: String, initial: String, password: Boolean = false, number: Boolean = false): EditText = EditText(this).apply {
         hint = hintValue; setText(initial); textSize = 14f; setTextColor(ink); setHintTextColor(Color.rgb(132, 143, 174)); setPadding(dp(13), dp(10), dp(13), dp(10)); background = background(Color.WHITE, 13f, Color.rgb(222, 229, 242))
@@ -933,6 +951,8 @@ class MainActivity : Activity() {
     }
     private fun actionButton(title: String, icon: Int = 0, filled: Boolean = false, action: () -> Unit): Button = Button(this).apply {
         text = title; textSize = 12.5f; isAllCaps = false; minHeight = dp(46); setPadding(dp(10), 0, dp(10), 0); stateListAnimator = null
+        maxLines = 2; ellipsize = TextUtils.TruncateAt.END
+        setAutoSizeTextTypeUniformWithConfiguration(9, 12, 1, TypedValue.COMPLEX_UNIT_SP)
         setTextColor(if (filled) Color.WHITE else primary); background = background(if (filled) primary else Color.WHITE, 12f, if (filled) primary else Color.rgb(211, 219, 239))
         if (filled) setTypeface(typeface, Typeface.BOLD)
         if (icon != 0) {
@@ -942,7 +962,7 @@ class MainActivity : Activity() {
         setOnClickListener { action() }
     }
     private fun linkButton(title: String, action: () -> Unit): Button = actionButton(title, 0, false, action).apply { setBackgroundColor(Color.TRANSPARENT); minHeight = dp(38); setPadding(dp(6), 0, dp(6), 0) }
-    private fun chip(title: String, color: Int): TextView = label(title, 10.5f, true, color).apply { setPadding(dp(9), dp(5), dp(9), dp(5)); background = background(withAlpha(color, 28), 14f) }
+    private fun chip(title: String, color: Int): TextView = autoText(label(title, 10.5f, true, color), 8f, 10.5f, 1).apply { setPadding(dp(9), dp(5), dp(9), dp(5)); background = background(withAlpha(color, 28), 14f) }
     private fun emptyState(message: String): View = label(message, 13f, false, muted).apply { setPadding(dp(14), dp(18), dp(14), dp(18)); gravity = Gravity.CENTER; background = background(surface, 12f, Color.rgb(231, 235, 245)) }
     private fun background(color: Int, radius: Float, stroke: Int? = null): GradientDrawable = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius.toInt()).toFloat(); if (stroke != null) setStroke(dp(1), stroke) }
     private fun withAlpha(color: Int, alpha: Int) = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))

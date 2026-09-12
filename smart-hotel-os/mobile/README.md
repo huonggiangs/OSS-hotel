@@ -16,7 +16,7 @@ Android/iOS gọi qua gateway PMS, không truy cập PostgreSQL và không gọi
 
 `android-owner` là ứng dụng native Kotlin, không dùng DB cục bộ. Phiên bản LAN tự chọn `http://10.0.2.2:3100/api/backend` trên emulator và `http://sonanio25:3100/api/backend` trên điện thoại thật; người dùng không phải nhập địa chỉ máy chủ. Production bắt buộc thay hostname này bằng tên miền HTTPS ổn định và tắt cleartext trong manifest.
 
-Phiên bản 0.3.0 dùng chung cho chủ cơ sở, quản lý, lễ tân, buồng phòng và kỹ thuật viên. Ứng dụng chỉ hiện các menu/hành động thuộc quyền do PMS trả về:
+Phiên bản 0.3.1 dùng chung cho chủ cơ sở, quản lý, lễ tân, buồng phòng và kỹ thuật viên. Ứng dụng chỉ hiện các menu/hành động thuộc quyền do PMS trả về. Giao diện dùng bộ icon vector 24 × 24 đồng nhất và tự co chữ/card theo chiều rộng màn hình cùng cỡ chữ hệ thống:
 
 - **Trang chủ:** KPI, tìm khách/mã đặt phòng, biểu đồ phòng, biểu đồ thu chi và cảnh báo cần xử lý.
 - **Phòng:** lọc/tìm phòng, xem chi tiết, nhận phòng, bật/tắt điện, hoàn tất dọn phòng và báo hỏng.
