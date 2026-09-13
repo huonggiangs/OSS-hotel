@@ -1,4 +1,5 @@
 import { pool } from "../lib/db";
+import { isRuntimeBusinessModuleDisabled } from "../lib/runtimeBusinessModules";
 
 const EDGE_NODE_URL = process.env.EDGE_NODE_URL ?? "http://localhost:4200";
 const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY;
@@ -15,6 +16,7 @@ type PendingEvent = {
   payload: Record<string, unknown>;
   asset_code: string;
   iot_device_id: string;
+  module_settings: unknown;
 };
 
 type EdgeCommand = {
@@ -55,9 +57,11 @@ export async function dispatchPendingDeviceCommands(limit = 30) {
     WHERE delivery_status='QUEUED' AND expires_at<=now()`);
   const { rows } = await pool.query<PendingEvent>(
     `SELECT e.id, e.property_id, e.tenant_id, e.room_id, e.booking_id, e.device_id, e.action, e.payload,
-            d.asset_code, d.iot_device_id
+            d.asset_code, d.iot_device_id, module_setting.data AS module_settings
        FROM device_control_events e
        JOIN devices d ON d.id = e.device_id AND d.property_id = e.property_id
+       LEFT JOIN property_settings module_setting
+         ON module_setting.property_id = e.property_id AND module_setting.group_key = 'hq_modules'
       WHERE e.delivery_status = 'QUEUED'
         AND e.iot_command_id IS NULL
         AND e.action IN ('POWER_ON', 'POWER_OFF')
@@ -73,7 +77,14 @@ export async function dispatchPendingDeviceCommands(limit = 30) {
 
   let dispatched = 0;
   let failed = 0;
+  let skipped = 0;
   for (const event of rows) {
+    // Không phát lệnh còn nằm trong hàng đợi sau khi HQ tắt IoT cho cơ sở.
+    // Lệnh đã gửi trước đó vẫn được đọc ACK để khép kín audit log.
+    if (isRuntimeBusinessModuleDisabled(event.module_settings, "IOT_CONTROL")) {
+      skipped += 1;
+      continue;
+    }
     const claim = await pool.query(`UPDATE device_control_events e SET lease_until=now()+interval '30 seconds'
       FROM devices d WHERE e.id=$1 AND e.delivery_status='QUEUED' AND e.iot_command_id IS NULL
       AND e.expires_at>now() AND (e.lease_until IS NULL OR e.lease_until<now())
@@ -118,7 +129,7 @@ export async function dispatchPendingDeviceCommands(limit = 30) {
       failed += 1;
     }
   }
-  return { dispatched, failed, skipped: 0 };
+  return { dispatched, failed, skipped };
 }
 
 /** Đồng bộ ACK/TIMEOUT thật từ IoT qua Edge về bản ghi nghiệp vụ PMS. */

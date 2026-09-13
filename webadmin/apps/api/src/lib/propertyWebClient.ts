@@ -91,6 +91,24 @@ export interface ProvisionedProperty {
   setup_steps: string[];
 }
 
+export interface PropertyBusinessModuleState {
+  moduleKey: "IOT_CONTROL" | "MAINTENANCE_ASSETS" | "CRM_MARKETING" | "CHANNEL_MANAGER" | "REPORTING_VALUE";
+  enabled: boolean;
+  disabledReason?: string | null;
+}
+
+/** Đẩy toàn bộ trạng thái module HQ xuống cache vận hành của một PMS. */
+export async function syncBusinessModulesToProperty(input: {
+  propertyId: string;
+  tenantId: string;
+  modules: PropertyBusinessModuleState[];
+}): Promise<void> {
+  await propertyWebJson("/api/v1/internal/business-modules", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
 export type MobileConnectionStatus = "PENDING" | "APPROVED" | "REJECTED" | "REVOKED";
 
 export interface MobileConnection {

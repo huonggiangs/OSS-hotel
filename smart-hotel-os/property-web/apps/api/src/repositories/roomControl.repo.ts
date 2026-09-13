@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { DbPool } from "../lib/db";
+import { isRuntimeBusinessModuleDisabled } from "../lib/runtimeBusinessModules";
 
 export const ENERGY_CONTROL_KINDS = [
   "POWER_SWITCH",
@@ -38,6 +39,14 @@ export async function setRoomEnergyState(
     deviceId?: string;
   }
 ): Promise<DeviceControlResult[]> {
+  // Nhận/trả/chuyển phòng là nghiệp vụ lõi nên vẫn phải hoàn tất khi module IoT
+  // bị tắt. Chỉ dừng việc sinh lệnh phần cứng mới cho cơ sở đó.
+  const { rows: moduleRows } = await db.query<{ data: unknown }>(
+    `SELECT data FROM property_settings WHERE property_id = $1 AND group_key = 'hq_modules'`,
+    [input.propertyId]
+  );
+  if (isRuntimeBusinessModuleDisabled(moduleRows[0]?.data, "IOT_CONTROL")) return [];
+
   const { rows: devices } = await db.query<{
     id: string;
     name: string;

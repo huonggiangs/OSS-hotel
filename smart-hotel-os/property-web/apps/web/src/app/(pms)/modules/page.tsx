@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSettings } from "@/lib/useSettings";
 import Link from "next/link";
+import { useBusinessModules, type BusinessModuleKey } from "@/lib/business-modules";
 
 // Trang "Module nâng cao" — ĐÃ NỐI API THẬT: property_settings nhóm
 // "modules". Bật/tắt module giờ lưu thật qua PUT (thay vì chỉ setState cục
@@ -34,14 +35,25 @@ const MODULE_FLOWS: Record<string, { label: string; href: string }> = {
   webbooking: { label: "Cấu hình nhận đặt phòng", href: "/booking" }, otasync: { label: "Kết nối kênh bán", href: "/sync" }, extend: { label: "Thiết lập gia hạn", href: "/rooms" }, breakeven: { label: "Xem điểm hòa vốn", href: "/value-dashboard" },
   combo: { label: "Tạo gói dịch vụ", href: "/services" }, aicamera: { label: "Xem báo cáo vận hành", href: "/dashboard" }, screenlink: { label: "Mở màn hình phụ", href: "/dashboard" }, contactlessagent: { label: "Thiết lập trợ lý QR", href: "/amenities" },
 };
+const HQ_MODULE_BY_ITEM: Partial<Record<string, BusinessModuleKey>> = {
+  power: "IOT_CONTROL", rfid: "IOT_CONTROL", camera: "IOT_CONTROL", gatelock: "IOT_CONTROL", doorlock: "IOT_CONTROL", aicamera: "IOT_CONTROL", screenlink: "IOT_CONTROL",
+  task: "MAINTENANCE_ASSETS", marketing2: "CRM_MARKETING", cms: "CHANNEL_MANAGER", otasync: "CHANNEL_MANAGER", breakeven: "REPORTING_VALUE",
+};
 
 export default function ModulesPage() {
   const { data, loading, save, error } = useSettings<ModulesData>("modules", FALLBACK);
   const [notice, setNotice] = useState<string | null>(null);
+  const { state: hqState } = useBusinessModules();
 
   async function toggle(key: string) {
     const module = data.items.find((item) => item.key === key);
     if (!module) return;
+    const managedKey = HQ_MODULE_BY_ITEM[key];
+    const managedState = managedKey ? hqState(managedKey) : undefined;
+    if (managedState?.enabled === false) {
+      setNotice(managedState.disabledReason ? `HQ đang tắt chức năng này: ${managedState.disabledReason}` : "HQ đang tắt chức năng này.");
+      return;
+    }
     const nextOn = !module.on;
     try {
       await save({ items: data.items.map((m) => (m.key === key ? { ...m, on: nextOn } : m)) });
@@ -61,15 +73,20 @@ export default function ModulesPage() {
       {notice && <p className="mb-4 rounded-lg bg-[#E9FBEF] px-3 py-2 text-[12px] text-pms-success">{notice}</p>}
 
       <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {data.items.map((m) => (
+        {data.items.map((m) => {
+          const managedKey = HQ_MODULE_BY_ITEM[m.key];
+          const managedState = managedKey ? hqState(managedKey) : undefined;
+          const blockedByHq = managedState?.enabled === false;
+          return (
           <div key={m.key} className="min-w-0 overflow-hidden rounded-xl bg-white px-[18px] pb-3.5 pt-[18px] shadow-card">
             <div className="mb-2.5 flex justify-end">
               <button type="button"
                 aria-label={`${m.on ? "Tắt" : "Bật"} ${MODULE_LABELS[m.key] ?? m.name}`}
-                aria-pressed={m.on}
+                aria-pressed={m.on && !blockedByHq}
+                disabled={blockedByHq}
                 onClick={() => toggle(m.key)}
-                className="flex h-[22px] w-[38px] cursor-pointer items-center rounded-full p-0.5"
-                style={{ background: m.on ? "#284AB1" : "#E6E8EC", justifyContent: m.on ? "flex-end" : "flex-start" }}
+                className="flex h-[22px] w-[38px] cursor-pointer items-center rounded-full p-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ background: m.on && !blockedByHq ? "#284AB1" : "#E6E8EC", justifyContent: m.on && !blockedByHq ? "flex-end" : "flex-start" }}
               >
                 <div className="h-[18px] w-[18px] rounded-full bg-white" />
               </button>
@@ -86,9 +103,11 @@ export default function ModulesPage() {
                 {m.free ? "Miễn phí" : m.price}
               </span>
             </div>
+            {blockedByHq && <p className="mt-2 rounded-lg bg-pms-danger-bg px-2.5 py-2 text-[11px] font-medium text-pms-danger">HQ đang tạm tắt{managedState.disabledReason ? `: ${managedState.disabledReason}` : "."}</p>}
             {MODULE_FLOWS[m.key] && <Link href={MODULE_FLOWS[m.key].href} className="mt-3 block rounded-lg bg-pms-divider px-2.5 py-2 text-[11px] font-semibold text-pms-primary no-underline">Bước tiếp theo: {MODULE_FLOWS[m.key].label} →</Link>}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -40,6 +40,8 @@ export type AppKey =
   | "SUPER_ADMIN_WEB";
 export type ReleaseChannel = "STABLE" | "BETA";
 export type PurchaseOrderStatus = "DRAFT" | "ORDERED" | "RECEIVED" | "CANCELLED";
+export type BusinessModuleKey = "IOT_CONTROL" | "MAINTENANCE_ASSETS" | "CRM_MARKETING" | "CHANNEL_MANAGER" | "REPORTING_VALUE";
+export type BusinessModuleSyncStatus = "PENDING" | "SYNCED" | "FAILED";
 
 export interface User {
   id: string;
@@ -251,4 +253,22 @@ export interface AuditLog {
   after_data: unknown;
   ip_address: string | null;
   created_at: Date;
+}
+
+export interface CustomerBusinessModule {
+  customer_id: string;
+  module_key: BusinessModuleKey;
+  name: string;
+  description: string;
+  pms_route_scope: string;
+  display_order: number;
+  can_disable_completely: boolean;
+  enabled: boolean;
+  disabled_reason: string | null;
+  updated_by: string | null;
+  sync_status: BusinessModuleSyncStatus;
+  last_sync_at: Date | null;
+  last_sync_error: string | null;
+  created_at: Date;
+  updated_at: Date;
 }

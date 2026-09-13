@@ -6,6 +6,12 @@ import { Icon } from "@/components/icons";
 import { mainNav } from "@/lib/nav";
 import { useAuth } from "@/lib/auth";
 import { usePmsLocale } from "@/lib/i18n";
+import { useBusinessModules, type BusinessModuleKey } from "@/lib/business-modules";
+
+const NAV_MODULE: Partial<Record<string, BusinessModuleKey>> = {
+  "value-dashboard": "REPORTING_VALUE",
+  marketing: "CRM_MARKETING",
+};
 
 // Tính chữ viết tắt (initials) từ họ tên đầy đủ — lấy chữ cái đầu của 2 từ cuối
 // (đúng cách hiển thị avatar tròn kiểu "LT" cho "Lê Thảo" trong bản mock cũ).
@@ -31,6 +37,7 @@ export function Sidebar({
   const pathname = usePathname();
   const { user } = useAuth();
   const { t } = usePmsLocale();
+  const { isEnabled } = useBusinessModules();
   const width = collapsed ? 64 : 208;
 
   return (
@@ -62,7 +69,7 @@ export function Sidebar({
         </div>
       </div>
 
-      {mainNav.map((item) => {
+      {mainNav.filter((item) => !NAV_MODULE[item.key] || isEnabled(NAV_MODULE[item.key]!)).map((item) => {
         const active = pathname === item.href || pathname?.startsWith(item.href + "/");
         return (
           <Link

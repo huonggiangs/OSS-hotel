@@ -37,6 +37,8 @@ import { settingsRepo } from "./repositories/settings.repo";
 import { runDeviceCommandBridge } from "./repositories/deviceCommandBridge.repo";
 import { AdmissionGate, boundedInteger } from "./lib/runtimePolicy";
 import { startLanDiscovery } from "./lib/lanDiscovery";
+import { requireModuleEnabled } from "./middleware/moduleAvailability";
+import { businessModulesRouter } from "./routes/businessModules.routes";
 
 const app = express();
 const admission = new AdmissionGate(boundedInteger(process.env.API_MAX_IN_FLIGHT, 100, 10000));
@@ -81,12 +83,13 @@ app.use("/api/v1/room-types", roomTypesRouter);
 app.use("/api/v1/rooms", roomsRouter);
 app.use("/api/v1/customers", customersRouter);
 app.use("/api/v1/bookings", bookingsRouter);
-app.use("/api/v1/maintenance", maintenanceRouter);
-app.use("/api/v1/value", valueRouter);
+app.use("/api/v1/maintenance", requireAuth, requireModuleEnabled("MAINTENANCE_ASSETS"), maintenanceRouter);
+app.use("/api/v1/value", requireAuth, requireModuleEnabled("REPORTING_VALUE"), valueRouter);
 app.use("/api/v1/commercial", commercialRouter);
-app.use("/api/v1/ota-reconciliation", otaReconciliationRouter);
-app.use("/api/v1/marketing", marketingRouter);
+app.use("/api/v1/ota-reconciliation", requireAuth, requireModuleEnabled("CHANNEL_MANAGER"), otaReconciliationRouter);
+app.use("/api/v1/marketing", requireAuth, requireModuleEnabled("CRM_MARKETING"), marketingRouter);
 app.use("/api/v1/mobile", mobileRouter);
+app.use("/api/v1/business-modules", businessModulesRouter);
 // Router SePay (public webhook + API xác thực) phải đăng ký TRƯỚC
 // invoicesRouter — Express khớp route theo THỨ TỰ đăng ký chứ không theo độ
 // cụ thể, nên nếu invoicesRouter (có requireAuth) đăng ký trước thì
@@ -95,7 +98,7 @@ app.use("/api/v1/payments/sepay", sepayWebhookRouter);
 app.use("/api/v1/payments/sepay", sepayRouter);
 app.use("/api/v1/payments", invoicesRouter);
 app.use("/api/v1/expenses", expensesRouter);
-app.use("/api/v1/devices", devicesRouter);
+app.use("/api/v1/devices", requireAuth, requireModuleEnabled("IOT_CONTROL"), devicesRouter);
 app.use("/api/v1/dashboard", dashboardRouter);
 app.use("/api/v1/settings", settingsRouter);
 app.use("/api/v1/branches", branchesRouter);

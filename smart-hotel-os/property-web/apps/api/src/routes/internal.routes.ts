@@ -12,6 +12,37 @@ import { mobileConnectionsRepo } from "../repositories/mobileConnections.repo";
 
 export const internalRouter = Router();
 
+const runtimeModuleKey = z.enum(["IOT_CONTROL", "MAINTENANCE_ASSETS", "CRM_MARKETING", "CHANNEL_MANAGER", "REPORTING_VALUE"]);
+
+// HQ là nguồn cấu hình module. PMS lưu bản sao cục bộ để tiếp tục áp dụng khi
+// mất Internet; trạng thái chỉ thay đổi qua kênh nội bộ có service key.
+internalRouter.put(
+  "/business-modules",
+  requireInternalServiceKey,
+  asyncHandler(async (req, res) => {
+    const parsed = z.object({
+      propertyId: z.string().min(1),
+      tenantId: z.string().min(1),
+      modules: z.array(z.object({
+        moduleKey: runtimeModuleKey,
+        enabled: z.boolean(),
+        disabledReason: z.string().max(500).nullable().optional(),
+      })).max(20),
+    }).safeParse(req.body);
+    if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    const { rows } = await pool.query<{ id: string }>(
+      `SELECT id FROM properties WHERE id = $1 AND tenant_id = $2`,
+      [parsed.data.propertyId, parsed.data.tenantId]
+    );
+    if (!rows[0]) throw Errors.notFound("cơ sở PMS");
+    const data = await settingsRepo.upsert(parsed.data.propertyId, parsed.data.tenantId, "hq_modules", {
+      items: parsed.data.modules,
+      syncedAt: new Date().toISOString(),
+    });
+    res.json({ data });
+  })
+);
+
 const propertyProvisionSchema = z.object({
   tenantId: z.string().trim().min(1).max(120),
   propertyName: z.string().trim().min(1).max(255),
