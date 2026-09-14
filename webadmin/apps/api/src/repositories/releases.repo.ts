@@ -8,6 +8,7 @@ export interface AppReleaseInput {
   releaseNotes?: string | null;
   channel: ReleaseChannel;
   artifactUrl?: string | null;
+  uiConfigId?: string | null;
   isActive?: boolean;
 }
 
@@ -58,8 +59,8 @@ export const releasesRepo = {
         );
       }
       const { rows } = await client.query<AppRelease>(
-        `INSERT INTO app_releases (id, app_key, version, release_notes, channel, published_at, published_by, artifact_url, is_active)
-         VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8)
+        `INSERT INTO app_releases (id, app_key, version, release_notes, channel, published_at, published_by, artifact_url, is_active, ui_config_id)
+         VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9)
          RETURNING *`,
         [
           input.appKey,
@@ -70,6 +71,7 @@ export const releasesRepo = {
           isActive ? publishedById : null,
           input.artifactUrl ?? null,
           isActive,
+          input.uiConfigId ?? null,
         ]
       );
       await client.query("COMMIT");

@@ -20,6 +20,7 @@ import { goLiveProgressRouter } from "./routes/goLiveProgress.routes";
 import { mobileConnectionsRouter } from "./routes/mobile-connections.routes";
 import { deviceGatewayProxyRouter } from "./routes/device-gateway.routes";
 import { businessModulesRouter } from "./routes/business-modules.routes";
+import { mobileUiConfigsRouter } from "./routes/mobile-ui-configs.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { pool, DB_MODE, embeddedDb } from "./lib/db";
@@ -56,6 +57,7 @@ app.use("/api/v1/releases", releasesRouter);
 app.use("/api/v1/purchase-orders", purchaseOrdersRouter);
 app.use("/api/v1/go-live/progress", goLiveProgressRouter);
 app.use("/api/v1/mobile-connections", mobileConnectionsRouter);
+app.use("/api/v1/mobile-ui-configs", mobileUiConfigsRouter);
 app.use("/api/v1/business-modules", businessModulesRouter);
 
 app.use((_req, res) => {

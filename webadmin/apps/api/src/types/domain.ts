@@ -215,6 +215,7 @@ export interface AppRelease {
   published_at: Date | null;
   published_by: string | null;
   artifact_url: string | null;
+  ui_config_id: string | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;

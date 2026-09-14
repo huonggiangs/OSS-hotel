@@ -6,6 +6,7 @@ import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import { writeAuditLog } from "../middleware/audit";
 import { releasesRepo } from "../repositories/releases.repo";
+import { mobileUiConfigsRepo } from "../repositories/mobileUiConfigs.repo";
 
 // Release Console — theo PERMISSION_MATRIX.md: "Release Console: Xem (EXEC,
 // OPS_SUPPORT) | ✓ (RELEASE_MANAGER)". Xem (GET) mở cho mọi role đăng nhập
@@ -50,6 +51,7 @@ const createSchema = z.object({
   releaseNotes: z.string().optional(),
   channel: channelEnum.default("STABLE"),
   artifactUrl: z.string().optional(),
+  uiConfigId: z.string().uuid().optional(),
   isActive: z.boolean().default(true),
 });
 
@@ -59,7 +61,14 @@ releasesRouter.post(
   asyncHandler(async (req, res) => {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) throw Errors.validation(parsed.error.flatten());
+    if (parsed.data.uiConfigId) {
+      const config = await mobileUiConfigsRepo.findById(parsed.data.uiConfigId);
+      if (!config) throw Errors.notFound("cấu hình giao diện");
+      if (config.app_key !== parsed.data.appKey) throw Errors.validation({ uiConfigId: ["Cấu hình giao diện không thuộc ứng dụng đang phát hành."] });
+      if (config.status === "ARCHIVED") throw Errors.conflict("Cấu hình giao diện đã được lưu trữ.");
+    }
     const release = await releasesRepo.create(parsed.data, req.user!.id);
+    if (parsed.data.uiConfigId) await mobileUiConfigsRepo.markReleased(parsed.data.uiConfigId, req.user!.id);
     await writeAuditLog({ req, action: "PUBLISH_APP_RELEASE", entityType: "app_release", entityId: release.id, afterData: release });
     res.status(201).json(release);
   })
