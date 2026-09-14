@@ -37,6 +37,7 @@ export type AppKey =
   | "PROPERTY_WINDOWS"
   | "OWNER_MOBILE"
   | "HOUSEKEEPING_MOBILE"
+  | "TECHNICIAN_MOBILE"
   | "SUPER_ADMIN_WEB";
 export type ReleaseChannel = "STABLE" | "BETA";
 export type PurchaseOrderStatus = "DRAFT" | "ORDERED" | "RECEIVED" | "CANCELLED";

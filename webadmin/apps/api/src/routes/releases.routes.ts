@@ -21,6 +21,7 @@ const appKeyEnum = z.enum([
   "PROPERTY_WINDOWS",
   "OWNER_MOBILE",
   "HOUSEKEEPING_MOBILE",
+  "TECHNICIAN_MOBILE",
   "SUPER_ADMIN_WEB",
 ]);
 const channelEnum = z.enum(["STABLE", "BETA"]);
