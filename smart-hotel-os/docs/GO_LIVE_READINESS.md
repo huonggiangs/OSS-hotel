@@ -1,6 +1,6 @@
 # GO-LIVE READINESS — SMART HOTEL OS
 
-Ngày rà soát: 08/09/2026; cập nhật triển khai: 09/09/2026
+Ngày rà soát: 08/09/2026; cập nhật triển khai: 14/09/2026
 Nguồn: mã nguồn hiện tại, `docs/`, các file `PROGRESS.md`, kết quả typecheck và kiểm tra runtime đã lưu.  
 Nguyên tắc: chỉ tính **Đã sẵn sàng Go-live** khi có code, tài liệu và bằng chứng kiểm thử phù hợp; phần mềm đã viết nhưng thiếu thiết bị, credential hoặc KPI thật được xếp **READY_FOR_PILOT**.
 
@@ -19,6 +19,15 @@ Không dùng nhãn Go-live của một feature phần mềm để suy ra rằng 
 - Edge heartbeat còn mới, Cloud reachable và outbox bằng 0. Đây là bằng chứng kết nối phần mềm, chưa phải ACK thiết bị vật lý.
 - Đối soát thiết bị: HQ `2/2` tài sản có `asset_code` nhưng `0` online; PMS `33` thiết bị nhưng chỉ `1` có `asset_code` và `1` có `iot_device_id`; IoT Service `3` thiết bị, `1` có `asset_code`, `0` online. Vì vậy nghiệm thu relay/công tơ/khóa thật vẫn **Đang làm**.
 - Kiểm tra ngay trên máy chủ đạt `http://192.168.1.99:3000`, `:3100`, `:4200`. Windows Firewall chưa thể cấu hình trong phiên không có quyền Administrator; cần chạy `ops/scripts/Enable-OssLanAccess.ps1` bằng PowerShell Administrator trước khi nghiệm thu từ máy khác.
+
+### Cập nhật Mobile Studio & Cổng công việc sửa chữa ngày 14/09/2026
+
+- HQ Mobile Studio đã dùng schema v2 an toàn: chỉ nhận màu, nhãn, `icon_id`/`active_icon_id`, `layout_id` và các khối đã công bố. Backend chuẩn hóa alias rồi kiểm tra strict schema; HTML, JavaScript, SVG tùy ý và URL từ xa bị từ chối. Icon là vector đóng gói trong app, không tải runtime.
+- Studio có ba ngữ cảnh kiểm thử: Chủ cơ sở có tổng quan toàn cơ sở; Buồng phòng có số phòng bẩn/sạch/hỏng và sơ đồ tầng; Kỹ thuật viên có luồng nhận việc, từ chối, tiến độ, báo giá, bằng chứng và bàn giao. Đây là mô phỏng có kiểm soát, không ghi dữ liệu PMS.
+- Migration HQ `012`–`014` đã áp dụng: có cấu hình riêng cho Owner, Buồng phòng, Sửa chữa; Ba KPI Buồng phòng là `dirty`, `clean`, `broken`.
+- Migration PMS `022_repair_work_gateway.sql` bổ sung Cổng công việc sửa chữa. Một báo hỏng tạo work order idempotent: do Buồng phòng/lễ tân tạo thì chờ Chủ cơ sở; do Chủ cơ sở/quản lý tạo thì đẩy sang app kỹ thuật. Chủ cơ sở có thể chuyển sang đối tác sửa chữa đã chọn từ Tiện ích.
+- Khi Chủ cơ sở xác nhận bàn giao, work order và phiếu bảo trì hoàn tất, phòng tự chuyển `DIRTY` và tạo `housekeeping_task` để không bị nhận khách trước khi dọn. API giữ lịch sử event/audit và evidence ảnh/video theo property.
+- Bằng chứng hiện có: typecheck HQ API/web và PMS API/web đạt; migration/healthcheck Docker-LAN cần được kiểm tra lại sau lần deploy cuối. Nghiệm thu app Buồng phòng/Sửa chữa bằng APK/IPA ký số và thiết bị thật vẫn là việc còn lại.
 
 ## 2. Thống kê tổng hợp
 
@@ -118,6 +127,7 @@ Hạ tầng theo dõi Go-live của phiên này đã có migration, API, webhook
 | F-OTA-RECON-001 | Adapter/API OTA và đối soát tự động | Hợp đồng/credential OTA |
 | F-VALUE-001 | Sửa công thức lợi nhuận hợp nhất; meter thật; baseline/before-after | Kế toán + meter 30 ngày |
 | F-ALERT-001 | Assignee/escalation, đa kênh, SLA breach và kiểm thử cảnh báo thật | Notification + telemetry |
+| F-MAINT-REPAIR-GATEWAY-001 | API/workflow đã có; cần APK Sửa chữa, upload evidence thật và acceptance owner → technician → housekeeping | Thiết bị/mobile release + test nghiệp vụ |
 | Offline-first | Ánh xạ booking local/cloud, conflict test và auth máy-tới-máy | Edge staging |
 | Multi-tenant | Test cô lập tenant ở API/DB và kiểm tra truy cập chéo | Security test suite |
 
@@ -126,6 +136,7 @@ Hạ tầng theo dõi Go-live của phiên này đã có migration, API, webhook
 - F-AI-REV-001: trợ lý lợi nhuận/RAG có nguồn.
 - F-AI-ENERGY-001: phát hiện bất thường sau khi có 30–90 ngày dữ liệu meter sạch.
 - Owner Mobile và Housekeeping Mobile độc lập như sitemap mục tiêu.
+- Ứng dụng Sửa chữa phát hành ký số, tích hợp project `Suachua`, notification và kiểm thử upload bằng chứng trên thiết bị thật.
 - Property Windows đóng gói, in driver, offline outbox và cập nhật có chữ ký.
 - OAuth2/mTLS cho service-to-service và từng Edge/device; hiện còn shared key ở một số luồng.
 - CI/CD production blue-green/canary, Kubernetes/cell architecture và load test quy mô mục tiêu.

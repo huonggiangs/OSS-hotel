@@ -9,6 +9,7 @@ import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import { writeAuditLog } from "../middleware/audit";
 import { maintenanceRepo } from "../repositories/maintenance.repo";
+import { repairWorkOrdersRepo } from "../repositories/repairWorkOrders.repo";
 
 export const maintenanceRouter = Router();
 maintenanceRouter.use(requireAuth);
@@ -68,8 +69,14 @@ maintenanceRouter.post(
       category: firstIssue.category,
       description: firstIssue.description,
     });
-    await writeAuditLog({ req, action: "CREATE_MAINTENANCE_REQUEST", entityType: "maintenance_request", entityId: request.id, afterData: request });
-    res.status(201).json(request);
+    // Mọi phòng báo hỏng đều tạo một work order idempotent. Buồng phòng/lễ tân
+    // chờ Chủ cơ sở duyệt; chủ/quản lý tạo trực tiếp sẽ được đưa vào app sửa chữa.
+    const repairWorkOrder = await repairWorkOrdersRepo.createForMaintenance({
+      propertyId: req.user!.propertyId, tenantId: req.user!.tenantId, maintenance: request,
+      reporterRole: req.user!.role, reporterId: req.user!.id,
+    });
+    await writeAuditLog({ req, action: "CREATE_MAINTENANCE_REQUEST", entityType: "maintenance_request", entityId: request.id, afterData: { ...request, repair_work_order_id: repairWorkOrder.id, repair_status: repairWorkOrder.status } });
+    res.status(201).json({ ...request, repair_work_order: repairWorkOrder });
   })
 );
 
