@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api";
+import { MobileAppManagement, type MobileManagementView } from "@/components/mobile/MobileAppManagement";
 
 type ConnectionStatus = "PENDING" | "APPROVED" | "REJECTED" | "REVOKED";
 
@@ -26,6 +27,21 @@ interface MobileConnection {
   rejected_at: string | null;
   last_seen_at: string | null;
   approval_note: string | null;
+}
+
+interface MobileConnectionEvent {
+  id: number;
+  event_type: "DISCOVERY" | "LOGIN_STARTED" | "LOGIN_SUCCEEDED" | "LOGIN_FAILED";
+  property_code: string | null;
+  username: string | null;
+  platform: "ANDROID" | "IOS";
+  device_id: string;
+  device_name: string | null;
+  app_version: string | null;
+  endpoint_host: string | null;
+  outcome: string | null;
+  source_ip: string | null;
+  created_at: string;
 }
 
 const STATUS_TEXT: Record<ConnectionStatus, string> = {
@@ -56,7 +72,9 @@ function formatDate(value: string | null) {
 }
 
 export default function MobileConnectionsPage() {
+  const [tab, setTab] = useState<"connections" | MobileManagementView>("connections");
   const [items, setItems] = useState<MobileConnection[]>([]);
+  const [events, setEvents] = useState<MobileConnectionEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
@@ -71,10 +89,10 @@ export default function MobileConnectionsPage() {
       if (search) params.set("search", search);
       if (status) params.set("status", status);
       const query = params.toString();
-      const result = await api.get<{ items: MobileConnection[]; pending: number }>(
-        `/api/v1/mobile-connections${query ? `?${query}` : ""}`
-      );
+      const result = await api.get<{ items: MobileConnection[]; pending: number }>(`/api/v1/mobile-connections${query ? `?${query}` : ""}`);
+      const eventResult = await api.get<{ items: MobileConnectionEvent[] }>("/api/v1/mobile-connections/events").catch(() => ({ items: [] }));
       setItems(result.items);
+      setEvents(eventResult.items);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Không tải được danh sách kết nối ứng dụng.");
     } finally {
@@ -101,21 +119,28 @@ export default function MobileConnectionsPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-950">Thiết bị đăng nhập ứng dụng</h1>
+          <h1 className="text-2xl font-bold text-gray-950">Quản trị ứng dụng di động</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-600">
-            Người dùng đăng nhập trực tiếp bằng mã cơ sở, tên đăng nhập và mật khẩu. HQ không cần duyệt;
-            màn hình này dùng để theo dõi thiết bị và thời điểm kết nối gần nhất.
+            Theo dõi thiết bị kết nối, xem các màn hình người dùng và quản lý lịch sử phiên bản ứng dụng.
           </p>
         </div>
-        <button
+        {tab === "connections" && <button
           type="button"
           onClick={load}
           disabled={loading}
           className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           {loading ? "Đang tải..." : "Làm mới"}
-        </button>
+        </button>}
       </div>
+
+      <div className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-2 shadow-sm" role="tablist" aria-label="Quản trị ứng dụng di động">
+        <TabButton active={tab === "connections"} onClick={() => setTab("connections")}>Thiết bị kết nối</TabButton>
+        <TabButton active={tab === "screens"} onClick={() => setTab("screens")}>Màn hình ứng dụng</TabButton>
+        <TabButton active={tab === "releases"} onClick={() => setTab("releases")}>Phiên bản phát hành</TabButton>
+      </div>
+
+      {tab !== "connections" ? <MobileAppManagement view={tab} /> : <>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Summary label="Tổng thiết bị đã ghi nhận" value={items.length} tone="blue" />
@@ -134,6 +159,26 @@ export default function MobileConnectionsPage() {
           <li><b>2.</b> Hệ thống ghi nhận mã thiết bị và tự đăng nhập ở các lần sau.</li>
           <li><b>3.</b> HQ dùng trang này để thống kê thiết bị và thời điểm hoạt động gần nhất.</li>
         </ol>
+      </section>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold text-gray-950">Hoạt động tìm và kết nối gần đây</h2>
+            <p className="text-xs text-gray-500">Hiển thị ngay cả khi người dùng chưa đăng nhập thành công; không lưu mật khẩu.</p>
+          </div>
+          <span className="text-xs text-gray-500">{events.length} sự kiện</span>
+        </div>
+        {events.length === 0 ? <p className="mt-3 text-sm text-gray-500">Chưa nhận được sự kiện từ app. Hãy cài APK mới và bấm “Tìm lại”.</p> : (
+          <div className="mt-3 space-y-2">
+            {events.slice(0, 8).map((event) => (
+              <div key={event.id} className="flex flex-col gap-1 rounded-lg bg-gray-50 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0"><span className="font-semibold">{event.event_type === "DISCOVERY" ? "Đã tìm thấy PMS" : event.event_type === "LOGIN_STARTED" ? "Bắt đầu đăng nhập" : event.event_type}</span><span className="ml-2 text-gray-500">{event.device_name || event.device_id} · {event.username || "chưa nhập tài khoản"}</span></div>
+                <div className="shrink-0 text-xs text-gray-500">{formatDate(event.created_at)} · {event.source_ip || "LAN"}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <form onSubmit={handleSearch} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 sm:flex-row">
@@ -198,8 +243,13 @@ export default function MobileConnectionsPage() {
           ))}
         </div>
       )}
+      </>}
     </div>
   );
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return <button type="button" role="tab" aria-selected={active} onClick={onClick} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${active ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}>{children}</button>;
 }
 
 function Summary({ label, value, tone }: { label: string; value: number | string; tone: "green" | "gray" | "blue" }) {
