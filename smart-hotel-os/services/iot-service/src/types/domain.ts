@@ -11,7 +11,9 @@ export type CommandType =
   | "AC_SET_MODE"
   | "DEVICE_STATUS_CHECK"
   | "DEVICE_RESTART"
-  | "LOCK" | "UNLOCK" | "SET_VALUE" | "PLAY_MESSAGE" | "CUSTOM";
+  | "LOCK" | "UNLOCK" | "SET_VALUE" | "PLAY_MESSAGE" | "CUSTOM"
+  // Bộ điều khiển điện nhiều kênh (Anionote) — migration 004
+  | "CHECKIN" | "CHECKOUT" | "TIME_GRANT" | "TIME_CANCEL" | "CLEAR_TRIP" | "MOVE" | "ROOM_MOVE";
 export type CommandStatus = "PENDING" | "ACKED" | "TIMEOUT" | "FAILED";
 
 export interface Device {

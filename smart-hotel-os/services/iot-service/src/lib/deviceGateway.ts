@@ -57,8 +57,8 @@ export const deviceGateway = {
     if (checked.status === "TIMEOUT") throw new Error("COMMAND_TIMEOUT");
     const acked = await commandsRepo.markAcked(commandId, result);
     if (!acked) throw new Error("COMMAND_NOT_PENDING");
-    if (result.success && command.command_type === "POWER_ON") await devicesRepo.updatePowerState(device.id, "ON");
-    if (result.success && command.command_type === "POWER_OFF") await devicesRepo.updatePowerState(device.id, "OFF");
+    if (result.success && (command.command_type === "POWER_ON" || command.command_type === "CHECKIN")) await devicesRepo.updatePowerState(device.id, "ON");
+    if (result.success && (command.command_type === "POWER_OFF" || command.command_type === "CHECKOUT")) await devicesRepo.updatePowerState(device.id, "OFF");
     await devicesRepo.touchHeartbeat(device.id);
     await devicesRepo.recordEvent(device.id, "COMMAND_ACK", transport, { commandId, result });
     return acked;

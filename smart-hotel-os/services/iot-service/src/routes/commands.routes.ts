@@ -25,6 +25,13 @@ const createCommandSchema = z.object({
     "SET_VALUE",
     "PLAY_MESSAGE",
     "CUSTOM",
+    "CHECKIN",
+    "CHECKOUT",
+    "TIME_GRANT",
+    "TIME_CANCEL",
+    "CLEAR_TRIP",
+    "MOVE",
+    "ROOM_MOVE",
   ]),
   payload: z.record(z.unknown()).default({}),
   // Caller tự cấp idempotencyKey nếu muốn retry an toàn (vd. rule engine gọi
@@ -148,8 +155,8 @@ commandsRouter.post(
 
     // Cập nhật trạng thái thiết bị theo loại lệnh vừa được ack thành công.
     if (result.success) {
-      if (command.command_type === "POWER_ON") await devicesRepo.updatePowerState(device.id, "ON");
-      if (command.command_type === "POWER_OFF") await devicesRepo.updatePowerState(device.id, "OFF");
+      if ((command.command_type === "POWER_ON" || command.command_type === "CHECKIN")) await devicesRepo.updatePowerState(device.id, "ON");
+      if ((command.command_type === "POWER_OFF" || command.command_type === "CHECKOUT")) await devicesRepo.updatePowerState(device.id, "OFF");
     }
     // ACK là bằng chứng thiết bị vừa liên lạc, nên đồng thời làm mới heartbeat
     // để HQ/PMS không báo offline sai trong lúc thiết bị đang thực thi lệnh.
